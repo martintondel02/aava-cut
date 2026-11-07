@@ -14,7 +14,7 @@
   <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
-  <img src="https://img.shields.io/badge/Electron-38-2B2E3A?style=flat-square&logo=electron&logoColor=9FEAF9" alt="Electron">
+  <img src="https://img.shields.io/badge/Electron-45-2B2E3A?style=flat-square&logo=electron&logoColor=9FEAF9" alt="Electron">
   <img src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
   <img src="https://img.shields.io/badge/FFmpeg-powered-003B1F?style=flat-square&logo=ffmpeg&logoColor=white" alt="FFmpeg">
 </p>
@@ -335,7 +335,7 @@ The visualizer taps the analyser and never modifies the signal. Master and track
 - **Zustand + Immer** for editor state and undo history
 - **Canvas 2D + Web Audio API** for compositing and audio
 - **Express 5 + Multer + FFmpeg**
-- **Electron 38 + electron-builder** for the Linux desktop packages
+- **Electron 45 + electron-builder** for the Linux desktop packages
 - **Playwright** for browser and Electron smoke tests
 
 ---

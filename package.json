@@ -2,7 +2,7 @@
   "name": "lumacut",
   "version": "1.1.0",
   "private": true,
-  "description": "LumaCut \u2014 a local-first, CapCut-style video editor for Linux",
+  "description": "LumaCut — a local-first, CapCut-style video editor for Linux",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -35,7 +35,7 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "concurrently": "^9.2.1",
-    "electron": "^38.2.2",
+    "electron": "^45.2.3",
     "electron-builder": "^26.18.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
@@ -44,7 +44,7 @@
   "build": {
     "appId": "app.lumacut.editor",
     "productName": "LumaCut",
-    "copyright": "Copyright \u00a9 2026 LumaCut contributors",
+    "copyright": "Copyright © 2026 LumaCut contributors",
     "asar": false,
     "directories": {
       "output": "release"
@@ -81,7 +81,7 @@
     }
   },
   "author": {
-    "name": "Martin T\u00f8ndel",
+    "name": "Martin Tøndel",
     "email": "martintondel02@users.noreply.github.com"
   },
   "desktopName": "lumacut.desktop",

@@ -422,7 +422,7 @@ export function ExportDialog() {
 
               <div className="export-target">
                 <FolderOpen size={14} />
-                <span>Saved locally to the <code>exports/</code> folder</span>
+                <span>Saved locally to your exports folder</span>
               </div>
 
               <button type="button" className="btn btn-primary export-start-btn" onClick={startExport}>

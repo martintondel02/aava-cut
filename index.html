@@ -7,6 +7,24 @@
     <meta name="description" content="LumaCut — a full-featured, local-first video editor for Linux." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>LumaCut — Video Editor</title>
+    <script>
+      try {
+        const saved = JSON.parse(localStorage.getItem('lumacut.settings.v1') || '{}');
+        const root = document.documentElement;
+        const mode = saved.theme || 'system';
+        const theme = mode === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          : mode;
+        root.dataset.theme = theme;
+        root.dataset.themeMode = mode;
+        root.dataset.accent = saved.accent || 'mint';
+        root.dataset.density = saved.density || 'comfortable';
+        root.dataset.reduceMotion = String(Boolean(saved.reduceMotion));
+        const scale = Math.min(140, Math.max(80, Number(saved.scale) || 100));
+        root.dataset.scale = scale >= 130 ? 'large' : scale >= 115 ? 'medium' : 'normal';
+        root.style.setProperty('--ui-scale', String(scale / 100));
+      } catch (_) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

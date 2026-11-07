@@ -4,6 +4,9 @@ import type {
   Clip, ExportResult, ExportSettings, Keyframe, MediaAsset, PanelTab, Project, TextStyle, Track, TrackKind
 } from '../types';
 import { FALLBACK_ASSETS } from '../lib/fallbackAssets';
+import { useSettingsStore } from './settingsStore';
+import { migrateProject } from '../lib/migrate';
+import { channelForClip, channelsForClip, effectChannelId, ensureEffectLayer, makeEffectLayer, valueAt } from '../lib/keyframes';
 import {
   baseTextStyle, blankProject, cloneProject, createMediaClip, createShapeClip, createStickerClip, createTextClip,
   defaultTrackFor, presetToClip, seedProject, supportsTrack, trackForKind
@@ -35,6 +38,7 @@ interface EditorState {
   hydrated: boolean;
   lastSavedAt: string | null;
   selectedClipIds: string[];
+  selectedKeyframe: { clipId: string; keyframeId: string } | null;
   selectedAssetId: string | null;
   activePanel: PanelTab;
   playhead: number;
@@ -75,6 +79,8 @@ interface EditorState {
   setMasterVolume: (volume: number) => void;
 
   selectClip: (clipId: string | null, additive?: boolean) => void;
+  selectKeyframe: (clipId: string, keyframeId: string | null) => void;
+  addKeyframeAt: (clipId: string, property: string, time: number) => void;
   setPlayhead: (time: number) => void;
   setPlaying: (playing: boolean) => void;
   togglePlayback: () => void;
@@ -100,10 +106,13 @@ interface EditorState {
   updateTextStyle: (clipId: string, patch: Partial<TextStyle>, history?: boolean) => void;
   toggleEffect: (clipId: string, effectId: string) => void;
   setFilter: (clipId: string, filter: string, intensity?: number) => void;
+  setEffectIntensity: (clipId: string, effectType: string, value: number, history?: boolean) => void;
+  addEffectFade: (clipId: string, effectType: string, direction: 'in' | 'out') => void;
+  addClipFade: (clipId: string, kind: 'visual' | 'audio') => void;
   setTransition: (clipId: string, type: string, duration?: number) => void;
-  addKeyframe: (clipId: string, property: Keyframe['property']) => void;
+  addKeyframe: (clipId: string, property: string) => void;
   removeKeyframe: (clipId: string, keyframeId: string) => void;
-  updateKeyframe: (clipId: string, keyframeId: string, patch: Partial<Keyframe>) => void;
+  updateKeyframe: (clipId: string, keyframeId: string, patch: Partial<Keyframe>, history?: boolean) => void;
 
   splitSelected: (at?: number) => void;
   deleteSelected: () => void;
@@ -111,9 +120,10 @@ interface EditorState {
   copySelected: () => void;
   paste: () => void;
 
-  updateTrack: (trackId: string, patch: Partial<Track>) => void;
+  updateTrack: (trackId: string, patch: Partial<Track>, history?: boolean) => void;
   addTrack: (kind: TrackKind) => void;
   removeTrack: (trackId: string) => void;
+  reorderTrack: (sourceId: string, targetId: string, position: 'before' | 'after') => void;
 
   setProjectName: (name: string) => void;
   setAspect: (width: number, height: number) => void;
@@ -194,7 +204,10 @@ function addTrackForKind(project: Project, kind: TrackKind): string {
     kind,
     muted: false,
     hidden: false,
-    locked: false
+    locked: false,
+    solo: false,
+    gain: 1,
+    eq: { low: 0, mid: 0, high: 0 }
   };
   if (kind === 'audio') project.tracks.push(track);
   else if (kind === 'video') {
@@ -218,6 +231,35 @@ function findClip(project: Project, clipId: string): Clip | undefined {
   return project.clips.find((clip) => clip.id === clipId);
 }
 
+function upsertKeyframe(clip: Clip, property: string, time: number, value: number, easing: Keyframe['easing']): void {
+  const clampedTime = Math.max(0, Math.min(clip.duration, time));
+  const existing = clip.keyframes.find((frame) => frame.property === property && Math.abs(frame.time - clampedTime) < 0.015);
+  if (existing) {
+    existing.value = value;
+    existing.easing = easing;
+  } else {
+    clip.keyframes.push({ id: uid('kf'), property, time: clampedTime, value, easing });
+  }
+  clip.keyframes.sort((a, b) => a.time - b.time);
+}
+
+function fadeDuration(clip: Clip): number {
+  return Math.max(0.1, Math.min(1.2, clip.duration * 0.4));
+}
+
+const AUTO_DIRECT_PROPERTIES = new Set(['x', 'y', 'scale', 'rotation', 'opacity', 'filterIntensity', 'volume']);
+
+function autoKeyDirect(clip: Clip, playhead: number, keys: string[]): void {
+  if (!useSettingsStore.getState().autoKeyframe) return;
+  const local = playhead - clip.start;
+  if (local <= 0.001 || local >= clip.duration) return;
+  for (const key of keys) {
+    if (!AUTO_DIRECT_PROPERTIES.has(key)) continue;
+    const value = (clip as unknown as Record<string, unknown>)[key];
+    if (typeof value === 'number') upsertKeyframe(clip, key, local, value, 'easeInOut');
+  }
+}
+
 function ensureCaptionTrack(project: Project): string {
   const existing = project.tracks.find((track) => track.id === 'track-captions' || /caption/i.test(track.name));
   if (existing) return existing.id;
@@ -225,14 +267,6 @@ function ensureCaptionTrack(project: Project): string {
   const lastText = project.tracks.reduce((index, item, current) => item.kind === 'text' ? current : index, -1);
   project.tracks.splice(lastText + 1, 0, track);
   return 'track-captions';
-}
-
-function currentKeyframeValue(clip: Clip, property: Keyframe['property']): number {
-  if (property === 'opacity') return clip.opacity;
-  if (property === 'x') return clip.x;
-  if (property === 'y') return clip.y;
-  if (property === 'scale') return clip.scale;
-  return clip.rotation;
 }
 
 function captionStyle(): Partial<TextStyle> {
@@ -265,6 +299,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   hydrated: false,
   lastSavedAt: null,
   selectedClipIds: [],
+  selectedKeyframe: null,
   selectedAssetId: null,
   activePanel: 'media',
   playhead: 0,
@@ -300,7 +335,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       error = err instanceof Error ? err.message : String(err);
     }
     const stored = parseStoredProject();
-    const project = stored || seedProject(assets);
+    const project = migrateProject(stored || seedProject(assets));
     set({
       assets,
       assetsError: error,
@@ -389,16 +424,47 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   selectClip: (clipId, additive = false) => {
     if (!clipId) {
-      set({ selectedClipIds: [] });
+      set({ selectedClipIds: [], selectedKeyframe: null });
       return;
     }
     set((state) => {
-      if (!additive) return { selectedClipIds: [clipId] };
+      if (!additive) return { selectedClipIds: [clipId], selectedKeyframe: state.selectedKeyframe?.clipId === clipId ? state.selectedKeyframe : null };
       const exists = state.selectedClipIds.includes(clipId);
       return { selectedClipIds: exists ? state.selectedClipIds.filter((id) => id !== clipId) : [...state.selectedClipIds, clipId] };
     });
     const clip = get().project ? findClip(get().project!, clipId) : null;
     if (clip?.assetId) set({ selectedAssetId: clip.assetId });
+  },
+  selectKeyframe: (clipId, keyframeId) => set({ selectedKeyframe: keyframeId ? { clipId, keyframeId } : null }),
+  addKeyframeAt: (clipId, property, time) => {
+    const project = get().project;
+    const clip = project?.clips.find((item) => item.id === clipId);
+    if (!project || !clip) return;
+    const channel = channelForClip(clip, property);
+    if (!channel) { get().addToast('That property cannot be keyframed yet', 'info'); return; }
+    const local = clamp(time, 0, clip.duration);
+    let createdId = '';
+    get().mutateProject((draft) => {
+      const target = findClip(draft, clipId);
+      if (!target) return;
+      const existing = target.keyframes.find((frame) => frame.property === property && Math.abs(frame.time - local) < 0.015);
+      if (existing) {
+        existing.value = valueAt(target, property, local, channel.get(target));
+        createdId = existing.id;
+      } else {
+        const frame: Keyframe = {
+          id: uid('kf'),
+          property,
+          time: local,
+          value: valueAt(target, property, local, channel.get(target)),
+          easing: 'easeInOut'
+        };
+        target.keyframes.push(frame);
+        target.keyframes.sort((a, b) => a.time - b.time);
+        createdId = frame.id;
+      }
+    });
+    if (createdId) set({ selectedKeyframe: { clipId, keyframeId: createdId }, selectedClipIds: [clipId] });
   },
 
   setPlayhead: (time) => {
@@ -451,6 +517,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       history: state.history.slice(0, -1),
       future: [cloneProject(state.project), ...state.future].slice(0, HISTORY_LIMIT),
       selectedClipIds: state.selectedClipIds.filter((id) => previous.clips.some((clip) => clip.id === id)),
+      selectedKeyframe: null,
       playhead: clamp(state.playhead, 0, projectDuration(previous))
     });
     scheduleSave(previous);
@@ -464,6 +531,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       future: state.future.slice(1),
       history: [...state.history, cloneProject(state.project)].slice(-HISTORY_LIMIT),
       selectedClipIds: state.selectedClipIds.filter((id) => next.clips.some((clip) => clip.id === id)),
+      selectedKeyframe: null,
       playhead: clamp(state.playhead, 0, projectDuration(next))
     });
     scheduleSave(next);
@@ -590,9 +658,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   updateClip: (clipId, patch, history = true) => {
+    const playhead = get().playhead;
     get().mutateProject((project) => {
       const clip = findClip(project, clipId);
-      if (clip) Object.assign(clip, patch);
+      if (!clip) return;
+      Object.assign(clip, patch);
+      autoKeyDirect(clip, playhead, Object.keys(patch));
+      if (patch.adjust) {
+        const local = playhead - clip.start;
+        if (useSettingsStore.getState().autoKeyframe && local > 0.001 && local < clip.duration) {
+          for (const [key, value] of Object.entries(patch.adjust)) {
+            if (typeof value === 'number') upsertKeyframe(clip, `adjust.${key}`, local, value, 'easeInOut');
+          }
+        }
+      }
     }, history);
   },
   updateClipDeep: (clipId, recipe, history = true) => {
@@ -602,16 +681,37 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }, history);
   },
   updateTextStyle: (clipId, patch, history = true) => {
+    const playhead = get().playhead;
     get().mutateProject((project) => {
       const clip = findClip(project, clipId);
-      if (clip?.text) Object.assign(clip.text, patch);
+      if (!clip?.text) return;
+      Object.assign(clip.text, patch);
+      if (useSettingsStore.getState().autoKeyframe) {
+        const local = playhead - clip.start;
+        if (local > 0.001 && local < clip.duration) {
+          const textChannels: Record<string, string> = {
+            fontSize: 'text.fontSize',
+            letterSpacing: 'text.letterSpacing',
+            backgroundOpacity: 'text.backgroundOpacity'
+          };
+          for (const [key, value] of Object.entries(patch)) {
+            const channel = textChannels[key];
+            if (channel && typeof value === 'number') upsertKeyframe(clip, channel, local, value, 'easeInOut');
+          }
+        }
+      }
     }, history);
   },
   toggleEffect: (clipId, effectId) => {
     get().mutateProject((project) => {
       const clip = findClip(project, clipId);
       if (!clip) return;
-      clip.effects = clip.effects.includes(effectId) ? clip.effects.filter((id) => id !== effectId) : [...clip.effects, effectId];
+      const existing = clip.effects.find((effect) => effect.type === effectId);
+      if (existing) {
+        const channel = effectChannelId(existing);
+        clip.effects = clip.effects.filter((effect) => effect.id !== existing.id);
+        clip.keyframes = clip.keyframes.filter((frame) => frame.property !== channel);
+      } else ensureEffectLayer(clip, effectId);
     });
   },
   setFilter: (clipId, filter, intensity) => {
@@ -621,6 +721,50 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       clip.filter = filter;
       if (typeof intensity === 'number') clip.filterIntensity = intensity;
     });
+  },
+  setEffectIntensity: (clipId, effectType, value, history = false) => {
+    const playhead = get().playhead;
+    get().mutateProject((project) => {
+      const clip = findClip(project, clipId);
+      const effect = clip?.effects.find((layer) => layer.type === effectType);
+      if (!clip || !effect) return;
+      effect.intensity = clamp(value, 0, 100);
+      if (useSettingsStore.getState().autoKeyframe) {
+        const local = playhead - clip.start;
+        if (local > 0.001 && local < clip.duration) upsertKeyframe(clip, effectChannelId(effect), local, effect.intensity, 'easeInOut');
+      }
+    }, history);
+  },
+  addEffectFade: (clipId, effectType, direction) => {
+    get().mutateProject((project) => {
+      const clip = findClip(project, clipId);
+      const effect = clip?.effects.find((layer) => layer.type === effectType);
+      if (!clip || !effect) return;
+      const property = effectChannelId(effect);
+      const hold = fadeDuration(clip);
+      if (direction === 'in') {
+        upsertKeyframe(clip, property, 0, 0, 'easeOut');
+        upsertKeyframe(clip, property, hold, effect.intensity, 'easeInOut');
+      } else {
+        upsertKeyframe(clip, property, Math.max(0, clip.duration - hold), effect.intensity, 'easeInOut');
+        upsertKeyframe(clip, property, clip.duration, 0, 'easeIn');
+      }
+    });
+    get().addToast(direction === 'in' ? 'Effect fade-in added' : 'Effect fade-out added', 'success');
+  },
+  addClipFade: (clipId, kind) => {
+    get().mutateProject((project) => {
+      const clip = findClip(project, clipId);
+      if (!clip) return;
+      const property = kind === 'audio' ? 'volume' : 'opacity';
+      const full = kind === 'audio' ? clip.volume : clip.opacity;
+      const hold = fadeDuration(clip);
+      upsertKeyframe(clip, property, 0, 0, 'easeOut');
+      upsertKeyframe(clip, property, hold, full, 'easeInOut');
+      upsertKeyframe(clip, property, Math.max(hold, clip.duration - hold), full, 'easeInOut');
+      upsertKeyframe(clip, property, clip.duration, 0, 'easeIn');
+    });
+    get().addToast(kind === 'audio' ? 'Volume fade added' : 'Opacity fade added', 'success');
   },
   setTransition: (clipId, type, duration = 0.7) => {
     const project = get().project;
@@ -642,23 +786,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().addToast('Move the playhead over the clip to add a keyframe', 'info');
       return;
     }
-    get().mutateProject((project) => {
-      const target = findClip(project, clipId);
-      if (!target) return;
-      const existing = target.keyframes.find((frame) => frame.property === property && Math.abs(frame.time - time) < 0.03);
-      if (existing) {
-        existing.value = currentKeyframeValue(target, property);
-      } else {
-        target.keyframes.push({
-          id: uid('kf'),
-          property,
-          time: Math.max(0, Math.min(target.duration, time)),
-          value: currentKeyframeValue(target, property),
-          easing: 'easeInOut'
-        });
-      }
-      target.keyframes.sort((a, b) => a.time - b.time);
-    });
+    get().addKeyframeAt(clipId, property, time);
     get().addToast(`Keyframe added at ${time.toFixed(2)}s`, 'success');
   },
   removeKeyframe: (clipId, keyframeId) => {
@@ -666,13 +794,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const clip = findClip(project, clipId);
       if (clip) clip.keyframes = clip.keyframes.filter((frame) => frame.id !== keyframeId);
     });
+    set((current) => ({ selectedKeyframe: current.selectedKeyframe?.keyframeId === keyframeId ? null : current.selectedKeyframe }));
   },
-  updateKeyframe: (clipId, keyframeId, patch) => {
+  updateKeyframe: (clipId, keyframeId, patch, history = true) => {
     get().mutateProject((project) => {
       const clip = findClip(project, clipId);
       const frame = clip?.keyframes.find((item) => item.id === keyframeId);
-      if (frame) Object.assign(frame, patch);
-    });
+      if (frame) {
+        Object.assign(frame, patch);
+        if (clip) {
+          frame.time = Math.max(0, Math.min(clip.duration, frame.time));
+          clip.keyframes.sort((a, b) => a.time - b.time);
+        }
+      }
+    }, history);
   },
 
   splitSelected: (at) => {
@@ -731,7 +866,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     get().mutateProject((project) => {
       project.clips = project.clips.filter((clip) => !removable.includes(clip.id));
     });
-    set({ selectedClipIds: [] });
+    set((current) => ({ selectedClipIds: [], selectedKeyframe: current.selectedKeyframe && removable.includes(current.selectedKeyframe.clipId) ? null : current.selectedKeyframe }));
   },
 
   duplicateSelected: () => {
@@ -771,11 +906,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ selectedClipIds: [copy.id] });
   },
 
-  updateTrack: (trackId, patch) => {
+  updateTrack: (trackId, patch, history = true) => {
     get().mutateProject((project) => {
       const track = project.tracks.find((item) => item.id === trackId);
       if (track) Object.assign(track, patch);
-    });
+    }, history);
   },
   addTrack: (kind) => {
     const state = get();
@@ -787,12 +922,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? `Titles ${state.project.tracks.filter((track) => track.kind === 'text').length + 1}`
         : kind === 'overlay' ? `Overlay ${state.project.tracks.filter((track) => track.kind === 'overlay').length + 1}` : `Video ${state.project.tracks.filter((track) => track.kind === 'video').length + 1}`;
     get().mutateProject((project) => {
-      const track: Track = { id, name, kind, muted: false, hidden: false, locked: false };
+      const track: Track = { id, name, kind, muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: { low: 0, mid: 0, high: 0 } };
       if (kind === 'audio') project.tracks.push(track);
       else if (kind === 'video') {
         const audioIndex = project.tracks.findIndex((item) => item.kind === 'audio');
         project.tracks.splice(audioIndex === -1 ? project.tracks.length : audioIndex, 0, track);
       } else project.tracks.unshift(track);
+    });
+  },
+  reorderTrack: (sourceId, targetId, position) => {
+    if (sourceId === targetId) return;
+    get().mutateProject((project) => {
+      const from = project.tracks.findIndex((track) => track.id === sourceId);
+      const target = project.tracks.findIndex((track) => track.id === targetId);
+      if (from === -1 || target === -1) return;
+      const [track] = project.tracks.splice(from, 1);
+      let to = project.tracks.findIndex((item) => item.id === targetId);
+      if (to === -1) to = project.tracks.length;
+      if (position === 'after') to += 1;
+      project.tracks.splice(to, 0, track);
     });
   },
   removeTrack: (trackId) => {
@@ -808,7 +956,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       project.tracks = project.tracks.filter((item) => item.id !== trackId);
       project.clips = project.clips.filter((clip) => clip.trackId !== trackId);
     });
-    set((current) => ({ selectedClipIds: current.selectedClipIds.filter((id) => state.project!.clips.some((clip) => clip.id === id && clip.trackId !== trackId)) }));
+    set((current) => ({
+      selectedClipIds: current.selectedClipIds.filter((id) => state.project!.clips.some((clip) => clip.id === id && clip.trackId !== trackId)),
+      selectedKeyframe: current.selectedKeyframe?.clipId && state.project!.clips.some((clip) => clip.id === current.selectedKeyframe!.clipId && clip.trackId !== trackId) ? current.selectedKeyframe : null
+    }));
   },
 
   setProjectName: (name) => {
@@ -826,22 +977,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   newProject: () => {
     const state = get();
     const project = blankProject(state.assets);
-    set({ project, history: [], future: [], selectedClipIds: [], playhead: 0, isPlaying: false, activePanel: 'media' });
+    set({ project, history: [], future: [], selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false, activePanel: 'media' });
     scheduleSave(project);
     get().addToast('New project created', 'success');
   },
   loadDemoProject: () => {
     const state = get();
     const project = seedProject(state.assets);
-    set({ project, history: [], future: [], selectedClipIds: [], playhead: 0, isPlaying: false, activePanel: 'media' });
+    set({ project, history: [], future: [], selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false, activePanel: 'media' });
     scheduleSave(project);
     get().addToast('Demo film loaded', 'success');
   },
   importProject: (data) => {
     try {
-      const project = validateProject(data);
+      const project = migrateProject(validateProject(data));
       get().checkpoint();
-      set({ project, selectedClipIds: [], playhead: 0, isPlaying: false });
+      set({ project, selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false });
       scheduleSave(project);
       get().addToast(`Opened “${project.name}”`, 'success');
     } catch (error) {
@@ -899,6 +1050,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     isPlaying: false,
     exportSettings: {
       ...state.exportSettings,
+      ...useSettingsStore.getState().exportDefaults,
       name: (state.project?.name || 'lumacut-export').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lumacut-export'
     }
   })),

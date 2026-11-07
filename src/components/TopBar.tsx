@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown, Cloud, Download, FilePlus2, FolderOpen, Keyboard, LayoutTemplate, Redo2, Save,
-  Sparkles, Undo2, Upload
+  Settings2, Sparkles, Undo2, Upload
 } from 'lucide-react';
 import { ASPECT_PRESETS } from '../types';
 import { useEditorStore } from '../store/editorStore';
 import { useClickOutside, useKeyboardHelpModal } from '../hooks/useClickOutside';
+import { QuickThemeButton } from './SettingsPage';
+import { useSettingsStore } from '../store/settingsStore';
 
 export function LogoMark({ size = 28 }: { size?: number }) {
   return (
@@ -42,6 +44,7 @@ export function TopBar() {
   const saveProjectToServer = useEditorStore((state) => state.saveProjectToServer);
   const addToast = useEditorStore((state) => state.addToast);
   const openHelp = useKeyboardHelpModal();
+  const openSettings = useSettingsStore((state) => state.openSettings);
 
   const [name, setName] = useState(project?.name || 'Untitled project');
   const [fileOpen, setFileOpen] = useState(false);
@@ -182,6 +185,10 @@ export function TopBar() {
             </div>
           )}
         </div>
+        <QuickThemeButton />
+        <button type="button" className="icon-btn help-btn" title="Settings (Ctrl+,)" onClick={openSettings}>
+          <Settings2 size={17} />
+        </button>
         <button type="button" className="icon-btn help-btn" title="Keyboard shortcuts (?)" onClick={openHelp}>
           <Keyboard size={17} />
         </button>

@@ -1,20 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AudioLines, ChevronDown, Copy, CopyPlus, Eye, EyeOff, Film, Layers, Lock, Magnet, Maximize2, Minus,
-  MoreHorizontal, Music2, Plus, Scissors, Type, Unlock, Volume2, VolumeX, X, ZoomIn, ZoomOut
+  AudioLines, ChevronDown, Copy, CopyPlus, Diamond, Eye, EyeOff, Film, GripVertical, Layers, Lock, Magnet, Maximize2, Minus,
+  MoreHorizontal, Music2, Plus, Scissors, Trash2, Type, Unlock, Volume2, VolumeX, X, ZoomIn, ZoomOut
 } from 'lucide-react';
-import type { Clip, MediaAsset, Project, Track, TrackKind } from '../types';
+import type { Clip, Keyframe, MediaAsset, Project, Track, TrackKind } from '../types';
 import { useEditorStore } from '../store/editorStore';
 import { clamp, formatTime, formatTimecode, projectDuration, snapTime } from '../lib/utils';
 import { supportsTrack } from '../lib/clips';
+import { EASING_OPTIONS, channelForClip, channelsForClip, propertyColor, propertyLabel } from '../lib/keyframes';
+import type { KeyframeChannel } from '../lib/keyframes';
+import { useSettingsStore } from '../store/settingsStore';
 import { TimelineWaveform } from './Waveform';
 
 const RULER_HEIGHT = 30;
-const SIDEBAR_WIDTH = 188;
 const TRACK_HEIGHT: Record<TrackKind, number> = { text: 42, overlay: 46, video: 60, audio: 48 };
 const TRACK_COLORS: Record<TrackKind, string> = { text: '#ffc76b', overlay: '#b99aff', video: '#62e6c1', audio: '#68a8ff' };
+const TRACK_PALETTE = ['#62e6c1', '#68a8ff', '#b99aff', '#ffc76b', '#ff91ad', '#ff9f6b'];
 
 type DragMode = 'move' | 'trim-left' | 'trim-right';
+
+let draggingTrackId: string | null = null;
 
 interface ClipDrag {
   pointerId: number;
@@ -26,6 +31,7 @@ interface ClipDrag {
   origDuration: number;
   origTrimIn: number;
   origTrackId: string;
+  origKeyframes: Keyframe[];
 }
 
 function trackHeight(track: Track): number {
@@ -57,9 +63,18 @@ export function Timeline() {
   const isPlaying = useEditorStore((state) => state.isPlaying);
   const zoom = useEditorStore((state) => state.zoom);
   const snapping = useEditorStore((state) => state.snapping);
+  const showWaveforms = useSettingsStore((state) => state.showWaveforms);
   const selectedClipIds = useEditorStore((state) => state.selectedClipIds);
+  const selectedKeyframe = useEditorStore((state) => state.selectedKeyframe);
+  const selectKeyframe = useEditorStore((state) => state.selectKeyframe);
+  const updateKeyframe = useEditorStore((state) => state.updateKeyframe);
+  const removeKeyframe = useEditorStore((state) => state.removeKeyframe);
+  const addKeyframeAt = useEditorStore((state) => state.addKeyframeAt);
+  const addKeyframe = useEditorStore((state) => state.addKeyframe);
+  const autoExpandKeyframes = useSettingsStore((state) => state.autoExpandKeyframes);
   const setZoom = useEditorStore((state) => state.setZoom);
   const setTimelineHeight = useEditorStore((state) => state.setTimelineHeight);
+  const followPlayhead = useSettingsStore((state) => state.followPlayhead);
   const setSnapping = useEditorStore((state) => state.setSnapping);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const setPlaying = useEditorStore((state) => state.setPlaying);
@@ -73,6 +88,7 @@ export function Timeline() {
   const updateClip = useEditorStore((state) => state.updateClip);
   const updateTrack = useEditorStore((state) => state.updateTrack);
   const removeTrack = useEditorStore((state) => state.removeTrack);
+  const reorderTrack = useEditorStore((state) => state.reorderTrack);
   const addAssetToTimeline = useEditorStore((state) => state.addAssetToTimeline);
   const setActivePanel = useEditorStore((state) => state.setActivePanel);
 
@@ -88,20 +104,36 @@ export function Timeline() {
   const [snapGuide, setSnapGuide] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ trackId: string; time: number } | null>(null);
   const [addTrackOpen, setAddTrackOpen] = useState(false);
+  const [keyframeMenuOpen, setKeyframeMenuOpen] = useState(false);
+  const [cornerAddOpen, setCornerAddOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
   const addTrackRef = useRef<HTMLDivElement>(null);
+  const keyframeMenuRef = useRef<HTMLDivElement>(null);
+  const cornerAddRef = useRef<HTMLDivElement>(null);
 
   const duration = project ? projectDuration(project) : 10;
+  const selectedClip = project?.clips.find((clip) => clip.id === selectedClipIds[0]) || null;
+  const selectedFrame = selectedClip && selectedKeyframe?.clipId === selectedClip.id
+    ? selectedClip.keyframes.find((frame) => frame.id === selectedKeyframe.keyframeId) || null
+    : null;
+  const selectedChannel = selectedClip && selectedFrame ? channelForClip(selectedClip, selectedFrame.property) : null;
+  const selectedLanes = selectedClip && autoExpandKeyframes
+    ? channelsForClip(selectedClip).filter((channel) => selectedClip.keyframes.some((frame) => frame.property === channel.id))
+    : [];
+  const expandedTrackId = selectedLanes.length ? selectedClip!.trackId : null;
+  const keyframeLaneExtra = selectedLanes.length * 15 + 20;
   const tracks = useMemo(() => project?.tracks || [], [project?.tracks]);
   const trackLayout = useMemo(() => {
     let cursor = 0;
     return tracks.map((track) => {
-      const height = trackHeight(track);
-      const item = { track, height, top: cursor };
+      const baseHeight = trackHeight(track);
+      const extra = track.id === expandedTrackId ? keyframeLaneExtra : 0;
+      const height = baseHeight + extra;
+      const item = { track, height, top: cursor, baseHeight, extra };
       cursor += height;
       return item;
     });
-  }, [tracks]);
+  }, [tracks, expandedTrackId, keyframeLaneExtra]);
   const tracksHeight = trackLayout.reduce((sum, item) => sum + item.height, 0);
   const contentWidth = Math.max((duration + 7) * zoom, Math.max(480, viewportWidth));
 
@@ -147,14 +179,14 @@ export function Timeline() {
   }, [tracks.length, tracksHeight, setTimelineHeight]);
 
   useEffect(() => {
-    if (!isPlaying || !scrollRef.current) return;
+    if (!isPlaying || !scrollRef.current || !followPlayhead) return;
     const scroll = scrollRef.current;
     const x = playhead * zoom;
     const viewLeft = scroll.scrollLeft;
     const visible = scroll.clientWidth;
     if (x > viewLeft + visible - 60) scroll.scrollLeft = Math.max(0, x - visible + 180);
     else if (x < viewLeft + 24) scroll.scrollLeft = Math.max(0, x - 80);
-  }, [playhead, isPlaying, zoom]);
+  }, [playhead, isPlaying, zoom, followPlayhead]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -171,6 +203,24 @@ export function Timeline() {
     window.addEventListener('pointerdown', close);
     return () => window.removeEventListener('pointerdown', close);
   }, [addTrackOpen]);
+
+  useEffect(() => {
+    if (!keyframeMenuOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!keyframeMenuRef.current?.contains(event.target as Node)) setKeyframeMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', close);
+    return () => window.removeEventListener('pointerdown', close);
+  }, [keyframeMenuOpen]);
+
+  useEffect(() => {
+    if (!cornerAddOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!cornerAddRef.current?.contains(event.target as Node)) setCornerAddOpen(false);
+    };
+    window.addEventListener('pointerdown', close);
+    return () => window.removeEventListener('pointerdown', close);
+  }, [cornerAddOpen]);
 
   const timeFromClientX = useCallback((clientX: number): number => {
     const rect = contentRef.current?.getBoundingClientRect();
@@ -274,7 +324,49 @@ export function Timeline() {
               </div>
             )}
           </div>
+          <div className="keyframe-tool-wrap" ref={keyframeMenuRef}>
+            <button type="button" className="timeline-tool" disabled={!selectedClip} onClick={() => setKeyframeMenuOpen(!keyframeMenuOpen)} title="Add a keyframe to the selected clip">
+              <Diamond size={14} /><span>Keyframe</span><ChevronDown size={10} />
+            </button>
+            {keyframeMenuOpen && selectedClip && (
+              <div className="popover keyframe-menu">
+                <div className="popover-label">Add at playhead</div>
+                {Array.from(new Set(channelsForClip(selectedClip).map((channel) => channel.group))).map((group) => (
+                  <div className="keyframe-menu-group" key={group}>
+                    <span>{group}</span>
+                    {channelsForClip(selectedClip).filter((channel) => channel.group === group).map((channel) => {
+                      const count = selectedClip.keyframes.filter((frame) => frame.property === channel.id).length;
+                      return (
+                        <button type="button" key={channel.id} onClick={() => { addKeyframe(selectedClip.id, channel.id); setKeyframeMenuOpen(false); }}>
+                          <i style={{ background: channel.color }} />
+                          <span>{channel.label}</span>
+                          {count > 0 && <em>{count}</em>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {selectedFrame && selectedClip && selectedChannel && (
+          <div className="keyframe-selection-pill" style={{ '--kf-color': selectedChannel.color } as React.CSSProperties}>
+            <Diamond size={10} />
+            <span className="kf-pill-label">{selectedChannel.label}</span>
+            <span className="kf-pill-time">{selectedFrame.time.toFixed(2)}s</span>
+            <select
+              value={selectedFrame.easing}
+              title="Keyframe easing"
+              onChange={(event) => updateKeyframe(selectedClip.id, selectedFrame.id, { easing: event.target.value as Keyframe['easing'] })}
+            >
+              {EASING_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <button type="button" className="kf-pill-remove" title="Remove keyframe" onClick={() => removeKeyframe(selectedClip.id, selectedFrame.id)}><Trash2 size={11} /></button>
+            <button type="button" className="kf-pill-close" title="Clear keyframe selection" onClick={() => selectKeyframe(selectedClip.id, null)}><X size={11} /></button>
+          </div>
+        )}
 
         <div className="timeline-tool-group timeline-tool-right">
           <button type="button" className={`timeline-tool icon-only ${snapping ? 'is-active' : ''}`} onClick={() => setSnapping(!snapping)} title="Toggle snapping">
@@ -308,8 +400,18 @@ export function Timeline() {
         <div className="timeline-sidebar-pane">
           <div className="timeline-corner" style={{ height: RULER_HEIGHT }}>
             <span>TRACKS</span>
-            <button type="button" className="corner-add" title="Add track" onClick={() => setAddTrackOpen(!addTrackOpen)}><Plus size={13} /></button>
+            <button type="button" className="corner-add" title="Add track" onClick={() => setCornerAddOpen(!cornerAddOpen)}><Plus size={13} /></button>
           </div>
+          {cornerAddOpen && (
+            <div className="popover corner-track-menu" ref={cornerAddRef}>
+              {(['video', 'overlay', 'text', 'audio'] as TrackKind[]).map((kind) => (
+                <button key={kind} type="button" onClick={() => { addTrack(kind); setCornerAddOpen(false); }}>
+                  {kind === 'video' ? <Film size={14} /> : kind === 'overlay' ? <Layers size={14} /> : kind === 'text' ? <Type size={14} /> : <Music2 size={14} />}
+                  {kind === 'video' ? 'Video track' : kind === 'overlay' ? 'Overlay track' : kind === 'text' ? 'Text track' : 'Audio track'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="timeline-sidebar-list" ref={sidebarListRef}>
             {trackLayout.map(({ track, height }) => (
               <TrackHeader
@@ -319,6 +421,8 @@ export function Timeline() {
                 clipCount={project.clips.filter((clip) => clip.trackId === track.id).length}
                 onToggle={(patch) => updateTrack(track.id, patch)}
                 onRemove={() => removeTrack(track.id)}
+                onRename={(name) => updateTrack(track.id, { name })}
+                onReorder={(sourceId, targetId, position) => reorderTrack(sourceId, targetId, position)}
               />
             ))}
           </div>
@@ -396,10 +500,11 @@ export function Timeline() {
                     project={project}
                     assets={assets}
                     track={layout.track}
-                    height={layout.height}
+                    height={clip.id === selectedClip?.id && selectedLanes.length ? layout.height : layout.baseHeight}
                     top={layout.top}
                     zoom={zoom}
                     selected={selectedClipIds.includes(clip.id)}
+                    keyframeLanes={clip.id === selectedClip?.id ? selectedLanes : []}
                     contentRef={contentRef}
                     trackAtY={trackIdFromClientY}
                     onSnapGuide={setSnapGuide}
@@ -484,26 +589,92 @@ function Trash2Icon() {
 }
 
 function TrackHeader({
-  track, height, clipCount, onToggle, onRemove
+  track, height, clipCount, onToggle, onRemove, onRename, onReorder
 }: {
   track: Track;
   height: number;
   clipCount: number;
   onToggle: (patch: Partial<Track>) => void;
   onRemove: () => void;
+  onRename: (name: string) => void;
+  onReorder: (sourceId: string, targetId: string, position: 'before' | 'after') => void;
 }) {
   const Icon = track.kind === 'audio' ? AudioLines : track.kind === 'text' ? Type : track.kind === 'overlay' ? Layers : Film;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [name, setName] = useState(track.name);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null);
+
+  useEffect(() => setName(track.name), [track.name]);
+
+  const commitName = () => {
+    const next = name.trim();
+    if (next && next !== track.name) onRename(next.slice(0, 80));
+    else setName(track.name);
+    setRenaming(false);
+  };
+
+  const requestRemove = () => {
+    if (clipCount > 0 && !window.confirm(`Remove “${track.name}” and its ${clipCount} clip${clipCount === 1 ? '' : 's'}?`)) return;
+    onRemove();
+  };
+
   return (
-    <div className={`track-header track-${track.kind}`} style={{ height }}>
-      <span className="track-accent" style={{ background: TRACK_COLORS[track.kind] }} />
+    <div
+      className={`track-header track-${track.kind} ${dropPosition ? `drop-${dropPosition}` : ''}`}
+      style={{ height }}
+      onDragOver={(event) => {
+        if (!draggingTrackId || draggingTrackId === track.id) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        const rect = event.currentTarget.getBoundingClientRect();
+        setDropPosition(event.clientY < rect.top + rect.height / 2 ? 'before' : 'after');
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropPosition(null);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        const source = draggingTrackId;
+        if (source && source !== track.id) onReorder(source, track.id, dropPosition || 'before');
+        draggingTrackId = null;
+        setDropPosition(null);
+      }}
+    >
+      <span className="track-accent" style={{ background: track.color || TRACK_COLORS[track.kind] }} />
+      <span
+        className="track-grip"
+        title="Drag to reorder"
+        draggable
+        onDragStart={(event) => {
+          draggingTrackId = track.id;
+          event.dataTransfer.setData('application/x-lumacut-track', track.id);
+          event.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragEnd={() => { draggingTrackId = null; setDropPosition(null); }}
+      ><GripVertical size={11} /></span>
       <div className="track-header-icon"><Icon size={14} /></div>
       <div className="track-header-copy">
-        <span className="track-name">{track.name}</span>
+        {renaming ? (
+          <input
+            className="track-rename-input"
+            value={name}
+            autoFocus
+            onChange={(event) => setName(event.target.value)}
+            onBlur={commitName}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
+              if (event.key === 'Escape') { setName(track.name); setRenaming(false); }
+              event.stopPropagation();
+            }}
+          />
+        ) : (
+          <span className="track-name" onDoubleClick={() => setRenaming(true)} title="Double-click to rename">{track.name}</span>
+        )}
         <span className="track-meta">{clipCount} clip{clipCount === 1 ? '' : 's'}</span>
       </div>
       <div className="track-actions">
-        {track.kind !== 'text' && (
+        {(track.kind === 'audio' || track.kind === 'video') && (
           <button
             type="button"
             className={`track-action ${track.muted ? 'is-off' : ''}`}
@@ -512,6 +683,14 @@ function TrackHeader({
           >
             {track.muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
           </button>
+        )}
+        {(track.kind === 'audio' || track.kind === 'video') && (
+          <button
+            type="button"
+            className={`track-action track-solo ${track.solo ? 'is-on' : ''}`}
+            title={track.solo ? 'Unsolo track' : 'Solo track'}
+            onClick={(event) => { event.stopPropagation(); onToggle({ solo: !track.solo }); }}
+          >S</button>
         )}
         {track.kind !== 'audio' && (
           <button
@@ -543,8 +722,26 @@ function TrackHeader({
               <button type="button" onClick={() => { onToggle({ hidden: !track.hidden }); setMenuOpen(false); }}>
                 {track.hidden ? <Eye size={13} /> : <EyeOff size={13} />} {track.hidden ? 'Show' : 'Hide'} track
               </button>
+              <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false); }}>
+                <Type size={13} /> Rename track
+              </button>
+              <div className="track-color-row">
+                <span>Track color</span>
+                <div>
+                  {TRACK_PALETTE.map((color) => (
+                    <button
+                      type="button"
+                      key={color}
+                      className={`track-swatch ${track.color === color ? 'is-active' : ''}`}
+                      style={{ background: color }}
+                      title="Use this track color"
+                      onClick={() => { onToggle({ color }); setMenuOpen(false); }}
+                    />
+                  ))}
+                </div>
+              </div>
               <div className="popover-separator" />
-              <button type="button" className="danger" onClick={() => { onRemove(); setMenuOpen(false); }}>
+              <button type="button" className="danger" onClick={() => { requestRemove(); setMenuOpen(false); }}>
                 <X size={13} /> Remove track
               </button>
             </div>
@@ -556,7 +753,7 @@ function TrackHeader({
 }
 
 function ClipBlock({
-  clip, project, assets, track, height, top, zoom, selected, contentRef, trackAtY, onSnapGuide, onSelect, onContextMenu
+  clip, project, assets, track, height, top, zoom, selected, keyframeLanes, contentRef, trackAtY, onSnapGuide, onSelect, onContextMenu
 }: {
   clip: Clip;
   project: Project;
@@ -566,6 +763,7 @@ function ClipBlock({
   top: number;
   zoom: number;
   selected: boolean;
+  keyframeLanes: KeyframeChannel[];
   contentRef: React.RefObject<HTMLDivElement | null>;
   trackAtY: (clientY: number) => string | null;
   onSnapGuide: (time: number | null) => void;
@@ -573,16 +771,23 @@ function ClipBlock({
   onContextMenu: (x: number, y: number) => void;
 }) {
   const snapping = useEditorStore((state) => state.snapping);
+  const selectedKeyframe = useEditorStore((state) => state.selectedKeyframe);
+  const selectKeyframe = useEditorStore((state) => state.selectKeyframe);
+  const updateKeyframe = useEditorStore((state) => state.updateKeyframe);
+  const addKeyframeAt = useEditorStore((state) => state.addKeyframeAt);
+  const setPlayhead = useEditorStore((state) => state.setPlayhead);
+  const showWaveforms = useSettingsStore((state) => state.showWaveforms);
   const playhead = useEditorStore((state) => state.playhead);
   const beginEdit = useEditorStore((state) => state.beginEdit);
   const endEdit = useEditorStore((state) => state.endEdit);
   const updateClip = useEditorStore((state) => state.updateClip);
+  const updateClipDeep = useEditorStore((state) => state.updateClipDeep);
   const setActivePanel = useEditorStore((state) => state.setActivePanel);
   const [drag, setDrag] = useState<ClipDrag | null>(null);
   const editStarted = useRef(false);
   const asset = clip.assetId ? assets.find((item) => item.id === clip.assetId) : null;
   const width = Math.max(10, clip.duration * zoom);
-  const color = TRACK_COLORS[clip.kind === 'audio' ? 'audio' : clip.kind === 'text' ? 'text' : clip.kind === 'video' || clip.kind === 'image' ? 'video' : 'overlay'];
+  const color = track.color || TRACK_COLORS[clip.kind === 'audio' ? 'audio' : clip.kind === 'text' ? 'text' : clip.kind === 'video' || clip.kind === 'image' ? 'video' : 'overlay'];
   const waveform = clip.kind === 'audio' && asset?.peaks;
 
   useEffect(() => {
@@ -629,7 +834,15 @@ function ClipBlock({
         nextStart = clamp(nextStart, 0, drag.origEnd - 0.15);
         const duration = drag.origEnd - nextStart;
         const trimIn = Math.max(0, drag.origTrimIn + (nextStart - drag.origStart) * clip.speed);
-        updateClip(clip.id, { start: Number(nextStart.toFixed(4)), duration: Number(duration.toFixed(4)), trimIn: Number(trimIn.toFixed(4)) }, false);
+        const headDelta = nextStart - drag.origStart;
+        updateClipDeep(clip.id, (target) => {
+          target.start = Number(nextStart.toFixed(4));
+          target.duration = Number(duration.toFixed(4));
+          target.trimIn = Number(trimIn.toFixed(4));
+          target.keyframes = drag.origKeyframes
+            .filter((frame) => frame.time >= Math.max(0, headDelta) - 0.001)
+            .map((frame) => ({ ...frame, time: Math.max(0, Number((frame.time - headDelta).toFixed(4))) }));
+        }, false);
         onSnapGuide(nextStart);
       } else {
         let nextEnd = drag.origEnd + dxSeconds;
@@ -643,7 +856,11 @@ function ClipBlock({
         if (nextClipStart !== undefined) nextEnd = Math.min(nextEnd, nextClipStart);
         if (snapping) nextEnd = snapTime(nextEnd, candidates, threshold);
         nextEnd = Math.max(drag.origStart + 0.15, nextEnd);
-        updateClip(clip.id, { duration: Number((nextEnd - drag.origStart).toFixed(4)) }, false);
+        const nextDuration = nextEnd - drag.origStart;
+        updateClipDeep(clip.id, (target) => {
+          target.duration = Number(nextDuration.toFixed(4));
+          target.keyframes = drag.origKeyframes.filter((frame) => frame.time <= nextDuration + 0.001);
+        }, false);
         onSnapGuide(nextEnd);
       }
     };
@@ -662,7 +879,7 @@ function ClipBlock({
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
     };
-  }, [drag, project, clip.id, clip.duration, clip.speed, clip.trimIn, clip.trackId, zoom, snapping, playhead, trackAtY, updateClip, beginEdit, endEdit, onSnapGuide]);
+  }, [drag, project, clip.id, clip.duration, clip.speed, clip.trimIn, clip.trackId, zoom, snapping, playhead, trackAtY, updateClip, updateClipDeep, beginEdit, endEdit, onSnapGuide]);
 
   const startDrag = (mode: DragMode, event: React.PointerEvent) => {
     if (event.button !== 0) return;
@@ -680,7 +897,8 @@ function ClipBlock({
       origEnd: clip.start + clip.duration,
       origDuration: clip.duration,
       origTrimIn: clip.trimIn,
-      origTrackId: clip.trackId
+      origTrackId: clip.trackId,
+      origKeyframes: clip.keyframes.map((frame) => ({ ...frame }))
     });
   };
 
@@ -692,6 +910,54 @@ function ClipBlock({
         backgroundPosition: 'center'
       }
     : {};
+
+  const startKeyframeDrag = (event: React.PointerEvent, frame: Keyframe) => {
+    event.stopPropagation();
+    event.preventDefault();
+    onSelect(false);
+    selectKeyframe(clip.id, frame.id);
+    setPlayhead(clip.start + frame.time);
+    const startX = event.clientX;
+    const originTime = frame.time;
+    let editing = false;
+    const move = (moveEvent: PointerEvent) => {
+      const delta = (moveEvent.clientX - startX) / zoom;
+      if (!editing && Math.abs(moveEvent.clientX - startX) < 2) return;
+      if (!editing) { beginEdit(); editing = true; }
+      let nextTime = clamp(originTime + delta, 0, clip.duration);
+      if (snapping) {
+        const candidates = [
+          0,
+          clip.duration,
+          playhead - clip.start,
+          ...clip.keyframes.filter((item) => item.id !== frame.id).map((item) => item.time)
+        ];
+        nextTime = snapTime(nextTime, candidates, 6 / zoom);
+      }
+      updateKeyframe(clip.id, frame.id, { time: Number(nextTime.toFixed(4)) }, false);
+      onSnapGuide(clip.start + nextTime);
+    };
+    const up = () => {
+      if (editing) endEdit();
+      onSnapGuide(null);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
+  const addLaneKeyframe = (event: React.MouseEvent, lane: KeyframeChannel) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const time = clamp((event.clientX - rect.left) / zoom, 0, clip.duration);
+    addKeyframeAt(clip.id, lane.id, time);
+    setPlayhead(clip.start + time);
+  };
+
+  const collapsedKeyframes = keyframeLanes.length === 0 && clip.keyframes.length > 0;
 
   return (
     <div
@@ -708,7 +974,7 @@ function ClipBlock({
       title={`${clip.name} · ${clip.duration.toFixed(2)}s`}
     >
       <div className="clip-surface" style={thumbStyle}>
-        {waveform && (
+        {waveform && showWaveforms && (
           <TimelineWaveform
             peaks={asset?.peaks}
             color="#a8ffe6"
@@ -746,6 +1012,52 @@ function ClipBlock({
             <Layers size={10} />
             {clip.transition.duration.toFixed(1)}s
           </button>
+        )}
+        {keyframeLanes.length > 0 && (
+          <div className="clip-keyframe-area" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+            <div className="clip-keyframe-head">
+              <span><Diamond size={8} /> {clip.keyframes.length} keyframes</span>
+              <span>double-click a lane to add</span>
+            </div>
+            {keyframeLanes.map((lane) => {
+              const frames = clip.keyframes.filter((frame) => frame.property === lane.id).sort((a, b) => a.time - b.time);
+              return (
+                <div className="keyframe-lane" key={lane.id} onDoubleClick={(event) => addLaneKeyframe(event, lane)} title={`${lane.label} — double-click to add a keyframe`}>
+                  <span className="keyframe-lane-label" style={{ '--lane-color': lane.color } as React.CSSProperties}><i style={{ background: lane.color }} />{lane.label}</span>
+                  <span className="keyframe-lane-rule" />
+                  {frames.map((frame) => (
+                    <button
+                      type="button"
+                      key={frame.id}
+                      className={`keyframe-block ${selectedKeyframe?.clipId === clip.id && selectedKeyframe.keyframeId === frame.id ? 'is-selected' : ''}`}
+                      style={{ left: frame.time * zoom, '--kf-color': lane.color } as React.CSSProperties}
+                      title={`${lane.label} · ${frame.time.toFixed(2)}s · ${frame.easing}`}
+                      onPointerDown={(event) => startKeyframeDrag(event, frame)}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {collapsedKeyframes && (
+          <div className="clip-keyframe-collapsed" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+            {clip.keyframes.map((frame) => {
+              const color = channelForClip(clip, frame.property)?.color || '#72f5d1';
+              return (
+                <button
+                  type="button"
+                  key={frame.id}
+                  className={`keyframe-block ${selectedKeyframe?.clipId === clip.id && selectedKeyframe.keyframeId === frame.id ? 'is-selected' : ''}`}
+                  style={{ left: frame.time * zoom, '--kf-color': color } as React.CSSProperties}
+                  title={`${propertyLabel(clip, frame.property)} · ${frame.time.toFixed(2)}s`}
+                  onPointerDown={(event) => startKeyframeDrag(event, frame)}
+                  onClick={(event) => event.stopPropagation()}
+                />
+              );
+            })}
+          </div>
         )}
         {selected && (
           <>

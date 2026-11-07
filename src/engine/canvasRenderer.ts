@@ -1,6 +1,7 @@
 import type { Clip, Keyframe, MediaAsset, Project, TextStyle } from '../types';
 import { FILTERS } from '../types';
 import { clamp, ease, hexToRgba } from '../lib/utils';
+import { applyEasing, effectChannelId, makeEffectLayer, valueAt } from '../lib/keyframes';
 import { getTransitionAt, mediaPool } from './mediaPool';
 
 type Easing = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
@@ -52,7 +53,7 @@ function interpolate(frames: Keyframe[], property: Keyframe['property'], time: n
     const b = list[i + 1];
     if (time >= a.time && time <= b.time) {
       const progress = (time - a.time) / Math.max(0.0001, b.time - a.time);
-      return a.value + (b.value - a.value) * ease(progress, b.easing as Easing);
+      return a.value + (b.value - a.value) * applyEasing(progress, b.easing);
     }
   }
   return fallback;
@@ -319,9 +320,18 @@ export class CanvasRenderer {
       }
     }
 
-    const effectIds = new Set<string>();
-    for (const clip of activeEffectClips) for (const effect of clip.effects) effectIds.add(effect);
-    for (const effect of effectIds) this.drawEffect(ctx, effect, width, height, time);
+    const effectIntensities = new Map<string, number>();
+    for (const clip of activeEffectClips) {
+      const local = clamp(time - clip.start, 0, clip.duration);
+      for (const effect of clip.effects) {
+        if (!effect.enabled) continue;
+        const intensity = clamp(valueAt(clip, effectChannelId(effect), local, effect.intensity) / 100, 0, 1);
+        effectIntensities.set(effect.type, Math.max(effectIntensities.get(effect.type) || 0, intensity));
+      }
+    }
+    for (const [effect, intensity] of effectIntensities) {
+      if (intensity > 0.001) this.drawEffect(ctx, effect, width, height, time, intensity);
+    }
 
     // Very light cinematic vignette keeps the preview feeling like a finished grade.
     const vignette = ctx.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.25, width / 2, height / 2, Math.max(width, height) * 0.72);
@@ -465,7 +475,15 @@ export class CanvasRenderer {
     ctx.save();
     if (clip.flipH) ctx.scale(-1, 1);
     if (clip.flipV) ctx.scale(1, -1);
-    const filter = filterFor(clip.filter, clip.filterIntensity, extraBlur, clip.adjust);
+    const filterIntensity = valueAt(clip, 'filterIntensity', local, clip.filterIntensity);
+    const adjust = {
+      brightness: valueAt(clip, 'adjust.brightness', local, clip.adjust?.brightness || 0),
+      contrast: valueAt(clip, 'adjust.contrast', local, clip.adjust?.contrast || 0),
+      saturation: valueAt(clip, 'adjust.saturation', local, clip.adjust?.saturation || 0),
+      temperature: valueAt(clip, 'adjust.temperature', local, clip.adjust?.temperature || 0),
+      hue: valueAt(clip, 'adjust.hue', local, clip.adjust?.hue || 0)
+    };
+    const filter = filterFor(clip.filter, filterIntensity, extraBlur, adjust);
     if (filter !== 'none') ctx.filter = filter;
     try {
       ctx.drawImage(source, -drawWidth / 2 + extraX, -drawHeight / 2, drawWidth, drawHeight);
@@ -473,7 +491,7 @@ export class CanvasRenderer {
       // Video frame may be momentarily unavailable while seeking.
     }
     ctx.restore();
-    const temperature = clip.adjust?.temperature || 0;
+    const temperature = adjust.temperature;
     if (Math.abs(temperature) > 0.5) {
       ctx.save();
       ctx.globalCompositeOperation = 'soft-light';
@@ -486,7 +504,7 @@ export class CanvasRenderer {
     if (preset?.tint) {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = clamp(clip.filterIntensity / 100, 0, 1) * 0.75;
+      ctx.globalAlpha = clamp(filterIntensity / 100, 0, 1) * 0.75;
       ctx.fillStyle = preset.tint;
       ctx.fillRect(-drawWidth / 2 + extraX, -drawHeight / 2, drawWidth, drawHeight);
       ctx.restore();
@@ -515,7 +533,7 @@ export class CanvasRenderer {
       }
     }
     if (!content) return;
-    const fontSize = style.fontSize * fontScale;
+    const fontSize = valueAt(clip, 'text.fontSize', local, style.fontSize) * fontScale;
     ctx.save();
     ctx.globalAlpha *= styleAlpha;
     ctx.scale(scale * extraScale, scale * extraScale);
@@ -523,7 +541,7 @@ export class CanvasRenderer {
     ctx.font = `${style.italic ? 'italic ' : ''}${style.fontWeight} ${fontSize}px ${style.fontFamily}, "DejaVu Sans", sans-serif`;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    const spacing = style.letterSpacing * fontScale;
+    const spacing = valueAt(clip, 'text.letterSpacing', local, style.letterSpacing) * fontScale;
     const maxWidth = Math.max(40, style.maxWidth * width);
     const lines = wrapLines(ctx, content, maxWidth);
     const lineHeight = fontSize * style.lineHeight;
@@ -532,9 +550,10 @@ export class CanvasRenderer {
     const blockHeight = Math.max(lineHeight, lines.length * lineHeight);
     const padX = style.paddingX * fontScale;
     const padY = style.paddingY * fontScale;
-    if (style.backgroundOpacity > 0.001) {
+    const backgroundOpacity = clamp(valueAt(clip, 'text.backgroundOpacity', local, style.backgroundOpacity), 0, 1);
+    if (backgroundOpacity > 0.001) {
       ctx.save();
-      ctx.fillStyle = hexToRgba(style.background || '#000000', style.backgroundOpacity);
+      ctx.fillStyle = hexToRgba(style.background || '#000000', backgroundOpacity);
       roundedRect(ctx, -blockWidth / 2 - padX, -blockHeight / 2 - padY, blockWidth + padX * 2, blockHeight + padY * 2, style.radius * fontScale);
       ctx.fill();
       ctx.restore();
@@ -587,12 +606,12 @@ export class CanvasRenderer {
     drawShape(ctx, clip, height * 0.16);
   }
 
-  private drawEffect(ctx: CanvasRenderingContext2D, id: string, width: number, height: number, time: number) {
+  private drawEffect(ctx: CanvasRenderingContext2D, id: string, width: number, height: number, time: number, intensity = 1) {
     if (id === 'grain') {
       const noise = this.ensureNoise();
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.11;
+      ctx.globalAlpha = 0.11 * intensity;
       const offsetX = Math.floor(rand(Math.floor(time * 12)) * noise.width);
       const offsetY = Math.floor(rand(Math.floor(time * 12) + 9) * noise.height);
       for (let x = -offsetX; x < width; x += noise.width) {
@@ -603,6 +622,7 @@ export class CanvasRenderer {
       const x = ((time * 0.08) % 1) * width;
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = intensity;
       const gradient = ctx.createRadialGradient(x, height * 0.25, 0, x, height * 0.25, width * 0.55);
       gradient.addColorStop(0, 'rgba(255,170,90,.3)');
       gradient.addColorStop(0.35, 'rgba(255,95,105,.16)');
@@ -619,7 +639,7 @@ export class CanvasRenderer {
         const y = rand(seed + 3) * height;
         const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(time * (1.1 + rand(seed + 6)) + seed));
         const size = (3 + rand(seed + 2) * 10) * twinkle;
-        ctx.globalAlpha = twinkle * 0.85;
+        ctx.globalAlpha = twinkle * 0.85 * intensity;
         ctx.fillStyle = i % 3 === 0 ? '#ffe4a3' : '#ffffff';
         ctx.beginPath();
         ctx.moveTo(x, y - size);
@@ -639,7 +659,7 @@ export class CanvasRenderer {
         const y = ((rand(seed + 1) + time * speed) % 1.1) * height - height * 0.05;
         const x = rand(seed) * width + Math.sin(time + i) * 18;
         const size = 1.2 + rand(seed + 5) * 4;
-        ctx.globalAlpha = 0.35 + rand(seed + 8) * 0.55;
+        ctx.globalAlpha = (0.35 + rand(seed + 8) * 0.55) * intensity;
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
         ctx.fill();
@@ -648,6 +668,7 @@ export class CanvasRenderer {
     } else if (id === 'bokeh') {
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = intensity;
       for (let i = 0; i < 18; i++) {
         const seed = i * 4.9;
         const x = rand(seed) * width + Math.sin(time * 0.15 + i) * 40;
@@ -667,14 +688,14 @@ export class CanvasRenderer {
     } else if (id === 'vhs') {
       ctx.save();
       ctx.globalCompositeOperation = 'overlay';
-      ctx.globalAlpha = 0.18;
+      ctx.globalAlpha = 0.18 * intensity;
       ctx.fillStyle = '#000000';
       for (let y = 0; y < height; y += 5) ctx.fillRect(0, y, width, 2);
-      ctx.globalAlpha = 0.08;
+      ctx.globalAlpha = 0.08 * intensity;
       ctx.fillStyle = '#72f5d1';
       ctx.fillRect(0, 0, width, height);
       const band = ((time * 0.22) % 1) * height;
-      ctx.globalAlpha = 0.14;
+      ctx.globalAlpha = 0.14 * intensity;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, band, width, height * 0.03);
       ctx.restore();
@@ -682,7 +703,7 @@ export class CanvasRenderer {
       ctx.save();
       const pulse = Math.sin(time * 9) * 0.5 + 0.5;
       if (pulse > 0.55) {
-        ctx.globalAlpha = 0.22;
+        ctx.globalAlpha = 0.22 * intensity;
         ctx.fillStyle = '#ff2a79';
         ctx.fillRect(0, height * 0.2, width, height * 0.02);
         ctx.fillStyle = '#3cf7df';
@@ -705,7 +726,7 @@ export class CanvasRenderer {
         ctx.translate(x, y);
         ctx.rotate(time * (1 + rand(seed + 7)) + i);
         ctx.fillStyle = colors[i % colors.length];
-        ctx.globalAlpha = 0.8;
+        ctx.globalAlpha = 0.8 * intensity;
         ctx.fillRect(-size / 2, -size / 4, size, size / 2);
         ctx.restore();
       }

@@ -1,6 +1,7 @@
 import type { Clip, MediaAsset, Project, TextStyle, Track } from '../types';
 import { TEXT_PRESETS } from '../types';
 import { uid } from './utils';
+import { makeEffectLayer } from './keyframes';
 
 export function baseTextStyle(overrides: Partial<TextStyle> = {}): TextStyle {
   return {
@@ -156,12 +157,13 @@ export function createShapeClip(shape: NonNullable<Clip['shape']>, start: number
 }
 
 export function makeTracks(): Track[] {
+  const eq = () => ({ low: 0, mid: 0, high: 0 });
   return [
-    { id: 'track-text', name: 'Titles', kind: 'text', muted: false, hidden: false, locked: false },
-    { id: 'track-overlay', name: 'Overlay', kind: 'overlay', muted: false, hidden: false, locked: false },
-    { id: 'track-main', name: 'Main Track', kind: 'video', muted: false, hidden: false, locked: false },
-    { id: 'track-audio', name: 'Soundtrack', kind: 'audio', muted: false, hidden: false, locked: false },
-    { id: 'track-sfx', name: 'Sound FX', kind: 'audio', muted: false, hidden: false, locked: false }
+    { id: 'track-text', name: 'Titles', kind: 'text', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: eq() },
+    { id: 'track-overlay', name: 'Overlay', kind: 'overlay', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: eq() },
+    { id: 'track-main', name: 'Main Track', kind: 'video', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: eq() },
+    { id: 'track-audio', name: 'Soundtrack', kind: 'audio', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: eq() },
+    { id: 'track-sfx', name: 'Sound FX', kind: 'audio', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: eq() }
   ];
 }
 
@@ -185,7 +187,7 @@ export function seedProject(assets: MediaAsset[]): Project {
       duration: scene.duration,
       filter: scene.filter,
       filterIntensity: scene.filterIntensity,
-      effects: scene.effects,
+      effects: scene.effects.map((type) => makeEffectLayer(type, 65)),
       transition: scene.transition,
       volume: 0.25
     }));
@@ -358,11 +360,13 @@ export function seedProject(assets: MediaAsset[]): Project {
 
   return {
     id: 'lumacut-demo-film',
+    version: 2,
     name: 'Chase the Light',
     width: 1920,
     height: 1080,
     fps: 30,
     background: '#03070b',
+    masterEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     tracks: makeTracks(),
     clips,
     createdAt: now,
@@ -374,11 +378,13 @@ export function blankProject(assets: MediaAsset[]): Project {
   const now = new Date().toISOString();
   return {
     id: uid('project'),
+    version: 2,
     name: 'Untitled project',
     width: 1920,
     height: 1080,
     fps: 30,
     background: '#03070b',
+    masterEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     tracks: makeTracks(),
     clips: [],
     createdAt: now,

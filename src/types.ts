@@ -3,6 +3,14 @@ export type ClipKind = 'video' | 'image' | 'audio' | 'text' | 'sticker' | 'shape
 export type TrackKind = 'video' | 'overlay' | 'text' | 'audio';
 export type PanelTab = 'media' | 'audio' | 'text' | 'stickers' | 'effects' | 'transitions' | 'filters' | 'captions' | 'templates';
 export type BlendMode = 'source-over' | 'screen' | 'multiply' | 'overlay' | 'soft-light' | 'lighten' | 'darken' | 'color-dodge';
+export type EasingId = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'springSoft' | 'springSnappy' | 'bounce';
+
+export interface EffectLayer {
+  id: string;
+  type: string;
+  enabled: boolean;
+  intensity: number;
+}
 
 export interface MediaAsset {
   id: string;
@@ -23,10 +31,10 @@ export interface MediaAsset {
 
 export interface Keyframe {
   id: string;
-  property: 'x' | 'y' | 'scale' | 'rotation' | 'opacity';
+  property: string;
   time: number;
   value: number;
-  easing: 'linear' | 'easeIn' | 'easeOut' | 'easeInOut';
+  easing: EasingId;
 }
 
 export interface TextStyle {
@@ -74,7 +82,7 @@ export interface Clip {
   blend: BlendMode;
   filter: string;
   filterIntensity: number;
-  effects: string[];
+  effects: EffectLayer[];
   adjust?: { brightness: number; contrast: number; saturation: number; temperature: number; hue: number };
   kenBurns?: boolean;
   fadeIn: number;
@@ -93,6 +101,12 @@ export interface Clip {
   caption?: boolean;
 }
 
+export interface TrackEq {
+  low: number;
+  mid: number;
+  high: number;
+}
+
 export interface Track {
   id: string;
   name: string;
@@ -100,15 +114,21 @@ export interface Track {
   muted: boolean;
   hidden: boolean;
   locked: boolean;
+  solo?: boolean;
+  gain?: number;
+  eq?: TrackEq;
+  color?: string;
 }
 
 export interface Project {
   id: string;
+  version: number;
   name: string;
   width: number;
   height: number;
   fps: number;
   background: string;
+  masterEq?: number[];
   tracks: Track[];
   clips: Clip[];
   createdAt: string;

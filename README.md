@@ -6,10 +6,11 @@
 
 <p align="center">
   <strong>A local-first, CapCut-style video editor for Linux.</strong><br>
-  Multi-track editing, motion keyframes, captions, effects and real MP4 delivery — all on your machine.
+  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ and real MP4 delivery — all on your machine.
 </p>
 
 <p align="center">
+  <a href="https://github.com/martintondel02/lumacut/releases/latest"><img src="https://img.shields.io/github/v/release/martintondel02/lumacut?style=flat-square&color=72f5d1&label=download" alt="Latest release"></a>
   <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
@@ -19,13 +20,40 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> ·
+  <a href="#download">Download</a> ·
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#keyboard-shortcuts">Shortcuts</a> ·
   <a href="#architecture">Architecture</a> ·
-  <a href="#roadmap">Roadmap</a> ·
-  <a href="#contributing">Contributing</a>
+  <a href="#roadmap">Roadmap</a>
 </p>
+
+---
+
+## Download
+
+**[Get the latest Linux release →](https://github.com/martintondel02/lumacut/releases/latest)**
+
+| Package | Best for | Install |
+| --- | --- | --- |
+| **`LumaCut-1.1.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
+| **`LumaCut-1.1.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+
+Both builds include the editor and its local media server. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export:
+
+```bash
+# Debian / Ubuntu
+sudo apt install ffmpeg
+
+# Fedora
+sudo dnf install ffmpeg
+
+# Arch
+sudo pacman -S ffmpeg
+```
+
+> Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml). The `.deb` declares `ffmpeg` as a dependency; the AppImage expects it on the host.
 
 ---
 
@@ -34,72 +62,50 @@
 Most editors make you choose between a polished timeline and owning your footage. LumaCut is built for the other path:
 
 - **Local-first by design.** Your media, waveforms, projects and exports live in folders on your Linux machine. No account, no upload, no telemetry.
-- **A real timeline.** Multi-track clips, trim handles, snapping, direct manipulation, track controls and keyboard editing.
-- **Finished-film tools.** Captions, typography, transitions, effects, color grades, keyframes, audio mixing and 4K exports.
+- **A real timeline.** Multi-track clips, trim handles, snapping, keyframe rails, direct manipulation and complete track management.
+- **Finished-film tools.** Captions, typography, transitions, effects, color grades, spring keyframes, audio mixing and 4K exports.
+- **Yours to shape.** Light/dark themes, four accent colors, 80–140% interface scaling, compact density and reduced motion.
 - **Hackable.** React + TypeScript on the front end, a small Express/FFmpeg media server, and an Electron shell. Read it, run it, change it.
 
 > LumaCut is an independent, original project inspired by modern mobile/desktop editors. It is not affiliated with CapCut or ByteDance.
-
-## Quick start
-
-### Requirements
-
-- Linux with Wayland or X11
-- **Node.js 20+**
-- **FFmpeg** and **ffprobe** on `PATH` (tested with FFmpeg 9)
-- A Chromium/Firefox browser or the bundled Electron desktop shell
-
-### Run the web app
-
-```bash
-git clone https://github.com/martintondel02/lumacut.git
-cd lumacut
-npm install
-npm run dev
-```
-
-Open **http://127.0.0.1:5173**. The first launch loads the demo film **“Chase the Light”**, so every control is ready to try.
-
-### Production build
-
-```bash
-npm run build
-npm run start
-```
-
-Open **http://127.0.0.1:4317**.
-
-### Linux desktop app
-
-```bash
-npm run desktop        # build + open native window
-npm run desktop:start  # launch an existing build
-```
-
-Install a desktop menu entry and the `lumacut` command:
-
-```bash
-bash scripts/install-linux.sh
-```
-
-The installer writes `~/.local/share/applications/lumacut.desktop`, installs an icon and places a launcher in `~/.local/bin/lumacut`.
-
-> **Downloadable builds:** packaged AppImage and `.deb` releases are the next planned milestone. Until then, run from source with the commands above. See the [rework plan](docs/REWORK_PLAN.md).
 
 ---
 
 ## Features
 
-### Timeline & editing
+### Timeline & track management
 
 | | |
 | --- | --- |
 | **Multi-track timeline** | Video, overlay, titles, captions, soundtrack and SFX tracks |
 | **Direct manipulation** | Drag clips in time or across compatible tracks, trim in/out, snap |
 | **Clip operations** | Split, duplicate, copy/paste, multi-select, delete, lock-safe editing |
-| **Track controls** | Hide, mute, lock, remove and add tracks |
+| **Track management** | Add, remove with confirmation, drag-reorder, rename, recolor, hide, lock |
+| **Audio tracks** | Mute, solo, per-track gain and a 3-band tone stack |
 | **Navigation** | Ruler scrubbing, 12–220 px/s zoom, fit-to-view, resizable timeline |
-| **Visual feedback** | Repeated thumbnails, waveform peaks, FX/filter/transition badges |
+| **Visual feedback** | Repeated thumbnails, waveform peaks, keyframe lanes, FX/filter/transition badges |
+
+### Keyframes & motion
+
+| | |
+| --- | --- |
+| **Keyframes 2.0** | Position, scale, rotation, opacity, color grading, filter intensity, text styling, effect strength and volume |
+| **Easing** | Linear, ease in, ease out, ease in/out, **spring (soft)**, **spring (snappy)** and **bounce** |
+| **Timeline keyframes** | Expand a selected clip into color-coded lanes, add with double-click, drag to retime, select and delete |
+| **Inspector editor** | Add keys per channel, edit time/value/easing, remove, or use quick fade-in/out helpers |
+| **Auto-key** | Optional mode that writes a keyframe when you change an animatable property at the playhead |
+| **Speed** | 0.25×–4× with source-aware retiming, plus Ken Burns push-ins on stills |
+
+### Audio & EQ
+
+| | |
+| --- | --- |
+| **Visualizer** | Live spectrum, waveform ribbon and radial pulse, drawn from the master analyser |
+| **Master EQ** | 10-band graphic equalizer with live curve and Flat / Podcast / Cinematic / Bass / Vocal / Airy presets |
+| **Track tone** | Per-track low shelf, mid peak and high shelf, ±12 dB, plus track gain and solo |
+| **Preview = export** | The track EQ, master EQ and gain bus feed both the monitor and the capture destination |
+| **Voiceover** | Record a microphone take and drop it onto the timeline |
+| **Fades** | Per-clip audio fades, volume keyframes and transition-aware mixing |
 
 ### Program monitor
 
@@ -108,7 +114,7 @@ The installer writes `~/.local/share/applications/lumacut.desktop`, installs an 
 | **Canvas compositor** | Up to 4K-shaped projects, 16:9 / 9:16 / 1:1 / 4:5 / 21:9 |
 | **Layer transforms** | Move, scale, rotate, flip, opacity and blend modes in the preview |
 | **Monitoring** | Safe margins, rule-of-thirds grid, snapshot, fullscreen |
-| **Audio preview** | Web Audio mix with volume, fades and track mute |
+| **Visualizer overlay** | Toggle from the monitor chrome or Settings → Playback |
 
 ### Type, captions & design
 
@@ -123,16 +129,17 @@ The installer writes `~/.local/share/applications/lumacut.desktop`, installs an 
 | **Effects** | Film grain, light leak, sparkles, snow, bokeh, VHS, glitch and confetti |
 | **Transitions** | Dissolve, fade to black/white, slides, zoom, blur, whip pan and spiral |
 
-### Motion & audio
+### Settings & accessibility
 
 | | |
 | --- | --- |
-| **Keyframes** | Position, scale, rotation, opacity, color, effects, volume and fades |
-| **Easing** | Linear, ease in/out/in-out, spring presets and bounce |
-| **Speed** | 0.25×–4× with source-aware retiming |
-| **Ken Burns** | Slow push-ins on still photographs |
-| **Voiceover** | Record a microphone take and drop it onto the timeline |
-| **Audio mixing** | Per-clip volume, fade in/out, track mute |
+| **Theme** | System / Dark / Light, applied before first paint, plus a quick top-bar toggle |
+| **Accent** | Mint, blue, amber and rose, with coordinated light-theme tokens |
+| **Interface scale** | 80–140% with layouts verified at 1200–1600 px and high-scale fallbacks |
+| **Density** | Comfortable and compact spacing for smaller displays |
+| **Motion** | Reduced-motion preference and `prefers-reduced-motion` support |
+| **Playback** | Preview quality, loop, follow playhead, waveform visibility and auto-expand keyframes |
+| **Export defaults** | Resolution, frame rate, format and quality |
 
 ### Projects & delivery
 
@@ -143,13 +150,24 @@ The installer writes `~/.local/share/applications/lumacut.desktop`, installs an 
 | **Export** | H.264/AAC MP4 or VP9/Opus WebM · 720p / 1080p / 4K · 24/30/60 fps |
 | **Export workflow** | Real-time canvas capture + server-side FFmpeg encoding and trimming |
 | **History** | Recent exports with file paths, sizes and direct download |
+| **Schema migration** | Opening a 1.0 project upgrades effects, keyframes, tracks and audio fields in place |
 
 ---
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="LumaCut editor with the Chase the Light demo film" width="100%">
+  <img src="docs/screenshot.png" alt="LumaCut 1.1 dark editor with keyframe lanes and the live audio visualizer" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/light-mode.png" alt="LumaCut in light mode with effects and keyframes" width="49%">
+  <img src="docs/screenshots/settings.png" alt="LumaCut settings with theme, accent and interface scale controls" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/keyframes.png" alt="Timeline keyframe lanes and spring easing controls" width="49%">
+  <img src="docs/screenshots/audio-eq.png" alt="Master EQ, live analyser and per-track tone controls" width="49%">
 </p>
 
 <p align="center">
@@ -160,6 +178,54 @@ The installer writes `~/.local/share/applications/lumacut.desktop`, installs an 
 <p align="center">
   <img src="docs/screenshots/export.png" alt="LumaCut export dialog with resolution, frame rate and quality options" width="100%">
 </p>
+
+---
+
+## Quick start
+
+### Run LumaCut from source
+
+Requirements:
+
+- Linux with Wayland or X11
+- **Node.js 20+**
+- **FFmpeg** and **ffprobe** on `PATH` (tested with FFmpeg 9)
+
+```bash
+git clone https://github.com/martintondel02/lumacut.git
+cd lumacut
+npm install
+npm run dev
+```
+
+Open **http://127.0.0.1:5173**. The first launch loads the demo film **“Chase the Light”**, so every control is ready to try.
+
+### Production web build
+
+```bash
+npm run build
+npm run start
+```
+
+Open **http://127.0.0.1:4317**.
+
+### Native desktop window
+
+```bash
+npm run desktop        # build + open the Electron window
+npm run desktop:start  # launch an existing build
+```
+
+The desktop app runs the media server inside Electron, so it does not need a separate Node process. Source runs keep media in the repository. Packaged runs store media, exports and cached metadata under `~/Videos/LumaCut/` (or Electron's user-data directory as a fallback).
+
+### Build Linux packages
+
+```bash
+npm run dist:linux   # AppImage + .deb, written to release/
+npm run dist:dir     # unpacked app for inspection
+```
+
+Packaging is configured with `electron-builder` in `package.json`. Pushing a `v*` tag runs the release workflow and attaches the generated AppImage and `.deb` to the GitHub release.
 
 ---
 
@@ -181,15 +247,35 @@ The installer writes `~/.local/share/applications/lumacut.desktop`, installs an 
 | `Ctrl/⌘ + Shift + Z` | Redo |
 | `Ctrl/⌘ + D` | Duplicate selected |
 | `Ctrl/⌘ + C` / `V` | Copy / paste clip |
-| `Delete` | Delete selected |
+| `Delete` | Delete selected clip or selected keyframe |
 | `Ctrl/⌘ + S` | Save project to disk |
 | `Ctrl/⌘ + O` | Open a `.lumacut` file |
 | `Ctrl/⌘ + N` | New project |
 | `Ctrl/⌘ + E` | Open export |
+| `Ctrl/⌘ + ,` | Open settings |
 | `T` | Add text at playhead |
 | `1` – `9` | Switch asset panel |
 | `?` | Shortcut sheet |
-| `Esc` | Deselect / close |
+| `Esc` | Deselect clip / clear keyframe / close |
+
+</details>
+
+<details>
+<summary><strong>Keyframe and timeline gestures</strong></summary>
+
+<br>
+
+| Gesture | Action |
+| --- | --- |
+| Select a clip | Expands its animated channels into keyframe lanes |
+| Double-click a keyframe lane | Add a keyframe at that time |
+| Drag a diamond | Retime the keyframe with snapping |
+| Click a diamond | Select it and show the easing pill |
+| `Delete` | Remove the selected keyframe |
+| Keyframe menu | Add any animatable channel at the playhead |
+| Easing picker | Choose linear, ease, spring or bounce |
+| Drag a track grip | Reorder tracks with a drop indicator |
+| Double-click a track name | Rename the track |
 
 </details>
 
@@ -214,28 +300,43 @@ npm run setup:demo   # regenerate the demo library
 ```text
 src/
   components/          React editor UI, panels, timeline, transport, export dialog
+    AudioVisualizer.tsx Canvas analyser overlay (spectrum / waveform / radial)
+    MasterEq.tsx       10-band master equalizer UI
+    SettingsPage.tsx   Themes, scale, playback, timeline, export and storage settings
   engine/
     canvasRenderer.ts  Canvas compositor: media, text, shapes, effects, transitions
-    mediaPool.ts       Media elements, Web Audio graph, playback and capture sync
-  lib/                 Project model helpers, seed film, SRT parser, utilities
-  store/editorStore.ts Zustand + Immer state, history, import/export actions
+    mediaPool.ts       Media elements, track/master EQ bus, analyser, playback and capture
+  lib/
+    keyframes.ts       Channel registry, easing curves, interpolation and effect helpers
+    migrate.ts         1.0 → 1.1 project migration
+  store/               Zustand + Immer state, history, settings and autosave
 server/
   index.mjs            Express media server, FFprobe metadata, waveforms, FFmpeg export
-electron/main.cjs      Desktop shell + child server lifecycle
+electron/main.cjs      Desktop shell + embedded local server
 scripts/               Demo generation and Linux installer
 tests/                 Playwright smoke tests
 ```
 
 The renderer uses normalized transforms, so reframing a project is non-destructive. Export captures the same canvas compositor used by the preview, then FFmpeg applies constant frame rate, exact duration and the requested codec/container.
 
+The audio bus is:
+
+```text
+media element → clip gain → track 3-band tone → track gain/solo
+              → master 10-band EQ → master volume → analyser → monitor
+                                                     └──────→ capture (export)
+```
+
+The visualizer taps the analyser and never modifies the signal. Master and track EQ are part of the render graph, so preview and export hear the same mix.
+
 ### Tech stack
 
 - **React 19 + TypeScript + Vite**
 - **Zustand + Immer** for editor state and undo history
-- **Canvas 2D + Web Audio API**
+- **Canvas 2D + Web Audio API** for compositing and audio
 - **Express 5 + Multer + FFmpeg**
-- **Electron 38** for the native Linux shell
-- **Playwright** for smoke tests
+- **Electron 38 + electron-builder** for the Linux desktop packages
+- **Playwright** for browser and Electron smoke tests
 
 ---
 
@@ -243,9 +344,10 @@ The renderer uses normalized transforms, so reframing a project is non-destructi
 
 | Path | Contents |
 | --- | --- |
-| `media/` | Imported source files and generated thumbnails |
-| `exports/` | Finished MP4 / WebM renders |
-| `data/assets.json` | Media library index and waveform peaks |
+| `media/` | Imported source files and generated thumbnails (source runs) |
+| `exports/` | Finished MP4 / WebM renders (source runs) |
+| `data/assets.json` | Media library index and waveform peaks (source runs) |
+| `~/Videos/LumaCut/` | Media, exports and data for packaged desktop builds |
 | `public/demo/` | Generated demo film, stills and audio |
 | Browser local storage | Instant project autosave |
 | `*.lumacut` | Portable project downloads |
@@ -261,6 +363,7 @@ npm run dev          # media server + Vite
 npm run build        # typecheck + production bundle
 npm run start        # production server
 npm run desktop      # native desktop shell
+npm run dist:linux   # AppImage + .deb
 npm run test:e2e     # Playwright smoke tests
 ```
 
@@ -270,22 +373,33 @@ For the tests, install the Playwright browser once:
 npx playwright install chromium
 ```
 
+The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, EQ controls, track management and project migration.
+
 ---
 
 ## Roadmap
 
-LumaCut 1.0 is a complete editor. The 1.1 rework focuses on accessibility, animation depth, audio tools and distributable builds:
+**1.1 “Accessibility & Animation” is shipped.**
 
-- [ ] Settings page with dark / light / system themes and 80–140% UI scaling
-- [ ] Keyframes for effects, filters, text and audio
-- [ ] Spring / bounce easing curves
-- [ ] Draggable keyframe blocks on the timeline
-- [ ] Audio visualizer, master 10-band EQ and per-track tone
-- [ ] Full add / remove / reorder / rename track management
-- [ ] AppImage and `.deb` release artifacts
-- [ ] Light-theme screenshots and expanded docs
+- [x] Settings page with dark / light / system themes, accents and 80–140% scaling
+- [x] Keyframes for effects, filters, text and audio
+- [x] Spring and bounce easing
+- [x] Draggable keyframe blocks on the timeline with add / delete / retime
+- [x] Audio visualizer, master 10-band EQ and per-track tone
+- [x] Add / remove / reorder / rename / recolor tracks, with solo and gain
+- [x] AppImage and `.deb` packaging plus a tagged release workflow
+- [x] Light-theme screenshots, schema migration and expanded documentation
 
-See **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the detailed scope and acceptance criteria.
+Next up:
+
+- Custom bezier easing editor and curve presets
+- Keyframe marquee and multi-select retiming
+- “Move clips to a new track” when deleting a populated track
+- Lane visibility filters and per-channel collapse
+- Automatic speech-to-text captions
+- GPU-assisted encoding and background export
+
+See **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the detailed 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
 
 ---
 
@@ -295,6 +409,8 @@ See **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the detailed scope and ac
 - **Captions are manual or SRT-driven.** Speech-to-text is intentionally not faked.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
+- The audio visualizer is **monitor-only** in 1.1. It is intentionally not baked into the exported video.
+- Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares the dependency.
 - LumaCut targets a wide desktop window (1180 px minimum).
 - The app is built for local desktop use; there is no cloud sync or collaboration layer.
 

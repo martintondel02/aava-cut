@@ -1,6 +1,6 @@
 # LumaCut 1.1 — Rework Plan
 
-> **Status: awaiting approval.** This document is the agreed scope for the next major pass. The current 1.0 release stays usable while the rework is built behind a migration-friendly data model.
+> **Status: approved and delivered in LumaCut 1.1.0.** The headline scope below is implemented and covered by the Playwright suite, including the 1.0 → 1.1 project migration. A short deferred list follows the delivery checkpoints at the end of this document.
 
 ## Goal
 
@@ -280,3 +280,28 @@ Each phase ends with typecheck, build, updated Playwright coverage and a visual 
 ---
 
 **Approval requested:** If this scope and the default decisions look right, approve and I’ll start with Phase A (Settings + themes + scale), then proceed through the keyframe, audio, track, and release phases.
+
+---
+
+## 7. Delivery notes
+
+**Delivered in 1.1.0**
+
+- Theme tokens and a real light palette; System / Dark / Light, four accents, 80–140% scale, compact density and reduced motion.
+- Settings surface with Appearance, Playback, Timeline, Export, Storage and About sections; `Ctrl/⌘ + ,` and top-bar entry points.
+- Effect-layer objects, the channel registry, spring/bounce easing, auto-key, and in-place migration from 1.0 string effects.
+- Expandable timeline keyframe lanes with color-coded, draggable diamonds; add by double-click or menu; remove with `Delete` or the pill; per-keyframe easing.
+- Web Audio bus with track 3-band tone, track gain/solo, master 10-band EQ, analyser and capture destination; presets and live visualizer.
+- Track add, remove with confirmation, drag-reorder, rename, recolor, solo, mute and gain.
+- Electron embedded server (no separate Node process for packaged builds), external data root under `~/Videos/LumaCut`, AppImage and `.deb` build config, and a tag-driven release workflow.
+- Dark and light screenshots, refreshed README, CI and release documentation.
+
+**Deferred to a later pass**
+
+- Keyframe marquee/multi-select, a value-popover editor, per-lane eye toggles and collapse-all controls.
+- “Move clips to a new track” when removing a populated track (1.1 offers confirmed deletion instead).
+- `Alt + ↑/↓` track reordering (1.1 uses drag handles).
+- Baking the visualizer into exports; it remains a monitor-only overlay in 1.1.
+- Stereo width/peak readouts in the Audio panel beyond the master analyser.
+
+These deferrals do not block the headline 1.1 request: themes and scaling, keyframed effects with spring easing, timeline keyframe blocks, a visualizer and EQ, track management, and downloadable Linux packages.

@@ -1,12 +1,21 @@
-import type { Clip, MediaAsset, Project } from '../types';
+import type { Clip, MediaAsset, Project, Track } from '../types';
 import { clamp } from '../lib/utils';
+import { valueAt } from '../lib/keyframes';
 
 interface Entry {
   clipId: string;
   assetId: string;
+  trackId: string;
   element: HTMLMediaElement;
   gain: GainNode | null;
   source: MediaElementAudioSourceNode | null;
+}
+
+interface TrackChain {
+  low: BiquadFilterNode;
+  mid: BiquadFilterNode;
+  high: BiquadFilterNode;
+  gain: GainNode;
 }
 
 interface ImageEntry {
@@ -51,6 +60,10 @@ export function isClipVisibleAt(project: Project, clip: Clip, time: number): boo
   return time >= clip.start && time < clip.start + clip.transition.duration;
 }
 
+function useProjectMasterEqValue(project: Project | null, index: number): number {
+  return project?.masterEq?.[index] ?? 0;
+}
+
 function fadeFactor(time: number, clip: Clip, kind: 'visual' | 'audio'): number {
   const local = time - clip.start;
   let factor = 1;
@@ -61,9 +74,16 @@ function fadeFactor(time: number, clip: Clip, kind: 'visual' | 'audio'): number 
   return factor;
 }
 
+const EQ_FREQUENCIES = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+
 export class MediaPool {
   context: AudioContext | null = null;
   master: GainNode | null = null;
+  analyser: AnalyserNode | null = null;
+  private masterInput: GainNode | null = null;
+  private masterEq: BiquadFilterNode[] = [];
+  private trackChains = new Map<string, TrackChain>();
+  private currentTracks = new Map<string, Track>();
   private entries = new Map<string, Entry>();
   private images = new Map<string, ImageEntry>();
   private sources = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
@@ -72,6 +92,7 @@ export class MediaPool {
   private capturing = false;
   onMediaUpdate: (() => void) | null = null;
   private lastMasterVolume = 0.8;
+  private currentProject: Project | null = null;
 
   ensureHost() {
     if (!this.host) {
@@ -86,39 +107,121 @@ export class MediaPool {
   ensureContext(): AudioContext {
     if (!this.context) {
       const Context = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      this.context = new Context();
-      this.master = this.context.createGain();
+      const context = new Context();
+      this.context = context;
+      this.masterInput = context.createGain();
+      this.master = context.createGain();
       this.master.gain.value = this.lastMasterVolume;
+      this.analyser = context.createAnalyser();
+      this.analyser.fftSize = 2048;
+      this.analyser.smoothingTimeConstant = 0.78;
+      this.masterEq = EQ_FREQUENCIES.map((frequency) => {
+        const filter = context.createBiquadFilter();
+        filter.type = 'peaking';
+        filter.frequency.value = frequency;
+        filter.Q.value = 1.1;
+        filter.gain.value = 0;
+        return filter;
+      });
+      let node: AudioNode = this.masterInput;
+      for (const filter of this.masterEq) {
+        node.connect(filter);
+        node = filter;
+      }
+      node.connect(this.master);
+      this.master.connect(this.analyser);
       this.connectOutput();
+      this.applyMix();
     }
     if (this.context.state === 'suspended') void this.context.resume();
     for (const entry of this.entries.values()) this.connectEntry(entry);
     return this.context;
   }
 
+  getAnalyser(): AnalyserNode | null {
+    return this.analyser;
+  }
+
   private connectOutput() {
-    if (!this.context || !this.master) return;
-    try { this.master.disconnect(); } catch {}
+    if (!this.context || !this.analyser) return;
+    try { this.analyser.disconnect(); } catch {}
     if (this.capturing && this.captureDest) {
-      this.master.connect(this.captureDest);
+      this.analyser.connect(this.captureDest);
     } else {
-      this.master.connect(this.context.destination);
+      this.analyser.connect(this.context.destination);
     }
   }
 
+  private ensureTrackChain(trackId: string): TrackChain | null {
+    if (!this.context || !this.masterInput) return null;
+    const existing = this.trackChains.get(trackId);
+    if (existing) return existing;
+    const low = this.context.createBiquadFilter();
+    low.type = 'lowshelf';
+    low.frequency.value = 120;
+    const mid = this.context.createBiquadFilter();
+    mid.type = 'peaking';
+    mid.frequency.value = 1200;
+    mid.Q.value = 1;
+    const high = this.context.createBiquadFilter();
+    high.type = 'highshelf';
+    high.frequency.value = 9000;
+    const gain = this.context.createGain();
+    low.connect(mid);
+    mid.connect(high);
+    high.connect(gain);
+    gain.connect(this.masterInput);
+    const chain = { low, mid, high, gain };
+    this.trackChains.set(trackId, chain);
+    return chain;
+  }
+
   private connectEntry(entry: Entry) {
-    if (!this.context || !this.master || entry.source) return;
+    if (!this.context || !this.masterInput) return;
     try {
-      const source = this.sources.get(entry.element) || this.context.createMediaElementSource(entry.element);
-      this.sources.set(entry.element, source);
-      const gain = this.context.createGain();
-      gain.gain.value = 0;
-      source.connect(gain);
-      gain.connect(this.master);
-      entry.source = source;
-      entry.gain = gain;
+      if (!entry.source) {
+        const source = this.sources.get(entry.element) || this.context.createMediaElementSource(entry.element);
+        this.sources.set(entry.element, source);
+        const gain = this.context.createGain();
+        gain.gain.value = 0;
+        source.connect(gain);
+        entry.source = source;
+        entry.gain = gain;
+      }
+      if (entry.gain) {
+        const chain = this.ensureTrackChain(entry.trackId);
+        try { entry.gain.disconnect(); } catch {}
+        if (chain) entry.gain.connect(chain.low);
+        else entry.gain.connect(this.masterInput);
+      }
     } catch {
       // Some media elements cannot be routed through Web Audio; native playback still works.
+    }
+  }
+
+  private routeEntry(entry: Entry, trackId: string) {
+    if (entry.trackId === trackId) return;
+    entry.trackId = trackId;
+    if (this.context) this.connectEntry(entry);
+  }
+
+  private applyMix() {
+    if (!this.context) return;
+    const now = this.context.currentTime;
+    for (let index = 0; index < this.masterEq.length; index++) {
+      const gain = useProjectMasterEqValue(this.currentProject, index);
+      this.masterEq[index].gain.setTargetAtTime(gain, now, 0.03);
+    }
+    const tracks = this.currentTracks;
+    const soloActive = Array.from(tracks.values()).some((track) => track.solo);
+    for (const [trackId, chain] of this.trackChains) {
+      const track = tracks.get(trackId);
+      if (!track) continue;
+      chain.low.gain.setTargetAtTime(track.eq?.low || 0, now, 0.03);
+      chain.mid.gain.setTargetAtTime(track.eq?.mid || 0, now, 0.03);
+      chain.high.gain.setTargetAtTime(track.eq?.high || 0, now, 0.03);
+      const gain = track.muted || (soloActive && !track.solo) ? 0 : (track.gain ?? 1);
+      chain.gain.gain.setTargetAtTime(gain, now, 0.03);
     }
   }
 
@@ -157,7 +260,7 @@ export class MediaPool {
     element.src = asset.url;
     element.load();
     host.appendChild(element);
-    const entry: Entry = { clipId: clip.id, assetId: asset.id, element, gain: null, source: null };
+    const entry: Entry = { clipId: clip.id, assetId: asset.id, trackId: clip.trackId, element, gain: null, source: null };
     this.entries.set(clip.id, entry);
     if (this.context) this.connectEntry(entry);
     const notify = () => this.onMediaUpdate?.();
@@ -218,7 +321,13 @@ export class MediaPool {
 
   sync(project: Project, time: number, playing: boolean, masterVolume: number, assets: MediaAsset[] = []) {
     this.setMasterVolume(masterVolume);
+    this.currentProject = project;
     const tracks = new Map(project.tracks.map((track) => [track.id, track]));
+    this.currentTracks = tracks;
+    if (this.context && this.masterInput) {
+      for (const track of project.tracks) this.ensureTrackChain(track.id);
+      this.applyMix();
+    }
     const active = this.collectActive(project, time);
     if (assets.length) {
       const byId = new Map(assets.map((asset) => [asset.id, asset]));
@@ -239,10 +348,7 @@ export class MediaPool {
       const entry = this.entries.get(clip.id);
       if (!entry) continue;
       const track = tracks.get(clip.trackId);
-      if (track?.muted) {
-        if (entry.gain && this.context) entry.gain.gain.setTargetAtTime(0, this.context.currentTime, 0.02);
-        continue;
-      }
+      this.routeEntry(entry, clip.trackId);
       const local = clamp(time - clip.start, 0, clip.duration);
       let sourceTime: number;
       if (transitionProgress !== undefined) {
@@ -268,7 +374,7 @@ export class MediaPool {
         // Media metadata can still be loading.
       }
       if (entry.gain && this.context) {
-        let factor = fadeFactor(time, clip, 'audio') * clamp(clip.volume, 0, 1);
+        let factor = fadeFactor(time, clip, 'audio') * clamp(valueAt(clip, 'volume', local, clip.volume), 0, 1);
         if (clip.kind === 'video' && !clip.assetId) factor = 0;
         if (transitionProgress !== undefined) factor *= clamp(1 - transitionProgress, 0, 1);
         if (clip.transition && time >= clip.start) {
@@ -277,7 +383,9 @@ export class MediaPool {
         }
         entry.gain.gain.setTargetAtTime(factor, this.context.currentTime, 0.015);
       } else if (!this.context) {
-        element.volume = clamp(clip.volume * (tracks.get(clip.trackId)?.muted ? 0 : 1), 0, 1);
+        const soloActive = Array.from(tracks.values()).some((item) => item.solo);
+        const track = tracks.get(clip.trackId);
+        element.volume = clamp(clip.volume * (track?.muted || (soloActive && !track?.solo) ? 0 : 1), 0, 1);
       }
     }
   }
@@ -289,8 +397,14 @@ export class MediaPool {
   }
 
   async prepare(project: Project, time: number, assets: MediaAsset[]): Promise<void> {
+    this.currentProject = project;
     const byId = new Map(assets.map((asset) => [asset.id, asset]));
     const tracks = new Map(project.tracks.map((track) => [track.id, track]));
+    this.currentTracks = tracks;
+    if (this.context && this.masterInput) {
+      for (const track of project.tracks) this.ensureTrackChain(track.id);
+      this.applyMix();
+    }
     const waitFor: Array<Promise<void>> = [];
     const active = project.clips.filter((clip) => (clip.kind === 'video' || clip.kind === 'audio') && time >= clip.start && time < clip.start + clip.duration);
     for (const clip of active) {

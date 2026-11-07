@@ -1,10 +1,11 @@
 import {
-  Captions, Film, FolderOpen, Keyboard, LayoutTemplate, Music2, SlidersHorizontal, Sparkles,
+  Captions, Film, FolderOpen, Keyboard, LayoutTemplate, Music2, Settings2, SlidersHorizontal, Sparkles,
   Sticker, Type, Wand2
 } from 'lucide-react';
 import type { PanelTab } from '../types';
 import { useEditorStore } from '../store/editorStore';
 import { useKeyboardHelpModal } from '../hooks/useClickOutside';
+import { useSettingsStore } from '../store/settingsStore';
 import { LogoMark } from './TopBar';
 
 const TABS: Array<{ id: PanelTab; label: string; icon: typeof FolderOpen; shortcut: string }> = [
@@ -25,6 +26,7 @@ export function IconRail() {
   const setActivePanel = useEditorStore((state) => state.setActivePanel);
   const setLeftPanelOpen = useEditorStore((state) => state.setLeftPanelOpen);
   const openHelp = useKeyboardHelpModal();
+  const openSettings = useSettingsStore((state) => state.openSettings);
 
   return (
     <nav className="icon-rail" aria-label="Editor tools">
@@ -52,10 +54,13 @@ export function IconRail() {
         })}
       </div>
       <div className="rail-bottom">
+        <button type="button" className="rail-tab rail-small" title="Settings (Ctrl+,)" onClick={openSettings}>
+          <Settings2 size={18} />
+        </button>
         <button type="button" className="rail-tab rail-small" title="Keyboard shortcuts (?)" onClick={openHelp}>
           <Keyboard size={18} />
         </button>
-        <div className="rail-version">1.0</div>
+        <div className="rail-version">1.1</div>
       </div>
     </nav>
   );

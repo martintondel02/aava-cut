@@ -3,6 +3,8 @@ import { AudioLines, Mic, Music2, Pause, Play, Plus, Search, Square, X } from 'l
 import { useEditorStore } from '../../store/editorStore';
 import { formatBytes, formatTime } from '../../lib/utils';
 import { WaveformMini } from '../Waveform';
+import { MasterEq } from '../MasterEq';
+import { AudioVisualizer } from '../AudioVisualizer';
 
 export function AudioPanel() {
   const assets = useEditorStore((state) => state.assets);
@@ -14,6 +16,7 @@ export function AudioPanel() {
   const addToast = useEditorStore((state) => state.addToast);
   const [search, setSearch] = useState('');
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const isPlaying = useEditorStore((state) => state.isPlaying);
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -131,6 +134,13 @@ export function AudioPanel() {
           {recording ? 'Stop' : 'Record'}
         </button>
       </div>
+
+      <div className="audio-analyser-card">
+        <div className="audio-analyser-head"><span className="eyebrow">Live analyser</span><span>master output</span></div>
+        <AudioVisualizer playing={isPlaying} variant="panel" />
+      </div>
+
+      <MasterEq />
 
       <div className="audio-spotlight">
         <div className="audio-spotlight-art"><AudioLines size={26} /></div>

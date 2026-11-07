@@ -9,10 +9,11 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const mediaDir = path.join(root, 'media');
+const dataRoot = process.env.LUMACUT_DATA_DIR ? path.resolve(process.env.LUMACUT_DATA_DIR) : root;
+const mediaDir = path.join(dataRoot, 'media');
 const thumbDir = path.join(mediaDir, 'thumbs');
-const exportDir = path.join(root, 'exports');
-const dataDir = path.join(root, 'data');
+const exportDir = path.join(dataRoot, 'exports');
+const dataDir = path.join(dataRoot, 'data');
 const publicDir = path.join(root, 'public');
 const distDir = path.join(root, 'dist');
 const assetsFile = path.join(dataDir, 'assets.json');
@@ -21,7 +22,7 @@ for (const dir of [mediaDir, thumbDir, exportDir, dataDir]) fs.mkdirSync(dir, { 
 
 const app = express();
 const PORT = Number(process.env.PORT || 4317);
-const isProd = process.argv.includes('--prod');
+const isProd = process.argv.includes('--prod') || process.env.LUMACUT_PROD === '1';
 app.use(express.json({ limit: '25mb' }));
 
 app.use((req, res, next) => {
@@ -172,7 +173,7 @@ try {
 }
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ffmpeg: true, version: '1.0.0', platform: process.platform });
+  res.json({ ok: true, ffmpeg: true, version: '1.1.0', platform: process.platform, prod: isProd, dataDir });
 });
 
 app.get('/api/assets', (req, res) => {
@@ -359,5 +360,6 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`LumaCut media server → http://127.0.0.1:${PORT}`);
   console.log(`Library: ${assets.length} assets · ${mediaDir}`);
+  console.log(`Data root: ${dataRoot}`);
   console.log(`Encoders: ${h264Encoder} (H.264) · ${vp9Encoder} (VP9)`);
 });

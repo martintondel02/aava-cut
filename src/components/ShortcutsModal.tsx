@@ -4,7 +4,8 @@ import { Command, X } from 'lucide-react';
 const SHORTCUTS = [
   { group: 'Playback', items: [['Space', 'Play / pause'], ['← / →', 'Step one frame'], ['Shift + ← / →', 'Jump one second'], ['Home / End', 'Go to start / end']] },
   { group: 'Edit', items: [['B', 'Split at playhead'], ['Ctrl / ⌘ + Z', 'Undo'], ['Ctrl / ⌘ + Shift + Z', 'Redo'], ['Ctrl / ⌘ + D', 'Duplicate selected'], ['Ctrl / ⌘ + C / V', 'Copy / paste clip'], ['Delete', 'Delete selected'], ['Esc', 'Deselect / close']] },
-  { group: 'Project', items: [['Ctrl / ⌘ + S', 'Save project to disk'], ['Ctrl / ⌘ + E', 'Open export'], ['Ctrl / ⌘ + N', 'New project'], ['1 – 9', 'Switch asset panel'], ['?', 'Show shortcuts']] },
+  { group: 'Project', items: [['Ctrl / ⌘ + S', 'Save project to disk'], ['Ctrl / ⌘ + E', 'Open export'], ['Ctrl / ⌘ + N', 'New project'], ['Ctrl / ⌘ + ,', 'Open settings'], ['1 – 9', 'Switch asset panel'], ['?', 'Show shortcuts']] },
+  { group: 'Keyframes', items: [['Keyframe menu', 'Add any animated channel'], ['Double-click lane', 'Add a keyframe at that time'], ['Drag diamond', 'Retime a keyframe'], ['Delete', 'Remove selected keyframe'], ['Esc', 'Clear keyframe / clip selection']] },
   { group: 'Canvas', items: [['Double-click clip', 'Open matching tool'], ['Drag clip', 'Move in time / across tracks'], ['Drag handles', 'Trim in / out'], ['Drag in monitor', 'Move selected layer'], ['Corner handles', 'Scale layer'], ['Rotate handle', 'Rotate layer']] }
 ];
 

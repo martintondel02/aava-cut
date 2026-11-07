@@ -1,17 +1,25 @@
 const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
-const { spawn } = require('node:child_process');
 const path = require('node:path');
 const http = require('node:http');
+const { pathToFileURL } = require('node:url');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.LUMACUT_PORT || 4320);
 const URL = `http://127.0.0.1:${PORT}`;
 const isDev = process.argv.includes('--dev');
-let serverProcess = null;
 let mainWindow = null;
+let serverImported = false;
 
 app.setName('LumaCut');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+function resolveDataRoot() {
+  try {
+    return path.join(app.getPath('videos'), 'LumaCut');
+  } catch {
+    return path.join(app.getPath('userData'), 'LumaCut');
+  }
+}
 
 function checkServer() {
   return new Promise((resolve) => {
@@ -24,7 +32,7 @@ function checkServer() {
   });
 }
 
-async function waitForServer(timeoutMs = 20000) {
+async function waitForServer(timeoutMs = 25000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     if (await checkServer()) return true;
@@ -33,19 +41,15 @@ async function waitForServer(timeoutMs = 20000) {
   return false;
 }
 
-function startServer() {
-  const nodeBinary = process.env.npm_node_execpath || process.env.NODE || 'node';
-  serverProcess = spawn(nodeBinary, ['server/index.mjs', '--prod'], {
-    cwd: PROJECT_ROOT,
-    env: { ...process.env, PORT: String(PORT) },
-    stdio: ['ignore', 'pipe', 'pipe']
-  });
-  serverProcess.stdout.on('data', (chunk) => process.stdout.write(`[server] ${chunk}`));
-  serverProcess.stderr.on('data', (chunk) => process.stderr.write(`[server] ${chunk}`));
-  serverProcess.on('exit', (code) => {
-    if (code && code !== 0) console.error(`LumaCut server exited with code ${code}`);
-    serverProcess = null;
-  });
+async function startEmbeddedServer() {
+  process.env.PORT = String(PORT);
+  process.env.LUMACUT_PROD = '1';
+  process.env.LUMACUT_DATA_DIR = process.env.LUMACUT_DATA_DIR || resolveDataRoot();
+  const serverUrl = pathToFileURL(path.join(PROJECT_ROOT, 'server', 'index.mjs')).href;
+  // The server is bundled with the app; importing it runs Express inside the
+  // Electron main process, so users do not need Node installed separately.
+  await import(serverUrl);
+  serverImported = true;
 }
 
 async function createWindow() {
@@ -89,10 +93,18 @@ async function createWindow() {
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   if (!isDev) {
-    if (!(await checkServer())) startServer();
+    if (!(await checkServer())) {
+      try {
+        await startEmbeddedServer();
+      } catch (error) {
+        dialog.showErrorBox('LumaCut server did not start', String(error));
+        app.quit();
+        return;
+      }
+    }
     const ready = await waitForServer();
     if (!ready) {
-      dialog.showErrorBox('LumaCut server did not start', 'The local media server could not be reached. Run "npm run server" to diagnose.');
+      dialog.showErrorBox('LumaCut server did not start', 'The local media server could not be reached.');
       app.quit();
       return;
     }
@@ -104,16 +116,10 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  if (serverProcess) {
-    serverProcess.kill('SIGTERM');
-    serverProcess = null;
-  }
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('before-quit', () => {
-  if (serverProcess) {
-    serverProcess.kill('SIGTERM');
-    serverProcess = null;
-  }
+  // The embedded Express server shares this process and shuts down with it.
+  serverImported = false;
 });

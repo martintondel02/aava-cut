@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Camera, ChevronsLeft, ChevronsRight, Grid3X3, Maximize2, Pause, Play, ScanLine,
+  AudioLines, Camera, ChevronsLeft, ChevronsRight, Grid3X3, Maximize2, Pause, Play, ScanLine,
   StepBack, StepForward, Volume2, VolumeX
 } from 'lucide-react';
 import { useEditorStore, selectSelectedClip } from '../store/editorStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { formatTime, formatTimecode, projectDuration } from '../lib/utils';
 import { canvasRenderer } from '../engine/canvasRenderer';
 import { mediaPool } from '../engine/mediaPool';
 import type { Clip, Project } from '../types';
 import { TransformOverlay } from './TransformOverlay';
+import { AudioVisualizer } from './AudioVisualizer';
 
 export function PreviewPanel() {
   const project = useEditorStore((state) => state.project);
@@ -20,6 +22,9 @@ export function PreviewPanel() {
   const showGrid = useEditorStore((state) => state.showGrid);
   const selectedClip = useEditorStore(selectSelectedClip);
   const exportOpen = useEditorStore((state) => state.exportOpen);
+  const previewQuality = useSettingsStore((state) => state.previewQuality);
+  const visualizer = useSettingsStore((state) => state.visualizer);
+  const updateSettings = useSettingsStore((state) => state.update);
   const togglePlayback = useEditorStore((state) => state.togglePlayback);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const setPlaying = useEditorStore((state) => state.setPlaying);
@@ -47,7 +52,7 @@ export function PreviewPanel() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !project) return;
-    const longEdge = 1280;
+    const longEdge = previewQuality === 'full' ? Math.min(1920, Math.max(project.width, project.height)) : previewQuality === 'half' ? 960 : 1280;
     const ratio = project.width / project.height;
     let width = ratio >= 1 ? longEdge : Math.round(longEdge * ratio);
     let height = ratio >= 1 ? Math.round(longEdge / ratio) : longEdge;
@@ -57,7 +62,7 @@ export function PreviewPanel() {
       canvas.width = width;
       canvas.height = height;
     }
-  }, [project?.width, project?.height]);
+  }, [project?.width, project?.height, previewQuality]);
 
   useEffect(() => {
     draw();
@@ -155,6 +160,9 @@ export function PreviewPanel() {
           <span className="preview-format-badge">{ratioLabel}</span>
         </div>
         <div className="preview-head-right">
+          <button type="button" className={`icon-btn ${visualizer ? 'is-active' : ''}`} title="Audio visualizer" onClick={() => updateSettings({ visualizer: !visualizer })}>
+            <AudioLines size={16} />
+          </button>
           <button type="button" className={`icon-btn ${showSafeArea ? 'is-active' : ''}`} title="Safe margins" onClick={() => setShowSafeArea(!showSafeArea)}>
             <ScanLine size={16} />
           </button>
@@ -196,7 +204,7 @@ export function PreviewPanel() {
               <div className="safe-inner" />
             </div>
           )}
-          {selectedClip && !isPlaying && playhead >= selectedClip.start && playhead < selectedClip.start + selectedClip.duration && (
+          {selectedClip && selectedClip.kind !== 'audio' && !isPlaying && playhead >= selectedClip.start && playhead < selectedClip.start + selectedClip.duration && (
             <TransformOverlay
               clip={selectedClip}
               project={project}
@@ -208,6 +216,7 @@ export function PreviewPanel() {
             <span className="canvas-tc">{formatTimecode(playhead, project.fps)}</span>
             <span className="canvas-status">{isPlaying ? 'PLAYING' : 'READY'}</span>
           </div>
+          {visualizer && <AudioVisualizer playing={isPlaying} />}
           {!isPlaying && <div className="canvas-watermark">{project.name}</div>}
         </div>
       </div>

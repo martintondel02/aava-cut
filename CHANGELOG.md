@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.1.0 — 2026-11-08
+
+The accessibility and animation release.
+
+### Added
+
+- Settings page with System / Dark / Light themes, four accent colors, 80–140% interface scale, compact density and reduced motion
+- Real light-mode palette across the editor, timeline, dialogs, popovers and settings
+- Keyframes 2.0: transform, opacity, filter intensity, manual color, text styling, audio volume and per-effect intensity
+- Spring (soft/snappy) and bounce easing alongside linear, ease-in, ease-out and ease-in-out
+- Expandable keyframe lanes on the timeline with add, drag-to-retime, selection, delete, double-click-to-add and easing controls
+- Auto-key mode for property changes at the playhead
+- Audio visualizer in the program monitor with spectrum, waveform and radial views
+- Master 10-band graphic equalizer with presets and a per-track 3-band tone stack, gain and solo
+- Track management: add, remove with confirmation, reorder by drag, rename, solo and gain
+- Downloadable Linux AppImage and `.deb` build configuration plus a tagged release workflow
+- Project schema migration from 1.0 (string effects → effect layers, new easing and track audio fields)
+
+### Changed
+
+- Top-bar settings entry point and quick dark/light toggle
+- Track headers widened and reorganized for management controls
+- Keyframe, effect and EQ inspectors are more compact and actionable
+- README, screenshots, issue templates, CI and release documentation refreshed
+
+### Known limits
+
+- Export is still real-time capture followed by FFmpeg encode
+- The audio visualizer is monitor-only and is not baked into exports
+- Custom bezier easing and automatic speech-to-text remain future work
+
 ## 1.0.0 — 2026-11-07
 
 Initial public release of LumaCut.
@@ -16,10 +47,3 @@ Initial public release of LumaCut.
 - Local autosave, undo/redo, `.lumacut` project files and export history
 - Electron desktop shell and Linux installer script
 - Playwright smoke tests and project documentation
-
-### Known limits
-
-- Export happens in real time
-- Speech-to-text is not included; captions are manual or imported
-- No cloud sync or collaboration
-- Packaged AppImage/`.deb` builds are planned for 1.1

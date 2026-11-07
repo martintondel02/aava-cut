@@ -19,6 +19,8 @@ Useful commands:
 npm run build        # TypeScript check + production bundle
 npm run test:e2e     # Playwright smoke tests
 npm run desktop      # build and launch the Electron shell
+npm run dist:linux   # AppImage + .deb (written to release/)
+npm run dist:dir     # unpacked Electron app
 bash scripts/install-linux.sh
 ```
 
@@ -33,6 +35,9 @@ npx playwright install chromium
 | Area | Files |
 | --- | --- |
 | Editor UI | `src/components/` |
+| Settings & themes | `src/components/SettingsPage.tsx`, `src/store/settingsStore.ts` |
+| Keyframes & easing | `src/lib/keyframes.ts`, `src/lib/migrate.ts` |
+| Audio EQ & visualizer | `src/components/MasterEq.tsx`, `src/components/AudioVisualizer.tsx` |
 | Timeline & preview | `src/components/Timeline.tsx`, `src/components/PreviewPanel.tsx`, `src/components/TransformOverlay.tsx` |
 | Compositor | `src/engine/canvasRenderer.ts` |
 | Media & Web Audio | `src/engine/mediaPool.ts` |
@@ -48,7 +53,8 @@ The renderer is deliberately framework-free: it receives a project and a time an
 
 - TypeScript strict mode. No `any` unless there is a comment explaining why.
 - Keep editor state mutations inside `mutateProject` so undo/redo and autosave stay correct.
-- Add new colours to the theme tokens rather than hard-coding them; the 1.1 rework adds a light theme.
+- Add new colours to the theme tokens rather than hard-coding them. Both dark and light themes are first-class in 1.1.
+- Keep keyframe channels registered in `src/lib/keyframes.ts` so preview, export and the timeline share interpolation.
 - Prefer small, composable components over large files, but keep related timeline logic together.
 - Do not add network calls that make the app depend on a remote service. LumaCut is local-first.
 - Keep user media and generated files inside `media/`, `exports/` and `data/`; do not commit them.
@@ -57,7 +63,7 @@ The renderer is deliberately framework-free: it receives a project and a time an
 
 - Add or update a Playwright test for user-visible behaviour.
 - Run `npm run test:e2e`, `npx tsc --noEmit` and `npm run build` before opening a PR.
-- For export/audio changes, test a short real export and confirm non-silent audio with `ffprobe`/`volumedetect` when relevant.
+- For export/audio changes, test a short real export and confirm non-silent audio with `ffprobe`/`volumedetect` when relevant. Master and track EQ must affect the capture path.
 - Test both the Electron shell and the browser when changing media, audio or export paths.
 
 ## Project migration policy

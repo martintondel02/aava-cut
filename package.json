@@ -1,8 +1,8 @@
 {
   "name": "lumacut",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "LumaCut — a full-featured, local-first video editor for Linux",
+  "description": "LumaCut \u2014 a local-first, CapCut-style video editor for Linux",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -15,7 +15,9 @@
     "desktop:start": "electron .",
     "desktop:dev": "concurrently -k -n server,web,app -c cyan,magenta,yellow \"node server/index.mjs\" \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
     "setup:demo": "node scripts/generate-demo.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dist:linux": "npm run build && electron-builder --linux AppImage deb --publish never",
+    "dist:dir": "npm run build && electron-builder --linux dir --publish never"
   },
   "dependencies": {
     "express": "^5.1.0",
@@ -34,8 +36,72 @@
     "@vitejs/plugin-react": "^5.0.3",
     "concurrently": "^9.2.1",
     "electron": "^38.2.2",
+    "electron-builder": "^26.18.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "wait-on": "^9.0.1"
-  }
+  },
+  "build": {
+    "appId": "app.lumacut.editor",
+    "productName": "LumaCut",
+    "copyright": "Copyright \u00a9 2026 LumaCut contributors",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "LumaCut-${version}-${arch}.${ext}",
+    "files": [
+      "dist/**/*",
+      "server/**/*",
+      "electron/**/*",
+      "public/demo/**/*",
+      "public/fonts/**/*",
+      "public/icon.png",
+      "public/favicon.svg",
+      "package.json",
+      "README.md",
+      "LICENSE"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "public/icon.png",
+      "executableName": "lumacut",
+      "synopsis": "Local-first video editor for Linux",
+      "description": "LumaCut is a local-first, CapCut-style video editor with a multi-track timeline, keyframes, captions, effects, audio EQ and H.264/MP4 export.",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "depends": [
+        "ffmpeg"
+      ]
+    }
+  },
+  "author": {
+    "name": "Martin T\u00f8ndel",
+    "email": "martintondel02@users.noreply.github.com"
+  },
+  "desktopName": "lumacut.desktop",
+  "homepage": "https://github.com/martintondel02/lumacut",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/martintondel02/lumacut.git"
+  },
+  "bugs": {
+    "url": "https://github.com/martintondel02/lumacut/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "video-editor",
+    "linux",
+    "electron",
+    "react",
+    "ffmpeg",
+    "capcut",
+    "keyframes",
+    "local-first"
+  ]
 }

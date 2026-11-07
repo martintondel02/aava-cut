@@ -8,8 +8,10 @@ import { Inspector } from './components/Inspector';
 import { Timeline } from './components/Timeline';
 import { ExportDialog } from './components/ExportDialog';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { SettingsPage } from './components/SettingsPage';
 import { ToastStack } from './components/ToastStack';
 import { useEditorStore } from './store/editorStore';
+import { applyAppearance, useSettingsStore } from './store/settingsStore';
 import { mediaPool } from './engine/mediaPool';
 import { projectDuration } from './lib/utils';
 import type { PanelTab } from './types';
@@ -26,6 +28,7 @@ export default function App() {
   const leftPanelOpen = useEditorStore((state) => state.leftPanelOpen);
   const timelineHeight = useEditorStore((state) => state.timelineHeight);
   const isPlaying = useEditorStore((state) => state.isPlaying);
+  const settings = useSettingsStore();
   const setTimelineHeight = useEditorStore((state) => state.setTimelineHeight);
   const bootstrap = useEditorStore((state) => state.bootstrap);
   const uploadFiles = useEditorStore((state) => state.uploadFiles);
@@ -49,6 +52,24 @@ export default function App() {
     }
   }, [hydrated, assetsError, addToast]);
 
+  useEffect(() => {
+    applyAppearance(settings);
+  }, [settings.theme, settings.accent, settings.scale, settings.density, settings.reduceMotion]);
+
+  useEffect(() => {
+    if (settings.open) {
+      useEditorStore.getState().setPlaying(false);
+      if (useEditorStore.getState().exportOpen) useEditorStore.getState().closeExport();
+    }
+  }, [settings.open]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    const onChange = () => applyAppearance(useSettingsStore.getState());
+    media.addEventListener?.('change', onChange);
+    return () => media.removeEventListener?.('change', onChange);
+  }, []);
+
   // Playback clock. The renderer follows this playhead through CanvasPreview.
   useEffect(() => {
     if (!isPlaying) return;
@@ -62,6 +83,12 @@ export default function App() {
       const duration = projectDuration(current.project);
       const next = current.playhead + delta;
       if (next >= duration - 0.001) {
+        if (useSettingsStore.getState().loopPlayback) {
+          current.setPlayhead(0);
+          last = performance.now();
+          frame = requestAnimationFrame(tick);
+          return;
+        }
         current.setPlayhead(duration);
         current.setPlaying(false);
         return;
@@ -87,6 +114,8 @@ export default function App() {
       if (mod && key === 'n') { event.preventDefault(); state.newProject(); return; }
       if (mod && key === 'o') { event.preventDefault(); window.dispatchEvent(new CustomEvent('lumacut:open-project')); return; }
       if (state.exportOpen) return;
+      if (useSettingsStore.getState().open) return;
+      if (mod && event.key === ',') { event.preventDefault(); useSettingsStore.getState().openSettings(); return; }
       if (isField) return;
 
       if (mod && key === 'z') {
@@ -109,6 +138,11 @@ export default function App() {
       if (key === 'b') { event.preventDefault(); state.setPlaying(false); state.splitSelected(); return; }
       if (key === 't') { event.preventDefault(); state.addText('editorial', 'Your text here'); return; }
       if (key === 'delete' || key === 'backspace') {
+        if (state.selectedKeyframe) {
+          event.preventDefault();
+          state.removeKeyframe(state.selectedKeyframe.clipId, state.selectedKeyframe.keyframeId);
+          return;
+        }
         if (state.selectedClipIds.length) { event.preventDefault(); state.deleteSelected(); }
         return;
       }
@@ -123,7 +157,7 @@ export default function App() {
       }
       if (key === 'home') { event.preventDefault(); state.setPlaying(false); state.setPlayhead(0); return; }
       if (key === 'end' && state.project) { event.preventDefault(); state.setPlaying(false); state.setPlayhead(projectDuration(state.project)); return; }
-      if (key === 'escape') { state.selectClip(null); return; }
+      if (key === 'escape') { if (state.selectedKeyframe) state.selectKeyframe(state.selectedKeyframe.clipId, null); else state.selectClip(null); return; }
       if (!mod && PANEL_KEYS[event.key]) { state.setActivePanel(PANEL_KEYS[event.key]); return; }
     };
     window.addEventListener('keydown', handler);
@@ -227,6 +261,7 @@ export default function App() {
       </div>
 
       <ExportDialog />
+      <SettingsPage />
       <ShortcutsModal />
       <ToastStack />
 

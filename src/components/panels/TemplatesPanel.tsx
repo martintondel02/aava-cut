@@ -1,6 +1,7 @@
 import { LayoutTemplate, Monitor, Smartphone, Sparkles, Square } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { createShapeClip, createTextClip } from '../../lib/clips';
+import { ensureEffectLayer } from '../../lib/keyframes';
 import type { Clip } from '../../types';
 
 export function TemplatesPanel() {
@@ -86,7 +87,7 @@ export function TemplatesPanel() {
               if (clip.kind === 'video' || clip.kind === 'image') {
                 clip.filter = clip.kind === 'video' ? 'vintage' : 'warm';
                 clip.filterIntensity = 62;
-                clip.effects = Array.from(new Set([...clip.effects, 'grain']));
+                ensureEffectLayer(clip, 'grain');
                 if (clip.transition) clip.transition = { type: 'fade', duration: 0.65 };
               }
             }
@@ -99,7 +100,7 @@ export function TemplatesPanel() {
               if (clip.kind === 'video' || clip.kind === 'image') {
                 clip.filter = 'vivid';
                 clip.filterIntensity = 72;
-                clip.effects = Array.from(new Set([...clip.effects, 'light-leak']));
+                ensureEffectLayer(clip, 'light-leak');
                 if (clip.transition) clip.transition = { type: 'zoom', duration: 0.55 };
               }
             }
@@ -119,7 +120,7 @@ export function TemplatesPanel() {
               if (clip.kind === 'video' || clip.kind === 'image') {
                 clip.filter = 'soft';
                 clip.filterIntensity = 45;
-                clip.effects = Array.from(new Set([...clip.effects, 'bokeh']));
+                ensureEffectLayer(clip, 'bokeh');
                 if (clip.transition) clip.transition = { type: 'fade', duration: 1 };
               }
             }

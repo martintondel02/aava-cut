@@ -7,6 +7,7 @@ import {
 import { FONT_OPTIONS, FILTERS, EFFECTS, TRANSITIONS, ASPECT_PRESETS, TEXT_PRESETS } from '../types';
 import type { Clip, Keyframe } from '../types';
 import { selectSelectedClip, useEditorStore } from '../store/editorStore';
+import { EASING_OPTIONS, channelsForClip, effectChannelId, propertyLabel } from '../lib/keyframes';
 import { ColorField, IconButton, Section, Segmented, SliderRow, ToggleRow } from './ui';
 import { formatTime, formatTimecode, projectDuration } from '../lib/utils';
 
@@ -16,13 +17,6 @@ const ANIMATION_LABELS: Record<string, string> = {
   'slide-up': 'Slide up', 'slide-down': 'Slide down', zoom: 'Zoom', spin: 'Spin'
 };
 const BLENDS = ['source-over', 'screen', 'multiply', 'overlay', 'soft-light', 'lighten', 'darken', 'color-dodge'] as const;
-const KEYFRAME_PROPERTIES: Array<{ id: Keyframe['property']; label: string }> = [
-  { id: 'x', label: 'Position X' },
-  { id: 'y', label: 'Position Y' },
-  { id: 'scale', label: 'Scale' },
-  { id: 'rotation', label: 'Rotation' },
-  { id: 'opacity', label: 'Opacity' }
-];
 const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'zoom', 'typewriter'] as const;
 
 export function Inspector() {
@@ -33,6 +27,7 @@ export function Inspector() {
   const beginEdit = useEditorStore((state) => state.beginEdit);
   const endEdit = useEditorStore((state) => state.endEdit);
   const updateClip = useEditorStore((state) => state.updateClip);
+  const updateTrack = useEditorStore((state) => state.updateTrack);
   const updateTextStyle = useEditorStore((state) => state.updateTextStyle);
   const updateClipDeep = useEditorStore((state) => state.updateClipDeep);
   const selectClip = useEditorStore((state) => state.selectClip);
@@ -41,6 +36,9 @@ export function Inspector() {
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const setFilter = useEditorStore((state) => state.setFilter);
   const toggleEffect = useEditorStore((state) => state.toggleEffect);
+  const setEffectIntensity = useEditorStore((state) => state.setEffectIntensity);
+  const addEffectFade = useEditorStore((state) => state.addEffectFade);
+  const addClipFade = useEditorStore((state) => state.addClipFade);
   const setTransition = useEditorStore((state) => state.setTransition);
   const addKeyframe = useEditorStore((state) => state.addKeyframe);
   const removeKeyframe = useEditorStore((state) => state.removeKeyframe);
@@ -162,6 +160,9 @@ export function Inspector() {
   const isFirst = siblings[0]?.id === clip.id;
   const maxTrim = asset?.duration || 60;
   const isVisual = clip.kind !== 'audio';
+  const keyframeChannels = channelsForClip(clip);
+  const clipTrack = project.tracks.find((track) => track.id === clip.trackId);
+  const channelGroups = Array.from(new Set(keyframeChannels.map((channel) => channel.group)));
 
   const speedChange = (speed: number, history = false) => {
     const clamped = Math.max(0.25, Math.min(4, speed));
@@ -445,6 +446,42 @@ export function Inspector() {
               onReset={() => updateClip(clip.id, { audioFadeOut: 0 })}
             />
             <div className="audio-level-meter"><span style={{ width: `${clip.volume * 100}%` }} /><i /><i /><i /><i /></div>
+            {clipTrack && (
+              <div className="track-tone-block">
+                <div className="track-tone-head">
+                  <span className="eyebrow">Track tone</span>
+                  <div>
+                    <button type="button" className={`solo-pill ${clipTrack.solo ? 'is-active' : ''}`} onClick={() => updateTrack(clipTrack.id, { solo: !clipTrack.solo })} title="Solo this track">S</button>
+                    <span>{clipTrack.name}</span>
+                  </div>
+                </div>
+                <SliderRow
+                  label="Low" suffix="dB" value={clipTrack.eq?.low || 0} min={-12} max={12} step={1}
+                  onStart={begin} onCommit={commit}
+                  onChange={(value) => updateTrack(clipTrack.id, { eq: { low: value, mid: clipTrack.eq?.mid || 0, high: clipTrack.eq?.high || 0 } }, false)}
+                />
+                <SliderRow
+                  label="Mid" suffix="dB" value={clipTrack.eq?.mid || 0} min={-12} max={12} step={1}
+                  onStart={begin} onCommit={commit}
+                  onChange={(value) => updateTrack(clipTrack.id, { eq: { low: clipTrack.eq?.low || 0, mid: value, high: clipTrack.eq?.high || 0 } }, false)}
+                />
+                <SliderRow
+                  label="High" suffix="dB" value={clipTrack.eq?.high || 0} min={-12} max={12} step={1}
+                  onStart={begin} onCommit={commit}
+                  onChange={(value) => updateTrack(clipTrack.id, { eq: { low: clipTrack.eq?.low || 0, mid: clipTrack.eq?.mid || 0, high: value } }, false)}
+                />
+                <SliderRow
+                  label="Track level" suffix="%" value={(clipTrack.gain ?? 1) * 100} min={0} max={150} step={1}
+                  onStart={begin} onCommit={commit}
+                  onChange={(value) => updateTrack(clipTrack.id, { gain: value / 100 }, false)}
+                  onReset={() => updateTrack(clipTrack.id, { gain: 1 })}
+                />
+              </div>
+            )}
+            <div className="keyframe-inline-row">
+              <button type="button" onClick={() => addKeyframe(clip.id, 'volume')}><Diamond size={10} /> Volume keyframe</button>
+              <button type="button" onClick={() => addClipFade(clip.id, 'audio')}>Fade in & out</button>
+            </div>
           </Section>
         )}
 
@@ -462,6 +499,9 @@ export function Inspector() {
                 onChange={(value) => updateClip(clip.id, { filterIntensity: value }, false)}
               />
             )}
+            <div className="keyframe-inline-row">
+              <button type="button" onClick={() => addKeyframe(clip.id, 'filterIntensity')}><Diamond size={10} /> Keyframe grade</button>
+            </div>
           </Section>
         )}
 
@@ -469,9 +509,31 @@ export function Inspector() {
           <Section title="Effects" defaultOpen={false}>
             <div className="inspector-effect-row">
               {EFFECTS.map((effect) => (
-                <button key={effect.id} type="button" className={clip.effects.includes(effect.id) ? 'is-active' : ''} onClick={() => toggleEffect(clip.id, effect.id)}>{effect.name}</button>
+                <button key={effect.id} type="button" className={clip.effects.some((layer) => layer.type === effect.id && layer.enabled) ? 'is-active' : ''} onClick={() => toggleEffect(clip.id, effect.id)}>{effect.name}</button>
               ))}
             </div>
+            {clip.effects.filter((layer) => layer.enabled).map((layer) => {
+              const definition = EFFECTS.find((effect) => effect.id === layer.type);
+              return (
+                <div className="inspector-effect-mixer" key={layer.id}>
+                  <div className="effect-mixer-head">
+                    <span className="effect-mixer-swatch" style={{ background: definition?.accent || '#b99aff' }} />
+                    <strong>{definition?.name || layer.type}</strong>
+                    <button type="button" onClick={() => toggleEffect(clip.id, layer.type)} title="Remove effect"><X size={11} /></button>
+                  </div>
+                  <SliderRow
+                    label="Intensity" suffix="%" value={layer.intensity} min={0} max={100} step={1}
+                    onStart={begin} onCommit={commit}
+                    onChange={(value) => setEffectIntensity(clip.id, layer.type, value, false)}
+                  />
+                  <div className="keyframe-inline-row">
+                    <button type="button" onClick={() => addEffectFade(clip.id, layer.type, 'in')}>Fade in</button>
+                    <button type="button" onClick={() => addEffectFade(clip.id, layer.type, 'out')}>Fade out</button>
+                    <button type="button" onClick={() => addKeyframe(clip.id, effectChannelId(layer))}><Diamond size={10} /> Key</button>
+                  </div>
+                </div>
+              );
+            })}
           </Section>
         )}
 
@@ -548,11 +610,25 @@ export function Inspector() {
         )}
 
         <Section title="Keyframes" defaultOpen={clip.keyframes.length > 0}>
-          <div className="keyframe-add-grid">
-            {KEYFRAME_PROPERTIES.map((property) => (
-              <button type="button" key={property.id} onClick={() => addKeyframe(clip.id, property.id)} title={`Add ${property.label} keyframe at playhead`}>
-                <Diamond size={10} /> {property.label}
-              </button>
+          <div className="keyframe-quick-actions">
+            {isVisual && <button type="button" onClick={() => addClipFade(clip.id, 'visual')}><Diamond size={10} /> Opacity fade in & out</button>}
+            {(clip.kind === 'audio' || clip.kind === 'video') && <button type="button" onClick={() => addClipFade(clip.id, 'audio')}><Diamond size={10} /> Volume fade in & out</button>}
+          </div>
+          <div className="keyframe-add-groups">
+            {channelGroups.map((group) => (
+              <div className="keyframe-add-group" key={group}>
+                <span>{group}</span>
+                <div className="keyframe-add-grid">
+                  {keyframeChannels.filter((channel) => channel.group === group).map((channel) => {
+                    const count = clip.keyframes.filter((frame) => frame.property === channel.id).length;
+                    return (
+                      <button type="button" key={channel.id} className={count ? 'has-keys' : ''} onClick={() => addKeyframe(clip.id, channel.id)} title={`Add ${channel.label} keyframe at playhead`}>
+                        <Diamond size={10} /> {channel.label}{count ? ` · ${count}` : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
           {clip.keyframes.length ? (
@@ -561,7 +637,7 @@ export function Inspector() {
                 <div className="keyframe-row" key={frame.id}>
                   <button type="button" className="keyframe-jump" onClick={() => setPlayhead(clip.start + frame.time)}>
                     <Diamond size={10} />
-                    <span>{KEYFRAME_PROPERTIES.find((item) => item.id === frame.property)?.label}</span>
+                    <span>{propertyLabel(clip, frame.property)}</span>
                   </button>
                   <input
                     type="number"
@@ -572,6 +648,14 @@ export function Inspector() {
                     onChange={(event) => updateKeyframe(clip.id, frame.id, { value: Number(event.target.value) })}
                   />
                   <span className="keyframe-time">{frame.time.toFixed(2)}s</span>
+                  <select
+                    className="keyframe-easing"
+                    value={frame.easing}
+                    title="Interpolation into this keyframe"
+                    onChange={(event) => updateKeyframe(clip.id, frame.id, { easing: event.target.value as typeof frame.easing })}
+                  >
+                    {EASING_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.short}</option>)}
+                  </select>
                   <button type="button" className="keyframe-delete" onClick={() => removeKeyframe(clip.id, frame.id)}><X size={11} /></button>
                 </div>
               ))}
@@ -579,7 +663,7 @@ export function Inspector() {
           ) : (
             <p className="section-note">Move the playhead inside the clip, then add a keyframe. Add two or more to animate.</p>
           )}
-          {clip.keyframes.length > 0 && <div className="keyframe-hint"><Clock3 size={12} /> Interpolation: smooth ease in/out</div>}
+          {clip.keyframes.length > 0 && <div className="keyframe-hint"><Clock3 size={12} /> Pick an easing per keyframe, including spring and bounce.</div>}
         </Section>
 
         <div className="inspector-bottom-actions">

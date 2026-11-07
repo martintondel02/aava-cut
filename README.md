@@ -53,7 +53,7 @@ sudo dnf install ffmpeg
 sudo pacman -S ffmpeg
 ```
 
-> Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml). The `.deb` declares `ffmpeg` as a dependency; the AppImage expects it on the host.
+> Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml). Each release includes a `SHA256SUMS` asset. The `.deb` declares `ffmpeg` as a dependency; the AppImage expects it on the host.
 
 ---
 

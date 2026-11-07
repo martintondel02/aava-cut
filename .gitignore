@@ -1,0 +1,11 @@
+node_modules/
+dist/
+media/
+exports/
+data/assets.json
+data/project-*.json
+.demo-tmp/
+test-results/
+playwright-report/
+*.log
+.DS_Store

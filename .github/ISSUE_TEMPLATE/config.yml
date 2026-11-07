@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: LumaCut rework plan
+    url: https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md
+    about: Read the planned 1.1 animation, audio, theme and packaging work.
+  - name: Security report
+    url: https://github.com/martintondel02/lumacut/security/advisories/new
+    about: Report a vulnerability privately.

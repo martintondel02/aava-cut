@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-11-07T21:51:55.230Z",
+  "assets": [
+    {
+      "id": "demo-aurora",
+      "name": "Aurora Drift",
+      "kind": "video",
+      "file": "aurora.mp4",
+      "thumbnail": "aurora-thumb.jpg",
+      "duration": 7,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "demo-sunset",
+      "name": "Golden Hour",
+      "kind": "video",
+      "file": "sunset.mp4",
+      "thumbnail": "sunset-thumb.jpg",
+      "duration": 7,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "demo-coast",
+      "name": "Coastal Air",
+      "kind": "video",
+      "file": "coast.mp4",
+      "thumbnail": "coast-thumb.jpg",
+      "duration": 7,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "demo-neon",
+      "name": "Neon District",
+      "kind": "video",
+      "file": "neon.mp4",
+      "thumbnail": "neon-thumb.jpg",
+      "duration": 7,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "demo-portrait",
+      "name": "Quiet Peaks",
+      "kind": "image",
+      "file": "portrait.jpg",
+      "thumbnail": "portrait-thumb.jpg",
+      "duration": 0,
+      "width": 1080,
+      "height": 1350
+    },
+    {
+      "id": "demo-still",
+      "name": "Aurora Still",
+      "kind": "image",
+      "file": "aurora-still.jpg",
+      "thumbnail": "aurora-still-thumb.jpg",
+      "duration": 0,
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "demo-ambient",
+      "name": "Slow Orbit",
+      "kind": "audio",
+      "file": "ambient.mp3",
+      "thumbnail": null,
+      "duration": 48,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": "demo-whoosh",
+      "name": "Air Whoosh",
+      "kind": "audio",
+      "file": "whoosh.mp3",
+      "thumbnail": null,
+      "duration": 1.4,
+      "width": 0,
+      "height": 0
+    },
+    {
+      "id": "demo-riser",
+      "name": "Night Riser",
+      "kind": "audio",
+      "file": "riser.mp3",
+      "thumbnail": null,
+      "duration": 3,
+      "width": 0,
+      "height": 0
+    }
+  ]
+}

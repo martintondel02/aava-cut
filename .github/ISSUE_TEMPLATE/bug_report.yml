@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in LumaCut is broken or behaves unexpectedly.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please include enough detail for someone else to reproduce it.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the demo film
+        2. Select the first clip
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: LumaCut version / commit
+      placeholder: e.g. 1.0.0 or main@abc123
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Browser app
+        - Electron desktop app
+        - Media server / API
+        - Installer
+        - Build / development
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Linux environment
+      placeholder: e.g. Fedora 45, Wayland, Firefox 159, FFmpeg 9
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Paste browser console output, server logs, screenshots, or a screen recording.
+    validations:
+      required: false

@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A local-first, CapCut-style video editor for Linux.</strong><br>
-  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ and real MP4 delivery — all on your machine.
+  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ and AMD Radeon hardware encoding — tuned for Fedora, packaged for Linux.
 </p>
 
 <p align="center">
@@ -14,6 +14,8 @@
   <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
+  <img src="https://img.shields.io/badge/AMD-Radeon%20VAAPI-ED1C24?style=flat-square" alt="AMD Radeon">
+  <img src="https://img.shields.io/badge/Fedora-RPM-51A2DA?style=flat-square&logo=fedora&logoColor=white" alt="Fedora RPM">
   <img src="https://img.shields.io/badge/Electron-45-2B2E3A?style=flat-square&logo=electron&logoColor=9FEAF9" alt="Electron">
   <img src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
   <img src="https://img.shields.io/badge/FFmpeg-powered-003B1F?style=flat-square&logo=ffmpeg&logoColor=white" alt="FFmpeg">
@@ -23,6 +25,7 @@
   <a href="#download">Download</a> ·
   <a href="#features">Features</a> ·
   <a href="#screenshots">Screenshots</a> ·
+  <a href="#amd-radeon-acceleration">AMD acceleration</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#keyboard-shortcuts">Shortcuts</a> ·
   <a href="#architecture">Architecture</a> ·
@@ -37,23 +40,24 @@
 
 | Package | Best for | Install |
 | --- | --- | --- |
-| **`LumaCut-1.1.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
-| **`LumaCut-1.1.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+| **`LumaCut-1.2.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
+| **`LumaCut-1.2.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
+| **`LumaCut-1.2.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
 
-Both builds include the editor and its local media server. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export:
+All builds include the editor and its local media server. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export:
 
 ```bash
+# Fedora — official repos provide the same binary as ffmpeg-free
+sudo dnf install ffmpeg-free
+
 # Debian / Ubuntu
 sudo apt install ffmpeg
-
-# Fedora
-sudo dnf install ffmpeg
 
 # Arch
 sudo pacman -S ffmpeg
 ```
 
-> Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml). Each release includes a `SHA256SUMS` asset. The `.deb` declares `ffmpeg` as a dependency; the AppImage expects it on the host.
+> Fedora's official tree ships the binary as `ffmpeg-free`; RPM Fusion ships it as `ffmpeg`. The RPM requires `/usr/bin/ffmpeg`, so either provider works. Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) and include a `SHA256SUMS` file.
 
 ---
 
@@ -65,6 +69,7 @@ Most editors make you choose between a polished timeline and owning your footage
 - **A real timeline.** Multi-track clips, trim handles, snapping, keyframe rails, direct manipulation and complete track management.
 - **Finished-film tools.** Captions, typography, transitions, effects, color grades, spring keyframes, audio mixing and 4K exports.
 - **Yours to shape.** Light/dark themes, four accent colors, 80–140% interface scaling, compact density and reduced motion.
+- **Tuned for AMD.** LumaCut probes the actual VAAPI encoders on your Radeon, uses AV1/H.264/HEVC hardware encoding when available, and falls back cleanly to CPU. The Fedora RPM is a first-class target.
 - **Hackable.** React + TypeScript on the front end, a small Express/FFmpeg media server, and an Electron shell. Read it, run it, change it.
 
 > LumaCut is an independent, original project inspired by modern mobile/desktop editors. It is not affiliated with CapCut or ByteDance.
@@ -147,8 +152,9 @@ Most editors make you choose between a polished timeline and owning your footage
 | --- | --- |
 | **Autosave** | Instant local project persistence with undo/redo history |
 | **Portable projects** | Download and reopen `.lumacut` files |
-| **Export** | H.264/AAC MP4 or VP9/Opus WebM · 720p / 1080p / 4K · 24/30/60 fps |
-| **Export workflow** | Real-time canvas capture + server-side FFmpeg encoding and trimming |
+| **AMD acceleration** | Auto-detects AMD Radeon VAAPI · AV1, H.264 or HEVC · live encoder label · CPU fallback |
+| **Export** | H.264 or AV1 MP4 / VP9 or AV1 WebM · AAC/Opus · 720p / 1080p / 4K · 24/30/60 fps |
+| **Export workflow** | Real-time canvas capture + server-side FFmpeg hardware/software encoding and trimming |
 | **History** | Recent exports with file paths, sizes and direct download |
 | **Schema migration** | Opening a 1.0 project upgrades effects, keyframes, tracks and audio fields in place |
 
@@ -157,7 +163,7 @@ Most editors make you choose between a polished timeline and owning your footage
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="LumaCut 1.1 dark editor with keyframe lanes and the live audio visualizer" width="100%">
+  <img src="docs/screenshot.png" alt="LumaCut 1.2 dark editor with keyframe lanes and the live audio visualizer" width="100%">
 </p>
 
 <p align="center">
@@ -176,8 +182,36 @@ Most editors make you choose between a polished timeline and owning your footage
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/export.png" alt="LumaCut export dialog with resolution, frame rate and quality options" width="100%">
+  <img src="docs/screenshots/export.png" alt="LumaCut export dialog with AMD GPU acceleration, resolution, frame rate and quality options" width="100%">
 </p>
+
+---
+
+## AMD Radeon acceleration
+
+LumaCut 1.2 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+
+- **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
+- **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
+- **Safe fallback:** if a hardware encode fails mid-export, auto mode retries the exact same file with the CPU encoder.
+- **Visible state:** the Export dialog and Settings → About show the detected GPU, the selected encoder, and whether a hardware encode succeeded.
+
+On some Fedora + Mesa combinations — including RDNA4 cards — **AV1 VAAPI** is exposed while H.264/HEVC VAAPI is not. That is handled automatically: LumaCut exports AV1 with real GPU acceleration. If you need maximum player compatibility, turn **AMD GPU acceleration** off per export or in Settings → Export and you get software H.264.
+
+**Fedora install:**
+
+```bash
+sudo dnf install ffmpeg-free libva-utils
+sudo dnf install ./LumaCut-1.2.0-x86_64.rpm
+```
+
+The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
+
+<p align="center">
+  <img src="docs/screenshots/hardware.png" alt="LumaCut about screen showing AMD VAAPI AV1 acceleration on Fedora" width="82%">
+</p>
+
+Full setup, encoder matrix, troubleshooting and local RPM build instructions live in **[docs/HARDWARE.md](docs/HARDWARE.md)**.
 
 ---
 
@@ -221,11 +255,19 @@ The desktop app runs the media server inside Electron, so it does not need a sep
 ### Build Linux packages
 
 ```bash
-npm run dist:linux   # AppImage + .deb, written to release/
+npm run dist:linux   # AppImage + .deb + .rpm, written to release/
 npm run dist:dir     # unpacked app for inspection
 ```
 
-Packaging is configured with `electron-builder` in `package.json`. Pushing a `v*` tag runs the release workflow and attaches the generated AppImage and `.deb` to the GitHub release.
+Packaging is configured with `electron-builder` in `package.json`. Pushing a `v*` tag runs the release workflow and attaches the generated AppImage, `.deb`, `.rpm` and `SHA256SUMS` to the GitHub release.
+
+Local RPM builds need `rpmbuild` and the `libcrypt` compatibility library used by the bundled `fpm` runtime:
+
+```bash
+sudo dnf install rpm-build libxcrypt-compat
+npm run build
+npx electron-builder --linux rpm --publish never
+```
 
 ---
 
@@ -311,13 +353,13 @@ src/
     migrate.ts         1.0 → 1.1 project migration
   store/               Zustand + Immer state, history, settings and autosave
 server/
-  index.mjs            Express media server, FFprobe metadata, waveforms, FFmpeg export
+  index.mjs            Express media server, FFprobe metadata, waveforms, AMD detection and FFmpeg export
 electron/main.cjs      Desktop shell + embedded local server
 scripts/               Demo generation and Linux installer
 tests/                 Playwright smoke tests
 ```
 
-The renderer uses normalized transforms, so reframing a project is non-destructive. Export captures the same canvas compositor used by the preview, then FFmpeg applies constant frame rate, exact duration and the requested codec/container.
+The renderer uses normalized transforms, so reframing a project is non-destructive. Export captures the same canvas compositor used by the preview, then FFmpeg applies constant frame rate, exact duration and the requested codec/container. If AMD acceleration is available, the captured frames are uploaded to the Radeon and encoded by VAAPI; otherwise the same pipeline uses software H.264/VP9.
 
 The audio bus is:
 
@@ -335,7 +377,8 @@ The visualizer taps the analyser and never modifies the signal. Master and track
 - **Zustand + Immer** for editor state and undo history
 - **Canvas 2D + Web Audio API** for compositing and audio
 - **Express 5 + Multer + FFmpeg**
-- **Electron 45 + electron-builder** for the Linux desktop packages
+- **Electron 45 + electron-builder** for AppImage, `.deb` and `.rpm` packages
+- **AMD VAAPI** probing and hardware encoding through FFmpeg
 - **Playwright** for browser and Electron smoke tests
 
 ---
@@ -373,11 +416,20 @@ For the tests, install the Playwright browser once:
 npx playwright install chromium
 ```
 
-The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, EQ controls, track management and project migration.
+The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration and the AMD capability endpoint.
 
 ---
 
 ## Roadmap
+
+**1.2 “AMD & Fedora” is shipped.**
+
+- [x] Probe real AMD Radeon VAAPI encoders and prefer hardware automatically
+- [x] AV1 / H.264 / HEVC hardware encode with CPU fallback and encoder labels
+- [x] AMD GPU acceleration toggle in Export and Settings
+- [x] Fedora RPM package, plus AppImage and `.deb`
+- [x] Protected `main`, Dependabot, security policy and SHA-256 release checksums
+- [x] AMD/Fedora documentation and hardware tests
 
 **1.1 “Accessibility & Animation” is shipped.**
 
@@ -387,7 +439,7 @@ The test suite covers the demo boot, canvas painting, split/undo, dynamic title 
 - [x] Draggable keyframe blocks on the timeline with add / delete / retime
 - [x] Audio visualizer, master 10-band EQ and per-track tone
 - [x] Add / remove / reorder / rename / recolor tracks, with solo and gain
-- [x] AppImage and `.deb` packaging plus a tagged release workflow
+- [x] AppImage packaging plus a tagged release workflow
 - [x] Light-theme screenshots, schema migration and expanded documentation
 
 Next up:
@@ -397,20 +449,22 @@ Next up:
 - “Move clips to a new track” when deleting a populated track
 - Lane visibility filters and per-channel collapse
 - Automatic speech-to-text captions
-- GPU-assisted encoding and background export
+- Encoder/codec picker for explicit H.264 vs AV1, plus HDR/10-bit support
+- Intel and NVIDIA acceleration paths
 
-See **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the detailed 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
+See **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
 
 ---
 
 ## Notes & limits
 
-- **Export is real-time.** A 30-second cut takes roughly 30 seconds to capture, then a few seconds to encode. Keep the window in the foreground.
+- **Export is real-time.** A 30-second cut takes roughly 30 seconds to capture; hardware encoding shortens the encode step, not the capture step. Keep the window in the foreground.
+- **Hardware encoders vary by driver.** Fedora/Mesa may expose AV1, H.264, HEVC or only some of them. LumaCut picks what actually works and labels the result. It never silently pretends a software encode is hardware.
 - **Captions are manual or SRT-driven.** Speech-to-text is intentionally not faked.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
-- The audio visualizer is **monitor-only** in 1.1. It is intentionally not baked into the exported video.
-- Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares the dependency.
+- The audio visualizer is **monitor-only** in 1.2. It is intentionally not baked into the exported video.
+- Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`.
 - LumaCut targets a wide desktop window (1180 px minimum).
 - The app is built for local desktop use; there is no cloud sync or collaboration layer.
 
@@ -420,6 +474,7 @@ See **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the detailed 1.1 scope an
 
 Issues, pull requests and thoughtful design feedback are welcome.
 
+- **`main` is protected.** Direct pushes and force-pushes are disabled, all changes land through pull requests, and the **Build & smoke tests** check must pass before merge.
 - Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the dev setup, project structure and testing expectations.
 - Use the issue templates for bugs and feature requests.
 - Keep changes local-first: no accounts, no telemetry, no mandatory network calls.

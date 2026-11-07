@@ -1686,7 +1686,7 @@ body { zoom: var(--ui-scale, 1); }
 .about-links a:hover { border-color: var(--line-strong); background: var(--panel-soft); }
 .about-links a > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .about-links a strong { color: var(--text-soft); font-size: 9.5px; }
-.about-links a em { font-style: normal; color: var(--faint); font-size: 8px; }
+.about-links a em { font-style: normal; color: var(--muted); opacity: .76; font-size: 8px; }
 .about-links a > svg:last-child { color: var(--faint); }
 .about-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
 .about-facts div { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; background: var(--panel-soft); }
@@ -2014,3 +2014,24 @@ body { zoom: var(--ui-scale, 1); }
 .audio-analyser-head span:last-child { color: var(--faint); font-size: 6.5px; }
 .audio-visualizer.panel-visualizer { position: relative; left: auto; bottom: auto; width: 100%; height: 76px; border-color: rgba(255,255,255,.1); }
 .track-swatch { flex: 0 0 14px; }
+
+/* ---------- AMD hardware acceleration ---------- */
+.export-accel {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border-radius: 7px;
+  border: 1px solid var(--line); background: var(--panel-soft);
+}
+.export-accel.is-available {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 8%, var(--panel-soft)), var(--panel-soft));
+}
+.export-accel-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: 0 0 28px; border-radius: 6px;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.export-accel-copy { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.export-accel-copy strong { color: var(--text-soft); font-size: 8.5px; font-weight: 600; }
+.export-accel-copy em { color: var(--faint); font-size: 6.8px; font-style: normal; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.switch:disabled { opacity: .38; cursor: not-allowed; }

@@ -187,3 +187,16 @@ test('auto-key writes a keyframe when a transform changes at the playhead', asyn
   await expect(page.locator('.keyframe-block')).toHaveCount(1);
   await expect(page.locator('.keyframe-lane')).toHaveCount(1);
 });
+
+test('reports AMD hardware capabilities without breaking CPU fallback', async ({ request }) => {
+  const response = await request.get('/api/capabilities');
+  expect(response.ok()).toBe(true);
+  const capabilities = await response.json();
+  expect(capabilities.version).toBe('1.2.0');
+  expect(capabilities.hardware).toBeTruthy();
+  expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
+  expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
+  expect(Array.isArray(capabilities.hardware.encoders)).toBe(true);
+  expect(capabilities.software.h264).toBeTruthy();
+  expect(capabilities.software.vp9).toBeTruthy();
+});

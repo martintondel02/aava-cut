@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.2.0 — 2026-11-08
+
+The AMD and Fedora release.
+
+### Added
+
+- AMD Radeon detection through sysfs and `lspci`, followed by real VAAPI encoder probes for H.264, HEVC, AV1 and VP9
+- Hardware-accelerated MP4 (AV1/H.264/HEVC) and WebM (AV1/VP9) exports, with an automatic software retry if a hardware encode fails
+- AMD GPU acceleration toggle in the Export dialog and Settings → Export, with detected encoder labels and actual codec reporting in the export result
+- Fedora RPM package target, `/usr/bin/ffmpeg` dependency (works with `ffmpeg-free` or RPM Fusion `ffmpeg`), and RPM assets in the release workflow
+- Settings → About GPU information, package badges and a hardware guide in `docs/HARDWARE.md`
+- Dependabot updates for npm and GitHub Actions
+- Protected `main` branch configuration with required CI, pull-request enforcement and blocked force-pushes
+
+### Changed
+
+- `npm run dist:linux` now builds AppImage, `.deb` and `.rpm`
+- Release assets include `SHA256SUMS` covering all three Linux packages
+- Export progress and summary labels report the selected AMD encoder or CPU fallback
+- Repository metadata and README focus on AMD Radeon and Fedora
+
 ## 1.1.0 — 2026-11-08
 
 The accessibility and animation release.

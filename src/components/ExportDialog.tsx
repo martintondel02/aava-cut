@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Check, CheckCircle2, Clipboard, Download, Film, FolderOpen, Loader2, MonitorPlay, RotateCcw,
+  Check, CheckCircle2, Clipboard, Cpu, Download, Film, FolderOpen, Loader2, MonitorPlay, RotateCcw,
   Sparkles, X, XCircle
 } from 'lucide-react';
 import { useEditorStore } from '../store/editorStore';
 import { formatBytes, formatTime, projectDuration } from '../lib/utils';
 import { canvasRenderer } from '../engine/canvasRenderer';
 import { mediaPool } from '../engine/mediaPool';
-import type { ExportSettings } from '../types';
+import type { ExportSettings, ServerCapabilities } from '../types';
 
 const RESOLUTIONS: Record<ExportSettings['resolution'], number> = { '720p': 1280, '1080p': 1920, '4k': 3840 };
 
@@ -48,6 +48,7 @@ export function ExportDialog() {
   const setPlaying = useEditorStore((state) => state.setPlaying);
 
   const [copied, setCopied] = useState(false);
+  const [capabilities, setCapabilities] = useState<ServerCapabilities | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -73,6 +74,10 @@ export function ExportDialog() {
     if (open) {
       loadExportHistory();
       setCopied(false);
+      fetch('/api/capabilities')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: ServerCapabilities | null) => setCapabilities(data))
+        .catch(() => setCapabilities(null));
     }
   }, [open, loadExportHistory]);
 
@@ -95,6 +100,20 @@ export function ExportDialog() {
   if (!open || !project) return null;
 
   const estimatedMb = (duration * (settings.quality === 'high' ? 18 : 9) * 1_000_000) / 8 / 1_000_000;
+  const hwForFormat = capabilities?.hardware.preferredFor[settings.format] || null;
+  const hardwareSelected = Boolean(settings.hardwareAcceleration && hwForFormat);
+  const hardwareCodec = hwForFormat?.codec?.toUpperCase() || '';
+  const audioCodec = settings.format === 'mp4' ? 'AAC' : 'Opus';
+  const summaryCodec = hardwareSelected
+    ? `${hardwareCodec} / ${audioCodec} · AMD GPU`
+    : settings.format === 'mp4' ? 'H.264 / AAC' : 'VP9 / Opus';
+  const accelerationDetail = capabilities
+    ? hwForFormat
+      ? `${capabilities.hardware.gpuNames[0] || 'AMD Radeon'} · falls back to CPU if needed`
+      : capabilities.hardware.detected
+        ? `No AMD VAAPI encoder for ${settings.format.toUpperCase()}; CPU encoding will be used.`
+        : 'No AMD Radeon detected; CPU encoding will be used.'
+    : 'Probing AMD VAAPI encoders…';
 
   const reset = () => {
     setExportResult(null);
@@ -212,7 +231,7 @@ export function ExportDialog() {
   };
 
   const finishRecording = async (recorder: MediaRecorder, recorderStopped: Promise<Blob>) => {
-    setExportProgress({ status: 'finalizing', percent: 96, message: settings.format === 'mp4' ? 'Encoding H.264 and muxing audio…' : 'Encoding VP9 and muxing audio…' });
+    setExportProgress({ status: 'finalizing', percent: 96, message: hardwareSelected ? `Encoding ${hardwareCodec} on the AMD GPU…` : settings.format === 'mp4' ? 'Encoding H.264 and muxing audio…' : 'Encoding VP9 and muxing audio…' });
     mediaPool.pauseAll();
     mediaPool.endCapture();
     try {
@@ -228,6 +247,7 @@ export function ExportDialog() {
       form.append('video', blob, 'lumacut-capture.webm');
       form.append('format', settings.format);
       form.append('quality', settings.quality);
+      form.append('acceleration', settings.hardwareAcceleration ? 'auto' : 'off');
       form.append('name', settings.name || project.name);
       form.append('fps', String(settings.fps));
       form.append('duration', String(duration));
@@ -317,7 +337,7 @@ export function ExportDialog() {
                   <div>
                     <span className="status-chip success"><Check size={12} /> Export complete</span>
                     <strong>{result.filename}</strong>
-                    <p>{formatBytes(result.size)} · {settings.format.toUpperCase()} · {dims.width} × {dims.height}</p>
+                    <p>{formatBytes(result.size)} · {settings.format.toUpperCase()} · {dims.width} × {dims.height}{result.hardware ? ` · ${(result.codec || 'GPU').toUpperCase()} AMD` : ''}</p>
                   </div>
                   <div className="export-path">
                     <FolderOpen size={14} />
@@ -361,7 +381,7 @@ export function ExportDialog() {
                 <div><span>Duration</span><strong>{formatTime(duration)}</strong></div>
                 <div><span>Resolution</span><strong>{dims.width} × {dims.height}</strong></div>
                 <div><span>Frame rate</span><strong>{settings.fps} fps</strong></div>
-                <div><span>Codec</span><strong>{settings.format === 'mp4' ? 'H.264 / AAC' : 'VP9 / Opus'}</strong></div>
+                <div><span>Codec</span><strong>{summaryCodec}</strong></div>
               </div>
               <div className="export-tip">
                 <Sparkles size={15} />
@@ -418,6 +438,23 @@ export function ExportDialog() {
                     <Sparkles size={15} /><span><strong>High</strong><em>Maximum detail · ~{Math.round(estimatedMb * 2)} MB</em></span>
                   </button>
                 </div>
+              </div>
+
+              <div className={`export-accel ${hwForFormat ? 'is-available' : ''}`}>
+                <span className="export-accel-icon"><Cpu size={15} /></span>
+                <div className="export-accel-copy">
+                  <span className="field-label">AMD GPU acceleration</span>
+                  <strong>{hwForFormat ? hwForFormat.label : capabilities ? 'CPU encoding' : 'Detecting…'}</strong>
+                  <em>{accelerationDetail}</em>
+                </div>
+                <button
+                  type="button"
+                  className={`switch ${hardwareSelected ? 'is-on' : ''}`}
+                  disabled={!hwForFormat}
+                  aria-pressed={hardwareSelected}
+                  title={hwForFormat ? 'Toggle AMD hardware encoding' : 'No hardware encoder available'}
+                  onClick={() => setExportSettings({ hardwareAcceleration: !settings.hardwareAcceleration })}
+                ><span /></button>
               </div>
 
               <div className="export-target">

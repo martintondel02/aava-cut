@@ -140,7 +140,37 @@ export interface ExportSettings {
   fps: 24 | 30 | 60;
   format: 'mp4' | 'webm';
   quality: 'standard' | 'high';
+  hardwareAcceleration: boolean;
   name: string;
+}
+
+export type HardwareCodec = 'h264' | 'hevc' | 'av1' | 'vp9';
+
+export interface HardwareEncoderInfo {
+  codec: HardwareCodec;
+  encoder: string;
+  label: string;
+  backend: 'vaapi' | 'amf' | 'vulkan';
+  renderNode?: string;
+  profile?: string[];
+}
+
+export interface HardwareCapabilities {
+  detected: boolean;
+  vendor: string | null;
+  gpuNames: string[];
+  backend: string;
+  renderNodes: string[];
+  encoders: HardwareEncoderInfo[];
+  preferredFor: { mp4: HardwareEncoderInfo | null; webm: HardwareEncoderInfo | null };
+  preferred: HardwareEncoderInfo | null;
+  probedAt: string;
+}
+
+export interface ServerCapabilities {
+  version: string;
+  hardware: HardwareCapabilities;
+  software: { h264: string; vp9: string };
 }
 
 export interface ExportResult {
@@ -149,6 +179,10 @@ export interface ExportResult {
   path: string;
   size: number;
   format: string;
+  hardware?: boolean;
+  codec?: string;
+  encoder?: string;
+  acceleration?: string;
 }
 
 export const ASPECT_PRESETS = [

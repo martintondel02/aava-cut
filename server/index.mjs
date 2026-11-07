@@ -161,19 +161,145 @@ let assets = await loadAssets();
 
 let h264Encoder = 'libopenh264';
 let vp9Encoder = 'libvpx-vp9';
+let encoderList = '';
 try {
   const { stdout } = await execFileP('ffmpeg', ['-hide_banner', '-encoders']);
+  encoderList = stdout;
   if (/\blibx264\b/.test(stdout)) h264Encoder = 'libx264';
   else if (/\blibopenh264\b/.test(stdout)) h264Encoder = 'libopenh264';
-  else if (/\bh264_vaapi\b/.test(stdout)) h264Encoder = 'h264_vaapi';
   else if (/\bmpeg4\b/.test(stdout)) h264Encoder = 'mpeg4';
   if (!/\blibvpx-vp9\b/.test(stdout)) vp9Encoder = /\blibvpx\b/.test(stdout) ? 'libvpx' : 'libvpx-vp9';
 } catch {
   // Keep the defaults; the export call will surface an actionable FFmpeg error.
 }
 
+const HW_CODECS = {
+  h264: { codec: 'h264', encoder: 'h264_vaapi', label: 'H.264', profile: ['-profile:v', 'main'] },
+  hevc: { codec: 'hevc', encoder: 'hevc_vaapi', label: 'HEVC', profile: ['-profile:v', 'main'] },
+  av1: { codec: 'av1', encoder: 'av1_vaapi', label: 'AV1', profile: [] },
+  vp9: { codec: 'vp9', encoder: 'vp9_vaapi', label: 'VP9', profile: [] }
+};
+
+function findAmdRenderNodes() {
+  try {
+    const vendorFiles = fs.readdirSync('/sys/class/drm').filter((name) => /^card\d+$/.test(name));
+    const hasAmd = vendorFiles.some((name) => {
+      try { return fs.readFileSync(`/sys/class/drm/${name}/device/vendor`, 'utf8').trim() === '0x1002'; } catch { return false; }
+    });
+    if (!hasAmd) return [];
+    return fs.readdirSync('/dev/dri')
+      .filter((name) => /^renderD\d+$/.test(name))
+      .sort((a, b) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')))
+      .map((name) => `/dev/dri/${name}`);
+  } catch {
+    return [];
+  }
+}
+
+async function readGpuNames() {
+  const names = new Set();
+  try {
+    const { stdout } = await execFileP('lspci', ['-nn'], { timeout: 3500 });
+    for (const line of stdout.split('\n')) {
+      if (!/(VGA compatible controller|Display controller|3D controller)/i.test(line)) continue;
+      if (!/AMD|ATI/i.test(line)) continue;
+      const cleaned = line
+        .replace(/^.*\[AMD\/ATI\]\s*/, '')
+        .replace(/\s*\[1002:[0-9a-f]+\]\s*$/i, '')
+        .replace(/\s*\(rev [^)]+\)$/, '')
+        .trim();
+      const radeon = cleaned.match(/Radeon[^\]]*/i)?.[0]?.trim();
+      names.add(`AMD ${radeon || cleaned}`);
+    }
+  } catch {}
+  return [...names];
+}
+
+async function probeVaapi(node, candidate) {
+  await execFileP('ffmpeg', [
+    '-hide_banner', '-loglevel', 'error',
+    '-init_hw_device', `vaapi=amd:${node}`,
+    '-f', 'lavfi', '-i', 'color=c=black:s=640x360:r=30:d=0.2',
+    '-vf', 'format=nv12,hwupload',
+    '-c:v', candidate.encoder,
+    '-rc_mode', 'CQP', '-qp', '28',
+    ...candidate.profile,
+    '-f', 'null', '-'
+  ], { timeout: 6000 });
+}
+
+async function detectHardware() {
+  const gpuNames = await readGpuNames();
+  const nodes = findAmdRenderNodes();
+  const amd = gpuNames.length > 0 || nodes.length > 0;
+  const hardware = {
+    detected: amd,
+    vendor: amd ? 'AMD' : null,
+    gpuNames: gpuNames.length ? gpuNames : amd ? ['AMD Radeon GPU'] : [],
+    backend: 'VAAPI',
+    renderNodes: nodes,
+    encoders: [],
+    preferredFor: { mp4: null, webm: null },
+    preferred: null,
+    probedAt: new Date().toISOString()
+  };
+  if (!amd) return hardware;
+  const found = new Map();
+  for (const node of nodes) {
+    for (const candidate of Object.values(HW_CODECS)) {
+      if (!new RegExp(`\\b${candidate.encoder}\\b`).test(encoderList)) continue;
+      if (found.has(candidate.codec)) continue;
+      try {
+        await probeVaapi(node, candidate);
+        found.set(candidate.codec, {
+          codec: candidate.codec,
+          encoder: candidate.encoder,
+          label: `AMD VAAPI · ${candidate.label}`,
+          backend: 'vaapi',
+          renderNode: node,
+          profile: candidate.profile
+        });
+      } catch {}
+    }
+    if (found.size > 0) break;
+  }
+  hardware.encoders = [...found.values()];
+  hardware.preferredFor.mp4 = found.get('h264') || found.get('hevc') || found.get('av1') || null;
+  hardware.preferredFor.webm = found.get('av1') || found.get('vp9') || null;
+  hardware.preferred = hardware.preferredFor.mp4 || hardware.preferredFor.webm;
+  return hardware;
+}
+
+const hardware = await detectHardware();
+if (hardware.detected) {
+  const codecs = hardware.encoders.map((entry) => entry.codec).join(', ') || 'no working VAAPI encoder';
+  console.log(`GPU: ${hardware.gpuNames.join(' / ')} · ${hardware.renderNodes.join(', ')} · ${codecs}`);
+} else {
+  console.log('GPU: no AMD Radeon detected · software encoding');
+}
+
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, ffmpeg: true, version: '1.1.0', platform: process.platform, prod: isProd, dataDir });
+  res.json({
+    ok: true,
+    ffmpeg: true,
+    version: '1.2.0',
+    platform: process.platform,
+    prod: isProd,
+    dataDir,
+    hardware: {
+      detected: hardware.detected,
+      label: hardware.preferred?.label || null,
+      codec: hardware.preferred?.codec || null
+    }
+  });
+});
+
+app.get('/api/capabilities', (req, res) => {
+  res.json({
+    version: '1.2.0',
+    hardware,
+    software: { h264: h264Encoder, vp9: vp9Encoder }
+  });
 });
 
 app.get('/api/assets', (req, res) => {
@@ -266,37 +392,82 @@ app.get('/api/projects/:id', (req, res) => {
   res.sendFile(file);
 });
 
+function finishArgs(args, fps, duration, outPath) {
+  args.push('-r', String(fps), '-fps_mode', 'cfr');
+  if (duration > 0) args.push('-t', String(duration));
+  args.push(outPath);
+  return args;
+}
+
+function softwareArgs(inputPath, outPath, { format, quality, fps, duration }) {
+  const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', inputPath];
+  if (format === 'mp4') {
+    if (h264Encoder === 'mpeg4') {
+      args.push('-c:v', 'mpeg4', '-q:v', quality === 'high' ? '2' : '4');
+    } else {
+      args.push('-c:v', h264Encoder, '-pix_fmt', 'yuv420p');
+      if (h264Encoder === 'libx264') args.push('-preset', quality === 'high' ? 'slow' : 'veryfast', '-crf', quality === 'high' ? '18' : '22');
+      else if (h264Encoder === 'libopenh264') args.push('-preset', quality === 'high' ? 'quality' : 'balanced', '-b:v', quality === 'high' ? '18M' : '9M');
+      else args.push('-b:v', quality === 'high' ? '18M' : '9M');
+    }
+    args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
+  } else {
+    args.push('-c:v', vp9Encoder, '-b:v', '0', '-crf', quality === 'high' ? '26' : '34', '-c:a', 'libopus', '-b:a', '160k');
+  }
+  return finishArgs(args, fps, duration, outPath);
+}
+
+function hardwareArgs(inputPath, outPath, hw, { format, quality, fps, duration }) {
+  const args = [
+    '-y', '-hide_banner', '-loglevel', 'error',
+    '-vaapi_device', hw.renderNode,
+    '-i', inputPath,
+    '-vf', 'format=nv12,hwupload',
+    '-c:v', hw.encoder,
+    '-rc_mode', 'CQP', '-qp', quality === 'high' ? '20' : '26',
+    ...(hw.profile || [])
+  ];
+  if (format === 'mp4') {
+    args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
+  } else {
+    args.push('-c:a', 'libopus', '-b:a', '160k');
+  }
+  return finishArgs(args, fps, duration, outPath);
+}
+
 const exportUpload = multer({ dest: path.join(exportDir, '.tmp'), limits: { fileSize: 4 * 1024 * 1024 * 1024 } });
 
 app.post('/api/export', exportUpload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No recording uploaded' });
   const format = req.body.format === 'webm' ? 'webm' : 'mp4';
   const quality = req.body.quality === 'high' ? 'high' : 'standard';
+  const acceleration = req.body.acceleration === 'off' ? 'off' : 'auto';
   const fps = Math.max(12, Math.min(60, Math.round(Number(req.body.fps) || 30)));
   const duration = Math.max(0, Math.min(3600, Number(req.body.duration) || 0));
   const base = slug(req.body.name || 'lumacut-export');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   const outName = `${base}-${stamp}.${format}`;
   const outPath = path.join(exportDir, outName);
+  const requestedHw = acceleration === 'auto' ? hardware.preferredFor[format] : null;
+  const attempts = requestedHw ? [requestedHw, null] : [null];
+  let usedHw = null;
+  let lastError = null;
   try {
-    const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', req.file.path];
-    if (format === 'mp4') {
-      if (h264Encoder === 'mpeg4') {
-        args.push('-c:v', 'mpeg4', '-q:v', quality === 'high' ? '2' : '4');
-      } else {
-        args.push('-c:v', h264Encoder, '-pix_fmt', 'yuv420p');
-        if (h264Encoder === 'libx264') args.push('-preset', quality === 'high' ? 'slow' : 'veryfast', '-crf', quality === 'high' ? '18' : '22');
-        else if (h264Encoder === 'libopenh264') args.push('-preset', quality === 'high' ? 'quality' : 'balanced', '-b:v', quality === 'high' ? '18M' : '9M');
-        else args.push('-b:v', quality === 'high' ? '18M' : '9M');
+    for (const hw of attempts) {
+      try {
+        const args = hw
+          ? hardwareArgs(req.file.path, outPath, hw, { format, quality, fps, duration })
+          : softwareArgs(req.file.path, outPath, { format, quality, fps, duration });
+        await execFileP('ffmpeg', args, { timeout: 20 * 60 * 1000 });
+        usedHw = hw;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (hw) console.warn(`Hardware encode failed (${hw.encoder}); falling back to software.`);
       }
-      args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
-    } else {
-      args.push('-c:v', vp9Encoder, '-b:v', '0', '-crf', quality === 'high' ? '26' : '34', '-c:a', 'libopus', '-b:a', '160k');
     }
-    args.push('-r', String(fps), '-fps_mode', 'cfr');
-    if (duration > 0) args.push('-t', String(duration));
-    args.push(outPath);
-    await execFileP('ffmpeg', args);
+    if (!usedHw && lastError && attempts.length === 1) throw lastError;
+    if (!fs.existsSync(outPath)) throw lastError || new Error('The encoder did not produce a file');
     try { await fsp.unlink(req.file.path); } catch {}
     const stat = await fsp.stat(outPath);
     res.json({
@@ -305,7 +476,11 @@ app.post('/api/export', exportUpload.single('video'), async (req, res) => {
       filename: outName,
       path: outPath,
       size: stat.size,
-      format
+      format,
+      hardware: Boolean(usedHw),
+      encoder: usedHw?.encoder || (format === 'mp4' ? h264Encoder : vp9Encoder),
+      codec: usedHw?.codec || (format === 'mp4' ? (h264Encoder === 'mpeg4' ? 'mpeg4' : 'h264') : 'vp9'),
+      acceleration: usedHw ? 'amd-vaapi' : 'software'
     });
   } catch (error) {
     try { await fsp.unlink(req.file.path); } catch {}

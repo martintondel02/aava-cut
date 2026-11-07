@@ -1,6 +1,6 @@
 # LumaCut 1.1 — Rework Plan
 
-> **Status: approved and delivered in LumaCut 1.1.0.** The headline scope below is implemented and covered by the Playwright suite, including the 1.0 → 1.1 project migration. A short deferred list follows the delivery checkpoints at the end of this document.
+> **Status: approved and delivered in LumaCut 1.1.0.** The headline scope below is implemented and covered by the Playwright suite, including the 1.0 → 1.1 project migration. A short deferred list follows the delivery checkpoints at the end of this document. The 1.2 follow-up adds AMD VAAPI acceleration and Fedora RPM packaging — see [HARDWARE.md](HARDWARE.md).
 
 ## Goal
 

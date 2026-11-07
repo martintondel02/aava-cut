@@ -53,10 +53,16 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   const addToast = useEditorStore((state) => state.addToast);
   const [section, setSection] = useState<SettingsSection>('appearance');
   const [serverOnline, setServerOnline] = useState(false);
+  const [hardware, setHardware] = useState<{ detected: boolean; label: string | null; codec: string | null } | null>(null);
 
   useEffect(() => {
     fetch('/api/health')
-      .then((response) => setServerOnline(response.ok))
+      .then(async (response) => {
+        setServerOnline(response.ok);
+        if (!response.ok) return;
+        const data = await response.json();
+        setHardware(data.hardware || null);
+      })
       .catch(() => setServerOnline(false));
   }, []);
 
@@ -268,6 +274,16 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                     </button>
                   </div>
                 </div>
+                <ToggleRow
+                  label="AMD GPU acceleration"
+                  hint={hardware?.detected
+                    ? `${hardware.label || 'AMD VAAPI encoder detected'}. Hardware export falls back to CPU if the driver rejects a frame.`
+                    : hardware
+                      ? 'No AMD VAAPI encoder detected. Exports use the CPU.'
+                      : 'Checking the local server for AMD hardware…'}
+                  checked={settings.exportDefaults.hardwareAcceleration}
+                  onChange={(checked) => settings.update({ exportDefaults: { ...settings.exportDefaults, hardwareAcceleration: checked } })}
+                />
               </SettingsSection>
             )}
 
@@ -290,24 +306,27 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.1.0" description="A local-first video editor, made for Linux.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.2.0" description="A local-first video editor for Linux, tuned for AMD Radeon and Fedora.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.1.0</span></h2>
+                    <h2>LumaCut <span>1.2.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
-                    <div className="about-badges"><span>MIT</span><span>Linux</span><span>Local-first</span><span>Electron</span></div>
+                    <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>Local-first</span><span>Electron</span></div>
                   </div>
                 </div>
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.2 hardware and Fedora release notes</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/screenshot.png" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Demo film</strong><em>Chase the Light</em></span><ExternalLink size={13} /></a>
                 </div>
                 <div className="about-facts">
                   <div><span>Runtime</span><strong>{navigator.userAgent.includes('Electron') ? 'Electron desktop' : 'Web app'}</strong></div>
                   <div><span>Audio engine</span><strong>Web Audio API</strong></div>
                   <div><span>Encoding</span><strong>FFmpeg {serverOnline ? '· online' : '· offline'}</strong></div>
+                  <div><span>GPU acceleration</span><strong>{hardware?.detected ? hardware.label || 'CPU fallback' : 'CPU fallback'}</strong></div>
+                  <div><span>Packages</span><strong>AppImage · DEB · RPM</strong></div>
                   <div><span>Privacy</span><strong>Local only</strong></div>
                 </div>
                 <p className="about-credit">Built with React, TypeScript, Canvas, Web Audio and FFmpeg. Independent project; not affiliated with CapCut or ByteDance.</p>

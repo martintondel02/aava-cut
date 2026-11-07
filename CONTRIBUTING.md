@@ -19,9 +19,15 @@ Useful commands:
 npm run build        # TypeScript check + production bundle
 npm run test:e2e     # Playwright smoke tests
 npm run desktop      # build and launch the Electron shell
-npm run dist:linux   # AppImage + .deb (written to release/)
+npm run dist:linux   # AppImage + .deb + .rpm (written to release/)
 npm run dist:dir     # unpacked Electron app
 bash scripts/install-linux.sh
+```
+
+RPM builds need `rpmbuild` plus the `libcrypt` compatibility library used by the bundled `fpm` runtime on Fedora:
+
+```bash
+sudo dnf install rpm-build libxcrypt-compat
 ```
 
 Install the Playwright browser once:
@@ -77,7 +83,9 @@ Projects are stored in browser local storage and as `.lumacut` files. Any data-m
 
 ## Pull requests
 
-- Branch from `main` with a descriptive name, e.g. `feat/keyframe-lanes`.
+`main` is protected: direct pushes and force-pushes are disabled, all changes land through pull requests, and the **Build & smoke tests** status check must pass. Do not ask for protection to be removed.
+
+- Branch from `main` with a descriptive name, e.g. `feat/amd-vaapi`.
 - Keep PRs focused; split theme, audio and keyframe work when possible.
 - Describe user-visible changes and include screenshots or a short screen recording.
 - Note anything not tested and why.

@@ -315,7 +315,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   clipboard: null,
   toasts: [],
   exportOpen: false,
-  exportSettings: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard', name: 'chase-the-light' },
+  exportSettings: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard', hardwareAcceleration: true, name: 'chase-the-light' },
   exportProgress: { status: 'idle', percent: 0, message: '' },
   exportResult: null,
   exportHistory: [],

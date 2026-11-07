@@ -11,6 +11,7 @@ export interface ExportDefaults {
   fps: 24 | 30 | 60;
   format: 'mp4' | 'webm';
   quality: 'standard' | 'high';
+  hardwareAcceleration: boolean;
 }
 
 export interface SettingsValues {
@@ -52,7 +53,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   followPlayhead: true,
   autoExpandKeyframes: true,
   autoKeyframe: false,
-  exportDefaults: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard' }
+  exportDefaults: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard', hardwareAcceleration: true }
 };
 
 const STORAGE_KEY = 'lumacut.settings.v1';

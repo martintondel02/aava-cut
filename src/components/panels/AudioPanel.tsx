@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, ExternalLink, Globe2, Mic, Music2, Pause, Play, Plus, Search, Square, Volume2, X } from 'lucide-react';
+import { AudioLines, ExternalLink, Globe2, Mic, Music2, Pause, Play, Plus, Search, Square, Trash2, Volume2, X } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Segmented } from '../ui';
 import { useEditorStore } from '../../store/editorStore';
@@ -15,6 +15,8 @@ export function AudioPanel() {
   const selectedAssetId = useEditorStore((state) => state.selectedAssetId);
   const setSelectedAsset = useEditorStore((state) => state.setSelectedAsset);
   const addAssetToTimeline = useEditorStore((state) => state.addAssetToTimeline);
+  const removeAsset = useEditorStore((state) => state.removeAsset);
+  const project = useEditorStore((state) => state.project);
   const uploadFiles = useEditorStore((state) => state.uploadFiles);
   const uploading = useEditorStore((state) => state.uploading);
   const addToast = useEditorStore((state) => state.addToast);
@@ -90,6 +92,14 @@ export function AudioPanel() {
     } catch (error) {
       addToast(error instanceof Error && error.name === 'NotAllowedError' ? 'Microphone permission was denied' : 'Could not start the microphone', 'error');
     }
+  };
+
+  const removeAudio = (asset: import('../../types').MediaAsset) => {
+    const used = project?.clips.filter((clip) => clip.assetId === asset.id).length || 0;
+    const message = used
+      ? `“${asset.name}” is used by ${used} timeline ${used === 1 ? 'clip' : 'clips'}. Removing it from the library will leave those clips without media. Remove it anyway?`
+      : `Remove “${asset.name}” and delete its source file from disk?`;
+    if (window.confirm(message)) void removeAsset(asset.id);
   };
 
   const togglePreview = (id: string, url: string) => {
@@ -194,6 +204,7 @@ export function AudioPanel() {
               onPreview={() => togglePreview(asset.id, asset.url)}
               onSelect={() => setSelectedAsset(asset.id)}
               onAdd={() => addAssetToTimeline(asset.id)}
+              onRemove={() => removeAudio(asset)}
             />
           ))}
         </AudioSection>
@@ -225,7 +236,7 @@ function AudioSection({ title, count, children }: { title: string; count: number
 }
 
 function AudioRow({
-  asset, selected, playing, onPreview, onSelect, onAdd
+  asset, selected, playing, onPreview, onSelect, onAdd, onRemove
 }: {
   asset: import('../../types').MediaAsset;
   selected: boolean;
@@ -233,6 +244,7 @@ function AudioRow({
   onPreview: () => void;
   onSelect: () => void;
   onAdd: () => void;
+  onRemove: () => void;
 }) {
   const peaks = asset.peaks?.length ? asset.peaks : Array.from({ length: 90 }, (_, index) => 16 + (Math.sin(index * 0.6) * 0.5 + 0.5) * 45);
   return (
@@ -261,9 +273,14 @@ function AudioRow({
           {asset.size ? <span>{formatBytes(asset.size)}</span> : <span>48 kHz</span>}
         </div>
       </div>
-      <button type="button" className="audio-add-btn" title="Add to timeline" onClick={(event) => { event.stopPropagation(); onAdd(); }}>
-        <Plus size={15} />
-      </button>
+      <div className="audio-row-actions">
+        <button type="button" className="audio-add-btn" title="Add to timeline" onClick={(event) => { event.stopPropagation(); onAdd(); }}>
+          <Plus size={15} />
+        </button>
+        <button type="button" className="audio-remove-btn" title="Remove from library and delete source file" onClick={(event) => { event.stopPropagation(); onRemove(); }}>
+          <Trash2 size={13} />
+        </button>
+      </div>
     </div>
   );
 }

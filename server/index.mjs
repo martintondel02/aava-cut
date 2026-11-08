@@ -678,7 +678,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.14.0',
+    version: '1.15.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -693,7 +693,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.14.0',
+    version: '1.15.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -1382,6 +1382,98 @@ app.delete('/api/assets/:id', async (req, res) => {
   }
   await saveAssets(assets);
   res.json({ ok: true });
+});
+
+async function directoryStats(dir, { recursive = true } = {}) {
+  let bytes = 0;
+  let files = 0;
+  async function walk(current) {
+    let entries = [];
+    try { entries = await fsp.readdir(current, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (recursive) await walk(full);
+      } else if (entry.isFile()) {
+        try {
+          const stat = await fsp.stat(full);
+          bytes += stat.size;
+          files += 1;
+        } catch {}
+      }
+    }
+  }
+  await walk(dir);
+  return { bytes, files };
+}
+
+async function storageSnapshot() {
+  const [media, thumbs, frames, exports, data] = await Promise.all([
+    directoryStats(mediaDir, { recursive: false }),
+    directoryStats(thumbDir),
+    directoryStats(frameDir),
+    directoryStats(exportDir),
+    directoryStats(dataDir)
+  ]);
+  return {
+    media,
+    thumbs,
+    frames,
+    exports,
+    data,
+    total: media.bytes + thumbs.bytes + frames.bytes + exports.bytes + data.bytes,
+    assets: assets.length,
+    dataRoot
+  };
+}
+
+app.get('/api/storage', async (req, res) => {
+  try { res.json(await storageSnapshot()); }
+  catch (error) { res.status(500).json({ error: 'Could not read storage usage', detail: String(error?.message || error) }); }
+});
+
+app.post('/api/storage/cleanup', async (req, res) => {
+  const scope = String(req.body?.scope || '');
+  try {
+    if (scope === 'frames') {
+      await fsp.rm(frameDir, { recursive: true, force: true });
+      await fsp.mkdir(frameDir, { recursive: true });
+    } else if (scope === 'exports') {
+      const entries = await fsp.readdir(exportDir, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries) {
+        if (entry.isFile()) await fsp.unlink(path.join(exportDir, entry.name)).catch(() => {});
+      }
+    } else if (scope === 'thumbs') {
+      const keep = new Set(assets.map((asset) => path.basename(asset.thumbnail || '')).filter(Boolean));
+      const entries = await fsp.readdir(thumbDir, { withFileTypes: true }).catch(() => []);
+      for (const entry of entries) {
+        if (entry.isFile() && !keep.has(entry.name)) await fsp.unlink(path.join(thumbDir, entry.name)).catch(() => {});
+      }
+    } else if (scope === 'unused-assets') {
+      const keep = Array.isArray(req.body?.keepAssetIds) ? new Set(req.body.keepAssetIds.map(String)) : null;
+      if (!keep) return res.status(400).json({ error: 'keepAssetIds is required for unused-assets cleanup' });
+      const removed = [];
+      const remaining = [];
+      for (const asset of assets) {
+        if (keep.has(asset.id)) { remaining.push(asset); continue; }
+        if (asset.source !== 'demo') {
+          try { await fsp.unlink(path.join(mediaDir, asset.url.replace(/^\/media\//, ''))); } catch {}
+          if (asset.thumbnail) {
+            try { await fsp.unlink(path.join(mediaDir, asset.thumbnail.replace(/^\/media\//, ''))); } catch {}
+          }
+        }
+        removed.push({ id: asset.id, name: asset.name, size: asset.size || 0 });
+      }
+      assets = remaining;
+      await saveAssets(assets);
+      return res.json({ ok: true, removed, removedBytes: removed.reduce((sum, asset) => sum + asset.size, 0), storage: await storageSnapshot() });
+    } else {
+      return res.status(400).json({ error: 'Unknown cleanup scope' });
+    }
+    res.json({ ok: true, storage: await storageSnapshot() });
+  } catch (error) {
+    res.status(500).json({ error: 'Storage cleanup failed', detail: String(error?.message || error) });
+  }
 });
 
 app.patch('/api/assets/:id', async (req, res) => {

@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.15.0 — 2026-11-08
+
+### Added
+
+- **Storage management** in Settings → Storage
+  - real usage for source media, thumbnails, generated frames, exports and project data
+  - clear generated frame/contact-sheet caches
+  - remove library assets not used by the current project and delete their source files
+  - clear finished exports
+  - confirmation for every destructive action
+- **Delete source from library** button on audio cards (including TikTok and Lots of Sounds imports)
+- Usage-aware removal warnings when a file is still referenced by timeline clips
+- Shared source-file + thumbnail deletion for imported stock and extracted audio
+
+### Clarified
+
+- Deleting a timeline clip intentionally keeps the source file in the library so undo/reuse works
+- Asset deletion is a separate explicit action
+- Storage usage is exposed through `/api/storage`; cleanup is handled by `/api/storage/cleanup`
+
+### Verification
+
+- 34/34 Playwright tests pass
+- Added storage usage and Storage-panel tests
+- Typecheck, production build, AppImage, DEB and RPM pass
+- Bundled yt-dlp packaging verified again
+
 ## 1.14.0 — 2026-11-08
 
 ### Added

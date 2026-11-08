@@ -14,6 +14,7 @@ export function MediaPanel() {
   const uploading = useEditorStore((state) => state.uploading);
   const uploadProgress = useEditorStore((state) => state.uploadProgress);
   const removeAsset = useEditorStore((state) => state.removeAsset);
+  const project = useEditorStore((state) => state.project);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'video' | 'image'>('all');
   const [dragging, setDragging] = useState(false);
@@ -106,7 +107,13 @@ export function MediaPanel() {
               selected={selectedAssetId === asset.id}
               onSelect={() => setSelectedAsset(asset.id)}
               onAdd={() => addAssetToTimeline(asset.id)}
-              onRemove={asset.source !== 'demo' ? () => void removeAsset(asset.id) : undefined}
+              onRemove={asset.source !== 'demo' ? () => {
+                const used = project?.clips.filter((clip) => clip.assetId === asset.id).length || 0;
+                const message = used
+                  ? `“${asset.name}” is used by ${used} timeline ${used === 1 ? 'clip' : 'clips'}. Removing it from the library will leave those clips without media. Remove it anyway?`
+                  : `Remove “${asset.name}” and delete its source file from disk?`;
+                if (window.confirm(message)) void removeAsset(asset.id);
+              } : undefined}
             />
           ))}
         </div>

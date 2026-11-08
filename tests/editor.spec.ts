@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.14.0');
+  expect(capabilities.version).toBe('1.15.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -871,4 +871,21 @@ test('TikTok import refuses non-TikTok links and requires consent', async ({ pag
   await page.locator('.tiktok-url-row input').fill('https://www.tiktok.com/@creator/video/1234567890');
   await page.locator('.tiktok-consent input').check();
   await expect(extractButton).toBeEnabled();
+});
+test('storage reports disk usage and exposes cleanup controls', async ({ page, request }) => {
+  const usage = await request.get('/api/storage');
+  expect(usage.ok()).toBeTruthy();
+  const data = await usage.json();
+  expect(typeof data.total).toBe('number');
+  expect(data.media).toHaveProperty('bytes');
+  expect(data.frames).toHaveProperty('files');
+  expect(data.assets).toBeGreaterThanOrEqual(0);
+
+  await page.goto('/');
+  await page.locator('.topbar-actions .icon-btn[title="Settings (Ctrl+,)"]').click();
+  await page.locator('.settings-nav button', { hasText: 'Storage' }).click();
+  await expect(page.locator('.settings-content')).toContainText('Disk usage');
+  await expect(page.locator('.settings-content')).toContainText('Generated frame cache');
+  await expect(page.locator('.settings-content')).toContainText('Unused library media');
+  await expect(page.locator('.settings-content')).toContainText('Exports');
 });

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.0 — 2026-11-08
+
+The visualizer and gain release.
+
+### Added
+
+- Dedicated **Audio visualizer** section in the Sound panel with Spectrum, Waveform and Radial styles
+- **0–1000% gain** for clip volume, track level and preview master volume
+- A master **DynamicsCompressor limiter** protects boosted output from clipping
+
+### Changed
+
+- Removed the visualizer overlay and toolbar toggle from the program monitor; the canvas now stays clean
+- The visualizer is controlled by Settings → Playback and styled directly in the Sound panel
+- Volume readout beside the preview master slider shows 0–1000%
+
 ## 1.5.0 — 2026-11-08
 
 The timeline UX and editing release.

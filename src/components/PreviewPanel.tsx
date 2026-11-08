@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  AudioLines, Camera, ChevronsLeft, ChevronsRight, Grid3X3, Maximize2, Pause, Play, ScanLine,
+  Camera, ChevronsLeft, ChevronsRight, Grid3X3, Maximize2, Pause, Play, ScanLine,
   StepBack, StepForward, Volume2, VolumeX
 } from 'lucide-react';
 import { useEditorStore, selectSelectedClip } from '../store/editorStore';
@@ -10,7 +10,6 @@ import { canvasRenderer } from '../engine/canvasRenderer';
 import { mediaPool } from '../engine/mediaPool';
 import type { Clip, Project } from '../types';
 import { TransformOverlay } from './TransformOverlay';
-import { AudioVisualizer } from './AudioVisualizer';
 
 export function PreviewPanel() {
   const project = useEditorStore((state) => state.project);
@@ -23,8 +22,6 @@ export function PreviewPanel() {
   const selectedClip = useEditorStore(selectSelectedClip);
   const exportOpen = useEditorStore((state) => state.exportOpen);
   const previewQuality = useSettingsStore((state) => state.previewQuality);
-  const visualizer = useSettingsStore((state) => state.visualizer);
-  const updateSettings = useSettingsStore((state) => state.update);
   const togglePlayback = useEditorStore((state) => state.togglePlayback);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const setPlaying = useEditorStore((state) => state.setPlaying);
@@ -160,9 +157,6 @@ export function PreviewPanel() {
           <span className="preview-format-badge">{ratioLabel}</span>
         </div>
         <div className="preview-head-right">
-          <button type="button" className={`icon-btn ${visualizer ? 'is-active' : ''}`} title="Audio visualizer" onClick={() => updateSettings({ visualizer: !visualizer })}>
-            <AudioLines size={16} />
-          </button>
           <button type="button" className={`icon-btn ${showSafeArea ? 'is-active' : ''}`} title="Safe margins" onClick={() => setShowSafeArea(!showSafeArea)}>
             <ScanLine size={16} />
           </button>
@@ -216,7 +210,6 @@ export function PreviewPanel() {
             <span className="canvas-tc">{formatTimecode(playhead, project.fps)}</span>
             <span className="canvas-status">{isPlaying ? 'PLAYING' : 'READY'}</span>
           </div>
-          {visualizer && <AudioVisualizer playing={isPlaying} />}
           {!isPlaying && <div className="canvas-watermark">{project.name}</div>}
         </div>
       </div>
@@ -252,13 +245,15 @@ export function PreviewPanel() {
             type="range"
             className="volume-range"
             min={0}
-            max={1}
+            max={10}
             step={0.01}
             value={masterVolume}
-            title="Preview volume"
+            title={`Preview volume: ${Math.round(masterVolume * 100)}% (0–1000%)`}
+            aria-valuetext={`${Math.round(masterVolume * 100)} percent`}
             onChange={(event) => setMasterVolume(Number(event.target.value))}
-            style={{ '--range-progress': `${masterVolume * 100}%` } as React.CSSProperties}
+            style={{ '--range-progress': `${masterVolume * 10}%` } as React.CSSProperties}
           />
+          <span className="volume-percent">{Math.round(masterVolume * 100)}%</span>
         </div>
       </div>
     </section>

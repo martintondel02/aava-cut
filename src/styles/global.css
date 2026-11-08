@@ -2266,3 +2266,26 @@ body { zoom: var(--ui-scale, 1); }
   pointer-events: none;
   box-shadow: 0 0 0 1px rgba(114,245,209,.08);
 }
+
+/* ---------- Audio panel visualizer & gain readout ---------- */
+.volume-percent {
+  width: 34px;
+  flex: 0 0 34px;
+  color: var(--faint);
+  font-size: 9px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.audio-analyser-head .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+}
+.audio-analyser-head span:last-child { font-size: 8px; color: var(--faint); }
+.audio-analyser-hint { color: var(--faint); font-size: 8px; line-height: 1.4; }
+.audio-analyser-card .segmented { height: 27px; }
+.audio-analyser-card .segmented button { font-size: 9px; }
+@media (max-width: 1280px) {
+  .volume-percent { display: none; }
+}

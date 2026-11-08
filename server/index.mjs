@@ -296,7 +296,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.5.0',
+    version: '1.6.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -311,7 +311,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.5.0',
+    version: '1.6.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs

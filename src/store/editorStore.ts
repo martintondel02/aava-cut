@@ -427,7 +427,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSnapping: (snapping) => set({ snapping }),
   setShowSafeArea: (show) => set({ showSafeArea: show }),
   setShowGrid: (show) => set({ showGrid: show }),
-  setMasterVolume: (volume) => set({ masterVolume: clamp(volume, 0, 1) }),
+  setMasterVolume: (volume) => set({ masterVolume: clamp(volume, 0, 10) }),
 
   selectClip: (clipId, additive = false) => {
     if (!clipId) {

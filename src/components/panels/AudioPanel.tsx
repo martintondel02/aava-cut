@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AudioLines, Mic, Music2, Pause, Play, Plus, Search, Square, X } from 'lucide-react';
+import { useSettingsStore } from '../../store/settingsStore';
+import { Segmented } from '../ui';
 import { useEditorStore } from '../../store/editorStore';
 import { formatBytes, formatTime } from '../../lib/utils';
 import { WaveformMini } from '../Waveform';
@@ -17,6 +19,9 @@ export function AudioPanel() {
   const [search, setSearch] = useState('');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const isPlaying = useEditorStore((state) => state.isPlaying);
+  const visualizer = useSettingsStore((state) => state.visualizer);
+  const visualizerStyle = useSettingsStore((state) => state.visualizerStyle);
+  const updateSettings = useSettingsStore((state) => state.update);
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -134,10 +139,21 @@ export function AudioPanel() {
         </button>
       </div>
 
-      <div className="audio-analyser-card">
-        <div className="audio-analyser-head"><span className="eyebrow">Live analyser</span><span>master output</span></div>
-        <AudioVisualizer playing={isPlaying} variant="panel" />
-      </div>
+      {visualizer && (
+        <div className="audio-analyser-card">
+          <div className="audio-analyser-head">
+            <span className="eyebrow"><AudioLines size={13} /> Audio visualizer</span>
+            <span>master output</span>
+          </div>
+          <AudioVisualizer playing={isPlaying} variant="panel" />
+          <Segmented
+            options={[{ value: 'spectrum', label: 'Spectrum' }, { value: 'waveform', label: 'Waveform' }, { value: 'radial', label: 'Radial' }]}
+            value={visualizerStyle}
+            onChange={(value) => updateSettings({ visualizerStyle: value })}
+          />
+          <span className="audio-analyser-hint">0–1000% source and track gain is limited at the master output.</span>
+        </div>
+      )}
 
       <MasterEq />
 

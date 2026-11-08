@@ -434,7 +434,7 @@ export function Inspector() {
         {(clip.kind === 'audio' || clip.kind === 'video') && (
           <Section title="Audio">
             <SliderRow
-              label="Volume" suffix="%" value={clip.volume * 100} min={0} max={100} step={1}
+              label="Volume" suffix="%" value={clip.volume * 100} min={0} max={1000} step={1}
               onStart={begin} onCommit={commit}
               onChange={(value) => updateClip(clip.id, { volume: value / 100 }, false)}
               onReset={() => updateClip(clip.id, { volume: 1 })}
@@ -451,7 +451,8 @@ export function Inspector() {
               onChange={(value) => updateClip(clip.id, { audioFadeOut: value }, false)}
               onReset={() => updateClip(clip.id, { audioFadeOut: 0 })}
             />
-            <div className="audio-level-meter"><span style={{ width: `${clip.volume * 100}%` }} /><i /><i /><i /><i /></div>
+            <div className="audio-level-meter"><span style={{ width: `${Math.min(100, clip.volume * 100)}%` }} /><i /><i /><i /><i /></div>
+            <span className="field-hint">0–1000%. The master limiter protects the output from clipping above 100%.</span>
             {clipTrack && (
               <div className="track-tone-block">
                 <div className="track-tone-head">
@@ -477,7 +478,7 @@ export function Inspector() {
                   onChange={(value) => updateTrack(clipTrack.id, { eq: { low: clipTrack.eq?.low || 0, mid: clipTrack.eq?.mid || 0, high: value } }, false)}
                 />
                 <SliderRow
-                  label="Track level" suffix="%" value={(clipTrack.gain ?? 1) * 100} min={0} max={150} step={1}
+                  label="Track level" suffix="%" value={(clipTrack.gain ?? 1) * 100} min={0} max={1000} step={1}
                   onStart={begin} onCommit={commit}
                   onChange={(value) => updateTrack(clipTrack.id, { gain: value / 100 }, false)}
                   onReset={() => updateTrack(clipTrack.id, { gain: 1 })}

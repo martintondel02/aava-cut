@@ -92,6 +92,7 @@ export class MediaPool {
   private capturing = false;
   onMediaUpdate: (() => void) | null = null;
   private lastMasterVolume = 0.8;
+  private limiter: DynamicsCompressorNode | null = null;
   private currentProject: Project | null = null;
 
   ensureHost() {
@@ -112,6 +113,12 @@ export class MediaPool {
       this.masterInput = context.createGain();
       this.master = context.createGain();
       this.master.gain.value = this.lastMasterVolume;
+      this.limiter = context.createDynamicsCompressor();
+      this.limiter.threshold.value = -1;
+      this.limiter.knee.value = 0;
+      this.limiter.ratio.value = 20;
+      this.limiter.attack.value = 0.003;
+      this.limiter.release.value = 0.2;
       this.analyser = context.createAnalyser();
       this.analyser.fftSize = 2048;
       this.analyser.smoothingTimeConstant = 0.78;
@@ -129,7 +136,8 @@ export class MediaPool {
         node = filter;
       }
       node.connect(this.master);
-      this.master.connect(this.analyser);
+      this.master.connect(this.limiter);
+      this.limiter.connect(this.analyser);
       this.connectOutput();
       this.applyMix();
     }
@@ -230,7 +238,7 @@ export class MediaPool {
       if (this.master && this.context) this.master.gain.value = 1;
       return;
     }
-    this.lastMasterVolume = clamp(volume, 0, 1);
+    this.lastMasterVolume = clamp(volume, 0, 10);
     if (this.master && this.context) this.master.gain.value = this.lastMasterVolume;
   }
 

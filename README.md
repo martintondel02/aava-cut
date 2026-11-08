@@ -43,9 +43,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.5.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.5.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.5.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`LumaCut-1.6.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.6.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.6.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -57,7 +57,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.5.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.6.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -78,7 +78,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.5.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./LumaCut-1.6.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -87,7 +87,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.5.0-amd64.deb
+sudo apt install ./LumaCut-1.6.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -105,14 +105,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.5.0-x86_64.AppImage
-./LumaCut-1.5.0-x86_64.AppImage
+chmod +x LumaCut-1.6.0-x86_64.AppImage
+./LumaCut-1.6.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.5.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.6.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -146,14 +146,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.5.0-x86_64.AppImage
-./LumaCut-1.5.0-x86_64.AppImage
+chmod +x LumaCut-1.6.0-x86_64.AppImage
+./LumaCut-1.6.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.5.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.6.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -217,7 +217,8 @@ Most editors make you choose between a polished timeline and owning your footage
 
 | | |
 | --- | --- |
-| **Visualizer** | Live spectrum, waveform ribbon and radial pulse, drawn from the master analyser |
+| **Visualizer** | Dedicated spectrum, waveform and radial analyser section in the Sound panel — no monitor overlay |
+| **Gain** | Clip and track gain from 0–1000%; preview master volume also 0–1000%, with a limiter protecting the output |
 | **Master EQ** | 10-band graphic equalizer with live curve and Flat / Podcast / Cinematic / Bass / Vocal / Airy presets |
 | **Track tone** | Per-track low shelf, mid peak and high shelf, ±12 dB, plus track gain and solo |
 | **Preview = export** | The track EQ, master EQ and gain bus feed both the monitor and the capture destination |
@@ -232,7 +233,6 @@ Most editors make you choose between a polished timeline and owning your footage
 | **Canvas compositor** | Up to 4K-shaped projects, 16:9 / 9:16 / 1:1 / 4:5 / 21:9 |
 | **Layer transforms** | Move, scale, rotate, flip, opacity and blend modes in the preview |
 | **Monitoring** | Safe margins, rule-of-thirds grid, snapshot, fullscreen |
-| **Visualizer overlay** | Toggle from the monitor chrome or Settings → Playback |
 
 ### Type, captions & design
 
@@ -309,7 +309,7 @@ Most editors make you choose between a polished timeline and owning your footage
 
 ### Local auto captions
 
-LumaCut 1.5 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
+LumaCut 1.6 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
 
 - **Default model:** Whisper large-v3-turbo q5_0, 547 MiB, multilingual, comfortable on an 8 GB GPU.
 - **Smaller model:** Whisper small, 466 MiB, for lower-end GPUs and CPUs.
@@ -324,7 +324,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for requirements, model man
 
 ## AMD Radeon acceleration
 
-LumaCut 1.5.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.6.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -361,7 +361,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.5.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.6.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
@@ -570,6 +570,13 @@ The test suite covers the blank first-run project, canvas painting, split/undo, 
 
 ## Roadmap
 
+**1.6 “Visualizer & Gain” is shipped.**
+
+- [x] Moved the audio visualizer out of the program monitor into its own Sound panel section
+- [x] Spectrum / waveform / radial styles selectable in the panel
+- [x] Clip, track and preview master gain from 0–1000%
+- [x] Master limiter protects boosted output from clipping
+
 **1.5 “Timeline UX” is shipped.**
 
 - [x] Ctrl/⌘-drag marquee selection, Ctrl/⌘-click and select-all
@@ -636,7 +643,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for auto-caption setup and 
 - **Auto captions are local and review-first.** Whisper can mishear music, overlapping speech or names; edit cues before applying them. Speaker labels are not yet included.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
-- The audio visualizer is **monitor-only** in 1.5. It is intentionally not baked into the exported video.
+- The audio visualizer is a **separate Sound panel section** in 1.6. It is not drawn over the program monitor and is not baked into exports.
 - **HDR10 is converted from the SDR canvas.** It sets PQ/BT.2020 and 10-bit output but cannot restore highlights that were never in the SDR timeline.
 - **H.265 software encoding needs libx265.** Fedora's stock `ffmpeg-free` may not include it; install RPM Fusion FFmpeg or use AV1 hardware encoding.
 - Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`. H.265 requires `libx265` in that FFmpeg build.

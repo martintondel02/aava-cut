@@ -315,7 +315,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.5.0');
+  expect(capabilities.version).toBe('1.6.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -420,4 +420,27 @@ test('context menu and playhead stay aligned at 120% UI scale', async ({ page })
   const playhead = await page.locator('.timeline-playhead').boundingBox();
   if (!playhead) throw new Error('playhead missing');
   expect(Math.abs((playhead.x - ruler.x) - offset)).toBeLessThan(2);
+});
+test('visualizer lives in the Sound panel and gain reaches 1000%', async ({ page }) => {
+  await page.goto('/');
+  await addFixtureAudio(page);
+  await expect(page.locator('.preview-panel .audio-visualizer')).toHaveCount(0);
+  await expect(page.locator('.audio-panel .audio-visualizer')).toHaveCount(1);
+  await expect(page.locator('.audio-panel .audio-analyser-card .segmented button')).toHaveCount(3);
+
+  const master = page.locator('.volume-range');
+  expect(await master.getAttribute('max')).toBe('10');
+  await master.focus();
+  await master.press('End');
+  await expect(page.locator('.volume-percent')).toHaveText('1000%');
+
+  await page.locator('.timeline-clip.clip-audio').first().click({ position: { x: 80, y: 20 } });
+  const audioSection = page.locator('.inspector-section', { hasText: 'Audio' }).first();
+  const volume = audioSection.locator('.slider-row', { hasText: 'Volume' }).locator('input[type=range]').first();
+  const trackLevel = audioSection.locator('.slider-row', { hasText: 'Track level' }).locator('input[type=range]').first();
+  expect(await volume.getAttribute('max')).toBe('1000');
+  expect(await trackLevel.getAttribute('max')).toBe('1000');
+  await volume.focus();
+  await volume.press('End');
+  expect(await volume.inputValue()).toBe('1000');
 });

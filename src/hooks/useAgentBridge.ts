@@ -19,7 +19,7 @@ function makeToken() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `lc_${crypto.randomUUID().replace(/-/g, '')}`;
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
-  return `lc_${Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')}`;
+  return `av_${Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')}`;
 }
 
 async function agentCall(path: string, token: string, init: RequestInit = {}) {
@@ -28,7 +28,7 @@ async function agentCall(path: string, token: string, init: RequestInit = {}) {
     headers: {
       ...(init.headers || {}),
       'content-type': 'application/json',
-      'x-lumacut-agent-token': token
+      'x-aava-agent-token': token
     }
   });
 }

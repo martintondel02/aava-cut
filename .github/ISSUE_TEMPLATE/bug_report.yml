@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in LumaCut is broken or behaves unexpectedly.
+description: Something in Aava Cut is broken or behaves unexpectedly.
 title: "[bug] "
 labels: ["bug"]
 body:
@@ -19,7 +19,7 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open LumaCut
+        1. Open Aava Cut
         2. Import a clip and add it to the timeline
         3. ...
     validations:
@@ -33,8 +33,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: LumaCut version / commit
-      placeholder: e.g. 1.15.0 or main@abc123
+      label: Aava Cut version / commit
+      placeholder: e.g. 2.0.0 or main@abc123
     validations:
       required: true
   - type: dropdown

@@ -1,23 +1,55 @@
 const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 const http = require('node:http');
 const { pathToFileURL } = require('node:url');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const PORT = Number(process.env.LUMACUT_PORT || 4320);
+const PORT = Number(process.env.AAVA_PORT || process.env.LUMACUT_PORT || 4320);
 const URL = `http://127.0.0.1:${PORT}`;
 const isDev = process.argv.includes('--dev');
 let mainWindow = null;
 let serverImported = false;
 
-app.setName('LumaCut');
+app.setName('Aava Cut');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 function resolveDataRoot() {
   try {
-    return path.join(app.getPath('videos'), 'LumaCut');
+    const videos = app.getPath('videos');
+    const next = path.join(videos, 'Aava');
+    const previous = path.join(videos, 'LumaCut');
+    if (fs.existsSync(next)) return next;
+    if (fs.existsSync(previous)) {
+      try {
+        fs.renameSync(previous, next);
+        return next;
+      } catch {
+        try {
+          fs.cpSync(previous, next, { recursive: true });
+          return next;
+        } catch {
+          return previous;
+        }
+      }
+    }
+    return next;
   } catch {
-    return path.join(app.getPath('userData'), 'LumaCut');
+    return path.join(app.getPath('userData'), 'Aava');
+  }
+}
+
+function migrateLegacyProfile() {
+  try {
+    const appData = app.getPath('appData');
+    const previous = path.join(appData, 'LumaCut');
+    const next = app.getPath('userData');
+    if (!fs.existsSync(previous)) return;
+    if (fs.existsSync(next) && fs.readdirSync(next).length) return;
+    fs.mkdirSync(path.dirname(next), { recursive: true });
+    fs.cpSync(previous, next, { recursive: true });
+  } catch {
+    // A failed profile copy must never block the editor from starting.
   }
 }
 
@@ -43,8 +75,9 @@ async function waitForServer(timeoutMs = 25000) {
 
 async function startEmbeddedServer() {
   process.env.PORT = String(PORT);
+  process.env.AAVA_PROD = '1';
   process.env.LUMACUT_PROD = '1';
-  process.env.LUMACUT_DATA_DIR = process.env.LUMACUT_DATA_DIR || resolveDataRoot();
+  process.env.AAVA_DATA_DIR = process.env.AAVA_DATA_DIR || process.env.LUMACUT_DATA_DIR || resolveDataRoot();
   const serverUrl = pathToFileURL(path.join(PROJECT_ROOT, 'server', 'index.mjs')).href;
   // The server is bundled with the app; importing it runs Express inside the
   // Electron main process, so users do not need Node installed separately.
@@ -61,7 +94,7 @@ async function createWindow() {
     backgroundColor: '#07090b',
     show: false,
     autoHideMenuBar: true,
-    title: 'LumaCut',
+    title: 'Aava Cut',
     icon: path.join(PROJECT_ROOT, 'public', 'icon.png'),
     webPreferences: {
       contextIsolation: true,
@@ -85,26 +118,27 @@ async function createWindow() {
   try {
     await mainWindow.loadURL(target);
   } catch (error) {
-    dialog.showErrorBox('LumaCut could not start', `Could not load ${target}.\n\n${String(error)}`);
+    dialog.showErrorBox('Aava Cut could not start', `Could not load ${target}.\n\n${String(error)}`);
   }
   if (isDev) mainWindow.webContents.openDevTools({ mode: 'detach' });
 }
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
+  migrateLegacyProfile();
   if (!isDev) {
     if (!(await checkServer())) {
       try {
         await startEmbeddedServer();
       } catch (error) {
-        dialog.showErrorBox('LumaCut server did not start', String(error));
+        dialog.showErrorBox('Aava Cut server did not start', String(error));
         app.quit();
         return;
       }
     }
     const ready = await waitForServer();
     if (!ready) {
-      dialog.showErrorBox('LumaCut server did not start', 'The local media server could not be reached.');
+      dialog.showErrorBox('Aava Cut server did not start', 'The local media server could not be reached.');
       app.quit();
       return;
     }

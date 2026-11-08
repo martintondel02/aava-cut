@@ -8,24 +8,9 @@ import { useEditorStore } from '../store/editorStore';
 import { useClickOutside, useKeyboardHelpModal } from '../hooks/useClickOutside';
 import { QuickThemeButton } from './SettingsPage';
 import { useSettingsStore } from '../store/settingsStore';
+import { LogoMark } from './brand/LogoMark';
 
-export function LogoMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" aria-hidden="true">
-      <defs>
-        <linearGradient id="lumacut-mark" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#7BFFDF" />
-          <stop offset="0.55" stopColor="#56D9C1" />
-          <stop offset="1" stopColor="#6A8DFF" />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="2" width="32" height="32" rx="10" fill="#0C1418" stroke="rgba(255,255,255,.12)" />
-      <path d="M10 24.2V11.8h4.05v9.1h7.1v3.3H10Z" fill="url(#lumacut-mark)" />
-      <path d="M23.6 11.8h3.9v7.4c0 3.4-2.2 5.3-5.3 5.3h-.5v-3.3h.4c1.1 0 1.5-.6 1.5-1.8v-7.6Z" fill="url(#lumacut-mark)" opacity=".75" />
-      <circle cx="26.6" cy="9.4" r="2.1" fill="#FFCE7A" />
-    </svg>
-  );
-}
+export { LogoMark } from './brand/LogoMark';
 
 export function TopBar() {
   const project = useEditorStore((state) => state.project);
@@ -103,8 +88,8 @@ export function TopBar() {
         <div className="brand-lockup">
           <LogoMark size={31} />
           <div className="brand-text">
-            <span className="brand-name">LumaCut</span>
-            <span className="brand-edition">STUDIO</span>
+            <span className="brand-name">Aava</span>
+            <span className="brand-edition">CUT</span>
           </div>
         </div>
         <div className="file-menu-wrap" ref={fileRef}>
@@ -118,7 +103,7 @@ export function TopBar() {
               <button type="button" onClick={() => { saveProjectToServer(); setFileOpen(false); }}><Save size={15} /> Save to disk <kbd>Ctrl S</kbd></button>
               <button type="button" onClick={() => { exportProjectFile(); setFileOpen(false); }}><Download size={15} /> Download project file</button>
               <div className="popover-separator" />
-              <button type="button" onClick={openProjectFile}><Upload size={15} /> Import .lumacut</button>
+              <button type="button" onClick={openProjectFile}><Upload size={15} /> Import .aava</button>
             </div>
           )}
         </div>
@@ -207,7 +192,7 @@ export function TopBar() {
       <input
         ref={projectFileRef}
         type="file"
-        accept=".lumacut,.json,application/json"
+        accept=".aava,.lumacut,.json,application/json"
         hidden
         onChange={async (event) => {
           const file = event.target.files?.[0];
@@ -216,7 +201,7 @@ export function TopBar() {
           try {
             importProject(JSON.parse(await file.text()));
           } catch {
-            addToast('That file is not a valid LumaCut project', 'error');
+            addToast('That file is not a valid Aava Cut project', 'error');
           }
         }}
       />

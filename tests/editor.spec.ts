@@ -77,7 +77,7 @@ async function addThreeClips(page: import('@playwright/test').Page) {
   await expect(page.locator('.timeline-clip')).toHaveCount(3);
 }
 
-test.describe('LumaCut editor', () => {
+test.describe('Aava Cut editor', () => {
   test('starts blank and paints an imported clip', async ({ page, request }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -141,7 +141,7 @@ test.describe('LumaCut editor', () => {
   });
 });
 
-test.describe('LumaCut editor tools', () => {
+test.describe('Aava Cut editor tools', () => {
   test('settings applies theme and interface scale', async ({ page }) => {
     await page.goto('/');
     await page.locator('.topbar-actions .icon-btn[title="Settings (Ctrl+,)"]').click();
@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.15.0');
+  expect(capabilities.version).toBe('2.0.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -618,15 +618,15 @@ test('Agent Bridge settings exposes a live MCP config', async ({ page }) => {
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.agent-bridge-status')).toContainText('Live');
-  await expect(page.locator('.agent-bridge-field code').nth(1)).toContainText('lc_');
-  await expect(page.locator('.agent-bridge-config pre')).toContainText('LUMACUT_AGENT_TOKEN');
+  await expect(page.locator('.agent-bridge-field code').nth(1)).toContainText(/^(lc_|av_)/);
+  await expect(page.locator('.agent-bridge-config pre')).toContainText('AAVA_AGENT_TOKEN');
   await expect(page.locator('.agent-bridge-config pre')).toContainText('mcp.mjs');
   await toggle.click();
   await expect(page.locator('.agent-bridge-status')).toContainText('Off');
 });
 test('MCP stdio bridge exposes project and command tools', async ({ request }) => {
   const token = 'mcp-test-token-1234567890';
-  const headers = { 'x-lumacut-agent-token': token };
+  const headers = { 'x-aava-agent-token': token };
   const project = {
     id: 'mcp-test', version: 2, name: 'MCP test', width: 1920, height: 1080, fps: 30,
     background: '#000000', tracks: [{ id: 'track-main', name: 'Main', kind: 'video', muted: false, hidden: false, locked: false }],
@@ -636,14 +636,14 @@ test('MCP stdio bridge exposes project and command tools', async ({ request }) =
   expect(sessionResponse.ok()).toBeTruthy();
   const session = await sessionResponse.json();
   const env = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)) as Record<string, string>;
-  env.LUMACUT_AGENT_URL = API;
-  env.LUMACUT_AGENT_TOKEN = token;
+  env.AAVA_AGENT_URL = API;
+  env.AAVA_AGENT_TOKEN = token;
   const transport = new StdioClientTransport({
     command: 'node',
     args: [path.join(process.cwd(), 'server/mcp.mjs')],
     env
   });
-  const client = new Client({ name: 'lumacut-test', version: '1.0.0' });
+  const client = new Client({ name: 'aava-test', version: '2.0.0' });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
@@ -667,8 +667,8 @@ test('live Agent Bridge applies an agent command to the open editor', async ({ p
   await expect(page.locator('.agent-bridge-status')).toContainText('Live');
   const configText = await page.locator('.agent-bridge-config pre').textContent();
   const config = JSON.parse(configText || '{}');
-  const token = config.mcpServers.lumacut.env.LUMACUT_AGENT_TOKEN as string;
-  const headers = { 'x-lumacut-agent-token': token };
+  const token = config.mcpServers.aava.env.AAVA_AGENT_TOKEN as string;
+  const headers = { 'x-aava-agent-token': token };
   const current = await (await request.get('/api/agent/current', { headers })).json();
   const clipId = current.project.clips[0].id as string;
   const changed = await request.post(`/api/agent/sessions/${current.id}/commands`, {
@@ -888,4 +888,11 @@ test('storage reports disk usage and exposes cleanup controls', async ({ page, r
   await expect(page.locator('.settings-content')).toContainText('Generated frame cache');
   await expect(page.locator('.settings-content')).toContainText('Unused library media');
   await expect(page.locator('.settings-content')).toContainText('Exports');
+});
+test('shows the Aava Cut brand shell', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/Aava Cut/);
+  await expect(page.locator('.brand-name')).toHaveText('Aava');
+  await expect(page.locator('.brand-edition')).toHaveText('CUT');
+  await expect(page.locator('body')).not.toContainText('LumaCut');
 });

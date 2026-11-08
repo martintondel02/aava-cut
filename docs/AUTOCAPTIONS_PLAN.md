@@ -1,3 +1,5 @@
+> **Brand note:** This document is a historical plan written under the LumaCut name. The product is now **Aava Cut**, the first release from **Aava**.
+
 # LumaCut Auto Captions — Implementation Plan
 
 > **Status: implemented in LumaCut 1.4.0.**

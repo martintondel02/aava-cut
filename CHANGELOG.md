@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.0.0 — 2026-11-08
+
+### Rebrand
+
+- **LumaCut is now Aava Cut**, the first product from **Aava**.
+- New Aava identity: mark, app icon, banner, lockup and palette.
+- New product name in the window, top bar, boot screen, About, installer, desktop entry, docs and release artifacts.
+- New tagline: **Every craft. One current.**
+- Public home: `https://aava.dev`.
+
+### Added
+
+- **Aava brand guide** at [`docs/BRAND.md`](docs/BRAND.md)
+  - name and meaning
+  - product architecture for Aava Studio, Office and Dev
+  - logo, colour, typography, iconography and voice
+  - naming rules and launch checklist
+  - migration guidance
+- Brand assets under `docs/brand/`.
+
+### Compatibility and migration
+
+- Existing LumaCut media is migrated from `~/Videos/LumaCut` to `~/Videos/Aava` on first packaged launch.
+- Existing settings/profile data is copied from the old Electron profile to the Aava profile.
+- Legacy `.lumacut` project files still load; new saves use `.aava`.
+- Legacy `x-lumacut-agent-token` and `LUMACUT_*` environment variables remain accepted for one transition period; new config uses `AAVA_*` and `x-aava-agent-token`.
+- Internal package and storage identifiers remain transitional to preserve upgrade paths.
+
+### Verification
+
+- Typecheck and production build pass
+- Full 35-test Playwright suite passes
+- AppImage, DEB and RPM build with the new product name and icon
+- Bundled yt-dlp remains included
+
 ## 1.15.0 — 2026-11-08
 
 ### Added

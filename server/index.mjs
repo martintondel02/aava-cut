@@ -11,7 +11,7 @@ import { applyCommands, AGENT_COMMANDS } from '../shared/project-commands.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
-const dataRoot = process.env.LUMACUT_DATA_DIR ? path.resolve(process.env.LUMACUT_DATA_DIR) : root;
+const dataRoot = (process.env.AAVA_DATA_DIR || process.env.LUMACUT_DATA_DIR) ? path.resolve(process.env.AAVA_DATA_DIR || process.env.LUMACUT_DATA_DIR) : root;
 const mediaDir = path.join(dataRoot, 'media');
 const thumbDir = path.join(mediaDir, 'thumbs');
 const frameDir = path.join(mediaDir, 'frames');
@@ -25,7 +25,7 @@ for (const dir of [mediaDir, thumbDir, frameDir, exportDir, dataDir]) fs.mkdirSy
 
 const app = express();
 const PORT = Number(process.env.PORT || 4317);
-const isProd = process.argv.includes('--prod') || process.env.LUMACUT_PROD === '1';
+const isProd = process.argv.includes('--prod') || process.env.AAVA_PROD === '1' || process.env.LUMACUT_PROD === '1';
 app.use(express.json({ limit: '25mb' }));
 
 app.use((req, res, next) => {
@@ -121,6 +121,7 @@ let tiktokBusy = false;
 
 function findYtDlp() {
   const candidates = [
+    process.env.AAVA_YTDLP,
     process.env.LUMACUT_YTDLP,
     path.join(root, '..', 'bin', 'yt-dlp'),
     path.join(root, 'vendor', 'yt-dlp', 'yt-dlp'),
@@ -678,7 +679,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.15.0',
+    version: '2.0.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -693,7 +694,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.15.0',
+    version: '2.0.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -713,9 +714,9 @@ function cleanupAgentSessions() {
 const agentTokenHash = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
 
 function requireAgentToken(req, res, session) {
-  const token = String(req.get('x-lumacut-agent-token') || '');
+  const token = String(req.get('x-aava-agent-token') || req.get('x-lumacut-agent-token') || '');
   if (!token || agentTokenHash(token) !== session.tokenHash) {
-    res.status(401).json({ error: 'Invalid or missing x-lumacut-agent-token' });
+    res.status(401).json({ error: 'Invalid or missing x-aava-agent-token' });
     return false;
   }
   return true;
@@ -744,7 +745,7 @@ app.get('/api/agent/capabilities', (req, res) => {
     proxyRender: true,
     commands: AGENT_COMMANDS,
     transport: 'local HTTP + MCP stdio server',
-    auth: 'x-lumacut-agent-token required for sessions',
+    auth: 'x-aava-agent-token required for sessions',
     mcpPath: path.join(root, 'server', 'mcp.mjs')
   });
 });
@@ -776,12 +777,12 @@ app.post('/api/agent/sessions', (req, res) => {
 
 app.get('/api/agent/current', (req, res) => {
   cleanupAgentSessions();
-  const token = String(req.get('x-lumacut-agent-token') || '');
-  if (!token) return res.status(401).json({ error: 'Invalid or missing x-lumacut-agent-token' });
+  const token = String(req.get('x-aava-agent-token') || req.get('x-lumacut-agent-token') || '');
+  if (!token) return res.status(401).json({ error: 'Invalid or missing x-aava-agent-token' });
   const hash = agentTokenHash(token);
   const sessions = [...agentSessions.values()].filter((session) => session.tokenHash === hash).sort((a, b) => b.createdAt - a.createdAt);
   const session = sessions[0];
-  if (!session) return res.status(404).json({ error: 'No live agent session. Enable Agent Bridge in LumaCut.' });
+  if (!session) return res.status(404).json({ error: 'No live agent session. Enable Agent Bridge in Aava Cut.' });
   session.expiresAt = Date.now() + AGENT_SESSION_TTL;
   res.json({ id: session.id, revision: session.revision, project: session.project, expiresAt: session.expiresAt, activity: session.activity });
 });
@@ -923,7 +924,7 @@ app.post('/api/tiktok/import', async (req, res) => {
   if (!isTikTokUrl(url)) return res.status(400).json({ error: 'Paste a TikTok video URL', code: 'invalid-url' });
   if (req.body?.confirmed !== true) return res.status(428).json({ error: 'Confirm that you have the rights to use this audio', code: 'consent-required' });
   const binary = findYtDlp();
-  if (!binary) return res.status(503).json({ error: 'The bundled TikTok extractor is missing. Reinstall LumaCut or set LUMACUT_YTDLP.', code: 'yt-dlp-missing' });
+  if (!binary) return res.status(503).json({ error: 'The bundled TikTok extractor is missing. Reinstall Aava Cut or set LUMACUT_YTDLP.', code: 'yt-dlp-missing' });
   if (tiktokBusy) return res.status(429).json({ error: 'Another TikTok extraction is running', code: 'busy' });
   tiktokBusy = true;
   const tempDir = await fsp.mkdtemp(path.join(mediaDir, 'tiktok-'));
@@ -1521,7 +1522,7 @@ function colorArgs(bitDepth, hdr) {
 }
 
 function hevcInstallHelp() {
-  return 'H.265/HEVC needs an FFmpeg build with libx265 or a working hevc_vaapi driver. On Fedora, enable RPM Fusion and install ffmpeg (or swap ffmpeg-free for ffmpeg), then restart LumaCut. See docs/HARDWARE.md.';
+  return 'H.265/HEVC needs an FFmpeg build with libx265 or a working hevc_vaapi driver. On Fedora, enable RPM Fusion and install ffmpeg (or swap ffmpeg-free for ffmpeg), then restart Aava Cut. See docs/HARDWARE.md.';
 }
 
 function resolveExportPlan({ format, codec, bitDepth, hdr, acceleration }) {
@@ -1587,7 +1588,7 @@ function resolveExportPlan({ format, codec, bitDepth, hdr, acceleration }) {
     error.statusCode = 400;
     throw error;
   }
-  const error = new Error(`${meta.label} encoding is unavailable. ${codec === 'hevc' ? hevcInstallHelp() : 'Install an FFmpeg build with an AV1 encoder and restart LumaCut.'}`);
+  const error = new Error(`${meta.label} encoding is unavailable. ${codec === 'hevc' ? hevcInstallHelp() : 'Install an FFmpeg build with an AV1 encoder and restart Aava Cut.'}`);
   error.statusCode = 400;
   throw error;
 }
@@ -1663,7 +1664,7 @@ app.post('/api/export', exportUpload.single('video'), async (req, res) => {
   const hdr = req.body.hdr === '1' || req.body.hdr === 'true';
   const fps = Math.max(12, Math.min(60, Math.round(Number(req.body.fps) || 30)));
   const duration = Math.max(0, Math.min(3600, Number(req.body.duration) || 0));
-  const base = slug(req.body.name || 'lumacut-export');
+  const base = slug(req.body.name || 'aava-cut-export');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   const outName = `${base}-${stamp}.${format}`;
   const outPath = path.join(exportDir, outName);
@@ -1754,7 +1755,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`LumaCut media server → http://127.0.0.1:${PORT}`);
+  console.log(`Aava Cut media server → http://127.0.0.1:${PORT}`);
   console.log(`Library: ${assets.length} assets · ${mediaDir}`);
   console.log(`Data root: ${dataRoot}`);
   console.log(`Encoders: ${h264Encoder} (H.264) · ${vp9Encoder} (VP9)`);

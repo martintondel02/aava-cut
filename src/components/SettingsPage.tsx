@@ -6,6 +6,7 @@ import {
 import { useSettingsStore, type Accent, type ThemeMode } from '../store/settingsStore';
 import { useEditorStore, STORAGE_KEY } from '../store/editorStore';
 import { Segmented, ToggleRow } from './ui';
+import { LogoMark } from './brand/LogoMark';
 import { formatBytes } from '../lib/utils';
 
 type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'pixabay' | 'agent' | 'export' | 'storage' | 'about';
@@ -119,7 +120,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="settings-overlay">
-      <div className="settings-page" role="dialog" aria-modal="true" aria-label="LumaCut settings">
+      <div className="settings-page" role="dialog" aria-modal="true" aria-label="Aava Cut settings">
         <header className="settings-topbar">
           <div className="settings-brand">
             <span className="settings-brand-icon"><Settings2 size={17} /></span>
@@ -148,13 +149,13 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             })}
             <div className="settings-nav-footer">
               <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={14} /> GitHub</a>
-              <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><CircleHelp size={14} /> Roadmap</a>
+              <a href="https://github.com/martintondel02/lumacut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer"><CircleHelp size={14} /> Roadmap</a>
             </div>
           </nav>
 
           <main className="settings-content">
             {section === 'appearance' && (
-              <SettingsSection title="Appearance" eyebrow="Look & feel" description="Choose how LumaCut looks and how much room the interface takes.">
+              <SettingsSection title="Appearance" eyebrow="Look & feel" description="Choose how Aava Cut looks and how much room the interface takes.">
                 <div className="theme-grid">
                   {THEMES.map((item) => {
                     const Icon = item.icon;
@@ -281,7 +282,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <div className="settings-group-head">
                     <div>
                       <span className="settings-label">Pixabay API key</span>
-                      <span className="settings-help">Stored only in this browser's local settings. It is sent to the local LumaCut server to call Pixabay.</span>
+                      <span className="settings-help">Stored only in this browser's local settings. It is sent to the local Aava Cut server to call Pixabay.</span>
                     </div>
                     <span className={`pixabay-key-status ${settings.pixabayApiKey ? 'is-set' : ''}`}>{settings.pixabayApiKey ? 'Key saved' : 'Not connected'}</span>
                   </div>
@@ -370,7 +371,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'storage' && (
-              <SettingsSection title="Storage" eyebrow="Local data" description="LumaCut keeps everything on this machine. These controls only affect local data.">
+              <SettingsSection title="Storage" eyebrow="Local data" description="Aava Cut keeps everything on this machine. These controls only affect local data.">
                 <div className="storage-card">
                   <div><span className="settings-label">Browser autosave</span><span className="settings-help">The current project is saved automatically as you edit.</span></div>
                   <button type="button" className="btn btn-secondary" onClick={clearAutosave}><RotateCcw size={14} /> Clear autosave</button>
@@ -417,19 +418,19 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.15.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About Aava Cut" eyebrow="Version 2.0.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
-                  <div className="about-mark">L</div>
+                  <div className="about-mark"><LogoMark size={50} /></div>
                   <div>
-                    <h2>LumaCut <span>1.15.0</span></h2>
+                    <h2>Aava Cut <span>2.0.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
                 </div>
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.15 storage cleanup and release notes</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/docs/BRAND.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Aava brand guide</strong><em>Logo, colour, voice and product naming</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>Aava Cut 2.0 and brand guide</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>
@@ -444,7 +445,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <div><span>Auto captions</span><strong>Whisper.cpp · local</strong></div>
                   <div><span>Privacy</span><strong>Local only</strong></div>
                 </div>
-                <p className="about-credit">Built with React, TypeScript, Canvas, Web Audio and FFmpeg. Independent project; not affiliated with CapCut or ByteDance.</p>
+                <p className="about-credit">Aava Cut is the first product from Aava. Built with React, TypeScript, Canvas, Web Audio and FFmpeg. Independent project; not affiliated with CapCut or ByteDance.</p>
               </SettingsSection>
             )}
           </main>
@@ -478,12 +479,12 @@ function AgentBridgeCard({
   const mcpPath = agentInfo?.mcpPath || 'server/mcp.mjs';
   const config = JSON.stringify({
     mcpServers: {
-      lumacut: {
+      aava: {
         command: 'node',
         args: [mcpPath],
         env: {
-          LUMACUT_AGENT_URL: window.location.origin,
-          LUMACUT_AGENT_TOKEN: token || '<enable Agent Bridge to generate>'
+          AAVA_AGENT_URL: window.location.origin,
+          AAVA_AGENT_TOKEN: token || '<enable Agent Bridge to generate>'
         }
       }
     }

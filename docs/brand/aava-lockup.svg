@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08191E"/>
+      <stop offset="1" stop-color="#050D11"/>
+    </linearGradient>
+    <linearGradient id="current" x1="100" y1="80" x2="290" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9BFFE8"/>
+      <stop offset=".55" stop-color="#62E3C9"/>
+      <stop offset="1" stop-color="#6A8DFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" fill="url(#bg)"/>
+  <rect x="80" y="78" width="204" height="204" rx="50" fill="#0A1F25" stroke="#ffffff" stroke-opacity=".1"/>
+  <path d="M126 232 182 128l56 104" fill="none" stroke="url(#current)" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M146 204h72" fill="none" stroke="url(#current)" stroke-width="14" stroke-linecap="round" opacity=".76"/>
+  <path d="M101 253c26-10 52-10 76 0s51 10 76 0" fill="none" stroke="#7CFFDE" stroke-width="6" stroke-linecap="round" opacity=".58"/>
+  <circle cx="244" cy="123" r="11" fill="#F2C66D"/>
+  <text x="330" y="190" font-family="Montserrat, sans-serif" font-size="112" font-weight="800" letter-spacing="-5" fill="#F4FCFA">Aava</text>
+  <text x="334" y="238" font-family="Montserrat, sans-serif" font-size="27" font-weight="600" letter-spacing="14" fill="#72F5D1">CUT</text>
+  <text x="334" y="292" font-family="Open Sans, sans-serif" font-size="19" letter-spacing="1.5" fill="#8CA0A4">EVERY CRAFT. ONE CURRENT.</text>
+</svg>

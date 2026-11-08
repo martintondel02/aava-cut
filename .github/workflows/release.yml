@@ -39,16 +39,16 @@ jobs:
         run: npx electron-builder --linux AppImage deb rpm --publish never
 
       - name: Generate SHA-256 checksums
-        run: cd release && sha256sum LumaCut-*.AppImage LumaCut-*.deb LumaCut-*.rpm > SHA256SUMS
+        run: cd release && sha256sum Aava-Cut-*.AppImage Aava-Cut-*.deb Aava-Cut-*.rpm > SHA256SUMS
 
       - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/LumaCut-*.AppImage
-            release/LumaCut-*.deb
-            release/LumaCut-*.rpm
+            release/Aava-Cut-*.AppImage
+            release/Aava-Cut-*.deb
+            release/Aava-Cut-*.rpm
             release/SHA256SUMS
           generate_release_notes: true
           draft: false

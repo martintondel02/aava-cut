@@ -51,7 +51,7 @@ export interface SettingsState extends SettingsValues {
 }
 
 export const DEFAULT_SETTINGS: SettingsValues = {
-  theme: 'system',
+  theme: 'dark',
   accent: 'mint',
   scale: 100,
   density: 'comfortable',

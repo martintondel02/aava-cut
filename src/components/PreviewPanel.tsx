@@ -211,6 +211,12 @@ export function PreviewPanel() {
             <span className="canvas-status">{isPlaying ? 'PLAYING' : 'READY'}</span>
           </div>
           {!isPlaying && <div className="canvas-watermark">{project.name}</div>}
+          {project.clips.length === 0 && (
+            <div className="canvas-empty-hint">
+              <strong>Your stage is ready</strong>
+              <span>Drag a clip onto the timeline to begin.</span>
+            </div>
+          )}
         </div>
       </div>
 

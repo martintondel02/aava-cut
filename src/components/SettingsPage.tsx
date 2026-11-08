@@ -418,11 +418,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About Aava Cut" eyebrow="Version 2.0.1" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About Aava Cut" eyebrow="Version 2.1.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark"><LogoMark size={50} /></div>
                   <div>
-                    <h2>Aava Cut <span>2.0.1</span></h2>
+                    <h2>Aava Cut <span>2.1.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -431,7 +431,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <a href="https://martintondel02.github.io/aava-site/" target="_blank" rel="noreferrer"><Globe2 size={16} /><span><strong>Aava website</strong><em>aava.dev · suite home and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/aava-cut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/BRAND.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Aava brand guide</strong><em>Logo, colour, voice and product naming</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/aava-cut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>Aava Cut 2.0.1, website and brand guide</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>Aava Cut 2.1, polish and brand guide</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/aava-cut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>

@@ -626,6 +626,13 @@ export function Timeline() {
             </div>
           </div>
         </div>
+        {project.clips.length === 0 && (
+          <div className="timeline-empty-hint">
+            <span className="timeline-empty-kicker">Your timeline</span>
+            <strong>Start your first cut</strong>
+            <p>Drag media onto a track, or double-click an asset in the library.</p>
+          </div>
+        )}
       </div>
 
       {contextMenu && (

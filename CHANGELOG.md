@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.1.0 — 2026-11-09
+
+### Polish
+
+- **Aava opens in dark mode by default** — the brand palette is now the first-run experience; light mode and system-following remain available.
+- New **first-cut guidance** on an empty program monitor and timeline.
+- **New project now asks before replacing a timeline** with clips, protecting accidental work loss.
+- **Save to disk** now updates the saved timestamp and status immediately.
+- New Aava favicon that matches the app mark.
+- Updated About and version surfaces for 2.1.
+
+### Performance
+
+- Split the production bundle into React, icon and state chunks.
+- Initial JavaScript chunk reduced from ~529 kB to ~276 kB.
+- Build no longer triggers the large-chunk warning.
+
+### Verification
+
+- 36/36 Playwright tests pass
+- Typecheck and production build pass
+- Bundle split verified
+- AppImage, DEB and RPM build
+
 ## 2.0.1 — 2026-11-08
 
 ### Added

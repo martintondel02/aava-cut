@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#080a0d" />
+    <meta name="theme-color" content="#061318" />
     <meta name="description" content="Aava Cut — a local-first video editor from Aava." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Aava Cut — Video Editor</title>
@@ -11,7 +11,7 @@
       try {
         const saved = JSON.parse(localStorage.getItem('lumacut.settings.v1') || '{}');
         const root = document.documentElement;
-        const mode = saved.theme || 'system';
+        const mode = saved.theme || 'dark';
         const theme = mode === 'system'
           ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
           : mode;

@@ -83,6 +83,8 @@ test.describe('Aava Cut editor', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
     await expect(page.locator('.timeline-clip')).toHaveCount(0);
+    await expect(page.locator('.timeline-empty-hint')).toContainText('Start your first cut');
+    await expect(page.locator('.canvas-empty-hint')).toBeVisible();
     await expect(page.locator('.track-header')).toHaveCount(5);
     await expect(page.locator('.transport-current')).toContainText('00:00:00');
 
@@ -338,7 +340,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('2.0.1');
+  expect(capabilities.version).toBe('2.1.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -643,7 +645,7 @@ test('MCP stdio bridge exposes project and command tools', async ({ request }) =
     args: [path.join(process.cwd(), 'server/mcp.mjs')],
     env
   });
-  const client = new Client({ name: 'aava-test', version: '2.0.1' });
+  const client = new Client({ name: 'aava-test', version: '2.1.0' });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
@@ -895,4 +897,14 @@ test('shows the Aava Cut brand shell', async ({ page }) => {
   await expect(page.locator('.brand-name')).toHaveText('Aava');
   await expect(page.locator('.brand-edition')).toHaveText('CUT');
   await expect(page.locator('body')).not.toContainText('LumaCut');
+});
+test('asks before replacing a non-empty timeline with a new project', async ({ page }) => {
+  await page.goto('/');
+  await addFixtureClip(page);
+  page.on('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('Start a new project');
+    await dialog.dismiss();
+  });
+  await page.keyboard.press('Control+n');
+  await expect(page.locator('.timeline-clip')).toHaveCount(1);
 });

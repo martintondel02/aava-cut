@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowUpRight, Bot, Check, CircleHelp, Copy, Cpu, Download, ExternalLink, Gauge, Github, Globe2, Info, KeyRound, LayoutPanelTop, Moon, Monitor,
-  Palette, Play, RotateCcw, Settings2, ShieldCheck, Sparkles, Sun, Terminal, TimerReset, Volume2, X
+  Palette, Play, RotateCcw, Settings2, ShieldCheck, Sparkles, Sun, Terminal, TimerReset, Trash2, Volume2, X
 } from 'lucide-react';
 import { useSettingsStore, type Accent, type ThemeMode } from '../store/settingsStore';
 import { useEditorStore, STORAGE_KEY } from '../store/editorStore';
 import { Segmented, ToggleRow } from './ui';
+import { formatBytes } from '../lib/utils';
 
 type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'pixabay' | 'agent' | 'export' | 'storage' | 'about';
 
@@ -57,6 +58,10 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [serverOnline, setServerOnline] = useState(false);
   const [hardware, setHardware] = useState<{ detected: boolean; label: string | null; codec: string | null } | null>(null);
   const [agentInfo, setAgentInfo] = useState<{ mcpPath?: string; apiVersion?: string } | null>(null);
+  const [storage, setStorage] = useState<{ media: { bytes: number; files: number }; thumbs: { bytes: number; files: number }; frames: { bytes: number; files: number }; exports: { bytes: number; files: number }; data: { bytes: number; files: number }; total: number; assets: number } | null>(null);
+  const project = useEditorStore((state) => state.project);
+  const assets = useEditorStore((state) => state.assets);
+  const refreshAssets = useEditorStore((state) => state.refreshAssets);
 
   useEffect(() => {
     fetch('/api/health')
@@ -71,6 +76,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
       .then(async (response) => response.ok ? response.json() : null)
       .then((data) => { if (data) setAgentInfo(data); })
       .catch(() => {});
+    fetch('/api/storage').then(async (response) => response.ok ? response.json() : null).then((data) => { if (data) setStorage(data); }).catch(() => {});
   }, []);
 
   const resetAll = () => {
@@ -83,6 +89,32 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
     if (!window.confirm('Remove the browser autosave? The current edit stays open, but a reload will start with a blank project.')) return;
     localStorage.removeItem(STORAGE_KEY);
     addToast('Browser autosave cleared', 'info');
+  };
+
+  const refreshStorage = async () => {
+    const response = await fetch('/api/storage').catch(() => null);
+    if (response?.ok) setStorage(await response.json());
+  };
+
+  const cleanupStorage = async (scope: 'frames' | 'exports' | 'unused-assets') => {
+    let body: Record<string, unknown> = { scope };
+    if (scope === 'unused-assets') {
+      const keep = new Set((project?.clips || []).map((clip) => clip.assetId).filter(Boolean));
+      const unused = assets.filter((asset) => !keep.has(asset.id));
+      if (!unused.length) { addToast('Every library asset is used by this project', 'info'); return; }
+      if (!window.confirm(`Remove ${unused.length} unused ${unused.length === 1 ? 'asset' : 'assets'} from the library and delete their source files?`)) return;
+      body = { scope, keepAssetIds: [...keep] };
+    } else if (scope === 'exports') {
+      if (!window.confirm('Delete every file in the exports folder? This cannot be undone.')) return;
+    } else if (!window.confirm('Clear all generated frame and contact-sheet caches?')) return;
+    const response = await fetch('/api/storage/cleanup', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    if (!response.ok) { addToast(data.error || 'Cleanup failed', 'error'); return; }
+    await refreshAssets();
+    setStorage(data.storage);
+    addToast(scope === 'unused-assets' ? 'Unused media removed' : 'Storage cleaned', 'success');
   };
 
   return (
@@ -347,6 +379,35 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <div><span className="settings-label">Settings</span><span className="settings-help">Restore theme, scale, playback and export preferences.</span></div>
                   <button type="button" className="btn btn-secondary" onClick={resetAll}><RotateCcw size={14} /> Reset settings</button>
                 </div>
+                <div className="storage-card">
+                  <div>
+                    <span className="settings-label">Disk usage</span>
+                    <span className="settings-help">{storage ? `${formatBytes(storage.total)} across ${storage.assets} assets · ${storage.frames.files} generated frames` : 'Reading local storage…'}</span>
+                  </div>
+                  <button type="button" className="btn btn-secondary" onClick={() => void refreshStorage()} disabled={!serverOnline}>Refresh</button>
+                </div>
+                {storage && (
+                  <div className="storage-breakdown">
+                    <div><span>Source media</span><strong>{formatBytes(storage.media.bytes)}</strong><em>{storage.media.files} files</em></div>
+                    <div><span>Thumbnails</span><strong>{formatBytes(storage.thumbs.bytes)}</strong><em>{storage.thumbs.files} files</em></div>
+                    <div><span>Frames cache</span><strong>{formatBytes(storage.frames.bytes)}</strong><em>{storage.frames.files} files</em></div>
+                    <div><span>Exports</span><strong>{formatBytes(storage.exports.bytes)}</strong><em>{storage.exports.files} files</em></div>
+                    <div><span>Project data</span><strong>{formatBytes(storage.data.bytes)}</strong><em>{storage.data.files} files</em></div>
+                  </div>
+                )}
+                <div className="storage-card">
+                  <div><span className="settings-label">Generated frame cache</span><span className="settings-help">Timeline frames, contact sheets and agent previews. Safe to clear; they regenerate on demand.</span></div>
+                  <button type="button" className="btn btn-secondary" onClick={() => void cleanupStorage('frames')} disabled={!serverOnline}><Trash2 size={14} /> Clear cache</button>
+                </div>
+                <div className="storage-card">
+                  <div><span className="settings-label">Unused library media</span><span className="settings-help">Deleting a timeline clip keeps its source in the library. This removes assets not used by the current project and deletes their files.</span></div>
+                  <button type="button" className="btn btn-secondary" onClick={() => void cleanupStorage('unused-assets')} disabled={!serverOnline || !assets.length}><Trash2 size={14} /> Remove unused</button>
+                </div>
+                <div className="storage-card">
+                  <div><span className="settings-label">Exports</span><span className="settings-help">Finished renders stay in the exports folder until you remove them.</span></div>
+                  <button type="button" className="btn btn-secondary" onClick={() => void cleanupStorage('exports')} disabled={!serverOnline}><Trash2 size={14} /> Clear exports</button>
+                </div>
+
                 <div className="storage-summary">
                   <div><span>Media</span><strong>media/</strong><em>Uploaded source files</em></div>
                   <div><span>Exports</span><strong>exports/</strong><em>Finished renders</em></div>
@@ -356,11 +417,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.14.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.15.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.14.0</span></h2>
+                    <h2>LumaCut <span>1.15.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -368,7 +429,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.14 TikTok audio import</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.15 storage cleanup and release notes</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>

@@ -2704,3 +2704,13 @@ body.is-resizing-x, body.is-resizing-x * { cursor: col-resize !important; user-s
 .tiktok-legal svg { color: #ffc76b; flex: 0 0 auto; }
 .tiktok-link { display: inline-flex; align-items: center; gap: 3px; align-self: flex-start; color: var(--faint); font-size: max(8px, calc(6.5px * var(--type-scale, 1.35))); text-decoration: none; }
 .tiktok-link:hover { color: var(--text-soft); }
+
+.audio-row-actions { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 0 0 auto; }
+.audio-remove-btn { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 5px; color: var(--faint); }
+.audio-remove-btn:hover { color: #ff9b9b; background: rgba(255,90,90,.08); }
+
+.storage-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 7px; }
+.storage-breakdown > div { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-soft); }
+.storage-breakdown span { color: var(--faint); font-size: calc(7.5px * var(--type-scale, 1.35)); text-transform: uppercase; letter-spacing: .06em; }
+.storage-breakdown strong { color: var(--text-soft); font-family: 'Montserrat', sans-serif; font-size: calc(10px * var(--type-scale, 1.35)); }
+.storage-breakdown em { color: var(--faint); font-size: calc(7.5px * var(--type-scale, 1.35)); font-style: normal; }

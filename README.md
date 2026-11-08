@@ -48,9 +48,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.14.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.14.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.14.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`LumaCut-1.15.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.15.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.15.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -62,7 +62,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.14.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.15.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -83,7 +83,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.14.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./LumaCut-1.15.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -92,7 +92,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.14.0-amd64.deb
+sudo apt install ./LumaCut-1.15.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -110,14 +110,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.14.0-x86_64.AppImage
-./LumaCut-1.14.0-x86_64.AppImage
+chmod +x LumaCut-1.15.0-x86_64.AppImage
+./LumaCut-1.15.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.14.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.15.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -151,14 +151,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.14.0-x86_64.AppImage
-./LumaCut-1.14.0-x86_64.AppImage
+chmod +x LumaCut-1.15.0-x86_64.AppImage
+./LumaCut-1.15.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.14.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.15.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -295,6 +295,21 @@ The standalone yt-dlp binary is fetched and checksum-verified at package time (`
 
 ---
 
+## Storage & cleanup
+
+Deleting a clip from the timeline is **non-destructive**: the source file stays in the library so undo, reuse and other projects keep working. Files are managed separately.
+
+- **Remove from library** — the trash button on an audio or media card deletes the source file and its thumbnail. It warns if the asset is still used by clips.
+- **Settings → Storage** — shows real disk usage for source media, thumbnails, generated frames, exports and project data.
+  - **Clear frame cache** — removes generated timeline frames, contact sheets and agent previews.
+  - **Remove unused** — deletes assets not referenced by the current project and removes their source files.
+  - **Clear exports** — removes finished render files.
+- Every destructive action asks for confirmation.
+
+Project data lives in `~/Videos/LumaCut/data`, media in `~/Videos/LumaCut/media`, generated frames in `media/frames`, and exports in `~/Videos/LumaCut/exports`.
+
+---
+
 ## Features
 
 ### Timeline & track management
@@ -304,6 +319,7 @@ The standalone yt-dlp binary is fetched and checksum-verified at package time (`
 | **Stock media** | Pixabay photo and video search, creator attribution, local downloads, 24h cache |
 | **Sound effects** | Lots of Sounds CC0 sample search, preview, local download and timeline insert, no API key |
 | **TikTok audio** | Paste a TikTok URL, consent, extract audio locally with bundled yt-dlp, add to timeline |
+| **Storage cleanup** | Disk usage, per-library delete, cache clearing, unused-media cleanup, export cleanup |
 | **Multi-track timeline** | Video, overlay, titles, captions, soundtrack and SFX tracks |
 | **Direct manipulation** | Drag clips in time or across compatible tracks, trim in/out, snap; double-click imports the full asset duration |
 | **Clip operations** | Split, duplicate, copy/paste, Ctrl/⌘-drag marquee, Ctrl/⌘-click, Ctrl/⌘+A, ripple delete toggle, lock-safe editing |
@@ -420,7 +436,7 @@ Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_
 
 ## AMD Radeon acceleration
 
-LumaCut 1.14.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.15.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -457,7 +473,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.14.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.15.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.

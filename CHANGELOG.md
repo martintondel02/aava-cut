@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1 — 2026-11-08
+
+The readability polish release.
+
+### Changed
+
+- Brightened secondary text tokens in both dark and light themes for better contrast
+- Rebuilt **Canvas format** cards with larger labels and ratio values, tooltips, a selected check mark and keyboard focus rings
+- Kept the media import hint on one line (`MP4 · MOV · WebM · JPG/PNG`) so `PNG` no longer orphans
+- Increased the smallest rail, caption, media metadata, inspector hint and auto-caption card text
+- Added a regression test for canvas label size and media-hint wrapping
+
 ## 1.4.0 — 2026-11-08
 
 The local auto-caption release.

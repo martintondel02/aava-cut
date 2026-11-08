@@ -113,7 +113,7 @@ export function AudioPanel() {
         <button type="button" className="btn btn-primary panel-import-btn" onClick={() => inputRef.current?.click()}>
           <Plus size={16} /> Import audio
         </button>
-        <span className="panel-actions-hint">MP3 · WAV · M4A</span>
+        <span className="panel-actions-hint" title="Supported: MP3, WAV and M4A">MP3 · WAV · M4A</span>
       </div>
 
       <div className="search-box">

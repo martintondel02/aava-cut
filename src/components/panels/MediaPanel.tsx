@@ -46,7 +46,7 @@ export function MediaPanel() {
         <button type="button" className="btn btn-primary panel-import-btn" onClick={() => inputRef.current?.click()}>
           <Plus size={16} /> Import media
         </button>
-        <span className="panel-actions-hint">MP4 · MOV · WebM · JPG · PNG</span>
+        <span className="panel-actions-hint" title="Supported: MP4, MOV, WebM, JPG and PNG">MP4 · MOV · WebM · JPG/PNG</span>
       </div>
 
       <div className="search-box">

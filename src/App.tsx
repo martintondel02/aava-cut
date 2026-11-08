@@ -13,6 +13,7 @@ import { ToastStack } from './components/ToastStack';
 import { useEditorStore } from './store/editorStore';
 import { applyAppearance, useSettingsStore } from './store/settingsStore';
 import { mediaPool } from './engine/mediaPool';
+import { useAgentBridge } from './hooks/useAgentBridge';
 import { projectDuration } from './lib/utils';
 import type { PanelTab } from './types';
 
@@ -22,6 +23,7 @@ const PANEL_KEYS: Record<string, PanelTab> = {
 };
 
 export default function App() {
+  useAgentBridge();
   const hydrated = useEditorStore((state) => state.hydrated);
   const project = useEditorStore((state) => state.project);
   const assetsError = useEditorStore((state) => state.assetsError);

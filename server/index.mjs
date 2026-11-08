@@ -297,7 +297,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.8.0',
+    version: '1.9.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -312,7 +312,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.8.0',
+    version: '1.9.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -329,6 +329,17 @@ function cleanupAgentSessions() {
   }
 }
 
+const agentTokenHash = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
+
+function requireAgentToken(req, res, session) {
+  const token = String(req.get('x-lumacut-agent-token') || '');
+  if (!token || agentTokenHash(token) !== session.tokenHash) {
+    res.status(401).json({ error: 'Invalid or missing x-lumacut-agent-token' });
+    return false;
+  }
+  return true;
+}
+
 function agentSession(req, res) {
   cleanupAgentSessions();
   const session = agentSessions.get(req.params.id);
@@ -336,6 +347,7 @@ function agentSession(req, res) {
     res.status(404).json({ error: 'Agent session not found or expired' });
     return null;
   }
+  if (!requireAgentToken(req, res, session)) return null;
   session.expiresAt = Date.now() + AGENT_SESSION_TTL;
   return session;
 }
@@ -346,27 +358,62 @@ app.get('/api/agent/capabilities', (req, res) => {
     sessions: true,
     proposals: true,
     commands: AGENT_COMMANDS,
-    transport: 'local HTTP; MCP wrapper planned in the agent roadmap',
-    auth: 'localhost only'
+    transport: 'local HTTP + MCP stdio server',
+    auth: 'x-lumacut-agent-token required for sessions',
+    mcpPath: path.join(root, 'server', 'mcp.mjs')
   });
 });
 
 app.post('/api/agent/sessions', (req, res) => {
   const project = req.body?.project;
+  const token = String(req.body?.token || '');
   if (!project || typeof project !== 'object' || !Array.isArray(project.clips) || !Array.isArray(project.tracks)) {
     return res.status(400).json({ error: 'A project with clips and tracks is required.' });
+  }
+  if (token.length < 16) {
+    return res.status(400).json({ error: 'An agent token of at least 16 characters is required.' });
   }
   cleanupAgentSessions();
   const id = randomId('agent');
   const session = {
     id,
+    tokenHash: agentTokenHash(token),
     project: JSON.parse(JSON.stringify(project)),
+    revision: 1,
     proposals: new Map(),
     createdAt: Date.now(),
     expiresAt: Date.now() + AGENT_SESSION_TTL
   };
   agentSessions.set(id, session);
-  res.status(201).json({ id, createdAt: session.createdAt, expiresAt: session.expiresAt, project: session.project, commands: AGENT_COMMANDS });
+  res.status(201).json({ id, revision: session.revision, createdAt: session.createdAt, expiresAt: session.expiresAt, project: session.project, commands: AGENT_COMMANDS });
+});
+
+app.get('/api/agent/current', (req, res) => {
+  cleanupAgentSessions();
+  const token = String(req.get('x-lumacut-agent-token') || '');
+  if (!token) return res.status(401).json({ error: 'Invalid or missing x-lumacut-agent-token' });
+  const hash = agentTokenHash(token);
+  const sessions = [...agentSessions.values()].filter((session) => session.tokenHash === hash).sort((a, b) => b.createdAt - a.createdAt);
+  const session = sessions[0];
+  if (!session) return res.status(404).json({ error: 'No live agent session. Enable Agent Bridge in LumaCut.' });
+  session.expiresAt = Date.now() + AGENT_SESSION_TTL;
+  res.json({ id: session.id, revision: session.revision, project: session.project, expiresAt: session.expiresAt });
+});
+
+app.post('/api/agent/sessions/:id/sync', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  const project = req.body?.project;
+  if (!project || typeof project !== 'object' || !Array.isArray(project.clips) || !Array.isArray(project.tracks)) {
+    return res.status(400).json({ error: 'A project with clips and tracks is required.' });
+  }
+  if (Number(req.body?.baseRevision) !== session.revision) {
+    return res.status(409).json({ error: 'Revision conflict', revision: session.revision, project: session.project });
+  }
+  session.project = JSON.parse(JSON.stringify(project));
+  session.revision += 1;
+  session.expiresAt = Date.now() + AGENT_SESSION_TTL;
+  res.json({ ok: true, revision: session.revision, project: session.project });
 });
 
 app.get('/api/agent/sessions/:id', (req, res) => {
@@ -374,6 +421,7 @@ app.get('/api/agent/sessions/:id', (req, res) => {
   if (!session) return;
   res.json({
     id: session.id,
+    revision: session.revision,
     createdAt: session.createdAt,
     expiresAt: session.expiresAt,
     project: session.project,
@@ -382,8 +430,9 @@ app.get('/api/agent/sessions/:id', (req, res) => {
 });
 
 app.delete('/api/agent/sessions/:id', (req, res) => {
-  const deleted = agentSessions.delete(req.params.id);
-  if (!deleted) return res.status(404).json({ error: 'Agent session not found' });
+  const session = agentSessions.get(req.params.id);
+  if (!session || !requireAgentToken(req, res, session)) return;
+  agentSessions.delete(req.params.id);
   res.json({ ok: true });
 });
 
@@ -392,8 +441,11 @@ app.post('/api/agent/sessions/:id/commands', (req, res) => {
   if (!session) return;
   const result = applyCommands(session.project, req.body?.commands, { assets });
   if (!result.ok) return res.status(400).json({ ok: false, errors: result.errors });
-  if (req.body?.dryRun !== true) session.project = result.project;
-  res.json({ ok: true, dryRun: req.body?.dryRun === true, project: result.project, diff: result.diff });
+  if (req.body?.dryRun !== true) {
+    session.project = result.project;
+    session.revision += 1;
+  }
+  res.json({ ok: true, dryRun: req.body?.dryRun === true, revision: session.revision, project: result.project, diff: result.diff });
 });
 
 app.post('/api/agent/sessions/:id/proposals', (req, res) => {
@@ -419,8 +471,9 @@ app.post('/api/agent/sessions/:id/proposals/:proposalId/apply', (req, res) => {
   const proposal = session.proposals.get(req.params.proposalId);
   if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
   session.project = JSON.parse(JSON.stringify(proposal.project));
+  session.revision += 1;
   session.proposals.delete(proposal.id);
-  res.json({ ok: true, project: session.project, diff: proposal.diff, proposalId: proposal.id });
+  res.json({ ok: true, revision: session.revision, project: session.project, diff: proposal.diff, proposalId: proposal.id });
 });
 
 app.post('/api/agent/sessions/:id/proposals/:proposalId/reject', (req, res) => {

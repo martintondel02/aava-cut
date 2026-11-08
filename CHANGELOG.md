@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.9.0 — 2026-11-08
+
+### Added
+
+- **Live Agent Bridge** in Settings → Agent bridge
+  - starts a local live project session and keeps it in sync with the editor
+  - generated local session token; agent API requires `x-lumacut-agent-token`
+  - copy-ready MCP client config for Claude Code, Codex, DeepSeek Harness, OpenCode and other MCP clients
+  - live status card, endpoint/token fields and secure-localhost notes
+- **MCP stdio server** at `server/mcp.mjs` with tools:
+  - `get_project`, `list_assets`, `get_thumbnail`, `get_capabilities`
+  - `apply_commands`, `create_proposal`, `apply_proposal`, `reject_proposal`
+- **Agent API auth + live sync**
+  - `GET /api/agent/current` resolves the active session from the token
+  - `POST /api/agent/sessions/:id/sync` keeps the open editor and session in revision-safe sync
+  - remote commands increment a revision; the editor polls and applies new revisions as a normal undoable change
+- `get_thumbnail` returns MCP image content so agents can inspect source media
+- Expanded `docs/AGENT_ROADMAP.md` and a new README **Bring your own agent** section
+
+### Verification
+
+- 25/25 Playwright tests pass, including live sync into the open editor, MCP stdio discovery and the Agent Bridge settings flow
+- Typecheck and production build pass
+- AppImage, DEB and RPM builds pass
+- MCP SDK and zod are bundled for the packaged helper
+
 ## 1.8.0 — 2026-11-08
 
 ### Added

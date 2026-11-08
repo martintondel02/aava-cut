@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, request as playwrightRequest } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const API = 'http://127.0.0.1:4317';
 const videoFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-test-fixture.mp4');
@@ -322,7 +324,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.8.0');
+  expect(capabilities.version).toBe('1.9.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -474,7 +476,9 @@ test('ripple delete closes same-track gaps and can be toggled off', async ({ pag
   await page.waitForTimeout(700);
   expect(await starts()).toEqual([0, 8]);
 });
-test('agent command API supports commands, proposals and ripple edits', async ({ request }) => {
+test('agent command API supports live sync, commands, proposals and ripple edits', async ({ request }) => {
+  const agentToken = 'agent-test-token-1234567890';
+  const agentHeaders = { 'x-lumacut-agent-token': agentToken };
   const capabilities = await request.get('/api/agent/capabilities');
   expect(capabilities.ok()).toBeTruthy();
   const caps = await capabilities.json();
@@ -496,12 +500,22 @@ test('agent command API supports commands, proposals and ripple edits', async ({
     clips: [base, { ...base, id: 'clip-b', name: 'B', start: 6 }],
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
   };
-  const sessionResponse = await request.post('/api/agent/sessions', { data: { project } });
+  const sessionResponse = await request.post('/api/agent/sessions', { data: { project, token: agentToken } });
   expect(sessionResponse.ok()).toBeTruthy();
   const session = await sessionResponse.json();
   expect(session.id).toBeTruthy();
 
+  const live = await (await request.get('/api/agent/current', { headers: agentHeaders })).json();
+  expect(live.id).toBe(session.id);
+  const synced = await request.post(`/api/agent/sessions/${session.id}/sync`, {
+    headers: agentHeaders,
+    data: { project: { ...project, name: 'Agent synced' }, baseRevision: session.revision }
+  });
+  expect(synced.ok()).toBeTruthy();
+  expect((await synced.json()).project.name).toBe('Agent synced');
+
   const deleteResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    headers: agentHeaders,
     data: { commands: [{ type: 'clip.delete', clipIds: ['clip-a'], ripple: true }] }
   });
   expect(deleteResponse.ok()).toBeTruthy();
@@ -510,6 +524,7 @@ test('agent command API supports commands, proposals and ripple edits', async ({
   expect(deleted.diff.clips.removed).toHaveLength(1);
 
   const splitResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    headers: agentHeaders,
     data: { commands: [{ type: 'clip.split', clipId: 'clip-b', at: 4 }] }
   });
   expect(splitResponse.ok()).toBeTruthy();
@@ -517,6 +532,7 @@ test('agent command API supports commands, proposals and ripple edits', async ({
   expect(split.project.clips).toHaveLength(2);
 
   const addResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    headers: agentHeaders,
     data: { commands: [{ type: 'clip.add', assetId: videoAssetId, start: 10, trackId: 'track-main' }] }
   });
   expect(addResponse.ok()).toBeTruthy();
@@ -524,24 +540,99 @@ test('agent command API supports commands, proposals and ripple edits', async ({
   expect(added.project.clips).toHaveLength(3);
 
   const dryRun = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    headers: agentHeaders,
     data: { dryRun: true, commands: [{ type: 'clip.move', clipId: 'clip-b', start: 8 }] }
   });
   expect(dryRun.ok()).toBeTruthy();
   expect((await dryRun.json()).project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(8);
-  const unchanged = await (await request.get(`/api/agent/sessions/${session.id}`)).json();
+  const unchanged = await (await request.get(`/api/agent/sessions/${session.id}`, { headers: agentHeaders })).json();
   expect(unchanged.project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(2);
 
   const proposalResponse = await request.post(`/api/agent/sessions/${session.id}/proposals`, {
+    headers: agentHeaders,
     data: { rationale: 'Move the second shot earlier', commands: [{ type: 'clip.move', clipId: 'clip-b', start: 8 }] }
   });
   expect(proposalResponse.ok()).toBeTruthy();
   const proposal = await proposalResponse.json();
-  const applyResponse = await request.post(`/api/agent/sessions/${session.id}/proposals/${proposal.id}/apply`);
+  const applyResponse = await request.post(`/api/agent/sessions/${session.id}/proposals/${proposal.id}/apply`, { headers: agentHeaders });
   expect(applyResponse.ok()).toBeTruthy();
   const applied = await applyResponse.json();
   expect(applied.project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(8);
 
-  const bad = await request.post(`/api/agent/sessions/${session.id}/commands`, { data: { commands: [{ type: 'nope' }] } });
+  const bad = await request.post(`/api/agent/sessions/${session.id}/commands`, { headers: agentHeaders, data: { commands: [{ type: 'nope' }] } });
   expect(bad.status()).toBe(400);
-  await request.delete(`/api/agent/sessions/${session.id}`);
+  await request.delete(`/api/agent/sessions/${session.id}`, { headers: agentHeaders });
+});
+test('Agent Bridge settings exposes a live MCP config', async ({ page }) => {
+  await page.goto('/');
+  await page.keyboard.press('Control+,');
+  await page.locator('.settings-nav button', { hasText: 'Agent bridge' }).click();
+  await expect(page.locator('.agent-bridge-copy h3')).toHaveText('Give your agent the timeline.');
+  const toggle = page.locator('.agent-bridge-card .switch');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.agent-bridge-status')).toContainText('Live');
+  await expect(page.locator('.agent-bridge-field code').nth(1)).toContainText('lc_');
+  await expect(page.locator('.agent-bridge-config pre')).toContainText('LUMACUT_AGENT_TOKEN');
+  await expect(page.locator('.agent-bridge-config pre')).toContainText('mcp.mjs');
+  await toggle.click();
+  await expect(page.locator('.agent-bridge-status')).toContainText('Off');
+});
+test('MCP stdio bridge exposes project and command tools', async ({ request }) => {
+  const token = 'mcp-test-token-1234567890';
+  const headers = { 'x-lumacut-agent-token': token };
+  const project = {
+    id: 'mcp-test', version: 2, name: 'MCP test', width: 1920, height: 1080, fps: 30,
+    background: '#000000', tracks: [{ id: 'track-main', name: 'Main', kind: 'video', muted: false, hidden: false, locked: false }],
+    clips: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+  const sessionResponse = await request.post('/api/agent/sessions', { data: { project, token } });
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+  const env = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined)) as Record<string, string>;
+  env.LUMACUT_AGENT_URL = API;
+  env.LUMACUT_AGENT_TOKEN = token;
+  const transport = new StdioClientTransport({
+    command: 'node',
+    args: [path.join(process.cwd(), 'server/mcp.mjs')],
+    env
+  });
+  const client = new Client({ name: 'lumacut-test', version: '1.0.0' });
+  try {
+    await client.connect(transport);
+    const tools = await client.listTools();
+    const names = tools.tools.map((tool) => tool.name);
+    expect(names).toEqual(expect.arrayContaining(['get_project', 'get_thumbnail', 'apply_commands', 'create_proposal', 'apply_proposal']));
+    const result = await client.callTool({ name: 'get_project', arguments: {} });
+    const content = result.content as Array<{ type: string; text?: string }>;
+    expect(content[0]?.type).toBe('text');
+    expect(content[0]?.text).toContain('MCP test');
+  } finally {
+    await client.close();
+    await request.delete(`/api/agent/sessions/${session.id}`, { headers });
+  }
+});
+test('live Agent Bridge applies an agent command to the open editor', async ({ page, request }) => {
+  await page.goto('/');
+  await addFixtureClip(page);
+  await page.keyboard.press('Control+,');
+  await page.locator('.settings-nav button', { hasText: 'Agent bridge' }).click();
+  await page.locator('.agent-bridge-card .switch').click();
+  await expect(page.locator('.agent-bridge-status')).toContainText('Live');
+  const configText = await page.locator('.agent-bridge-config pre').textContent();
+  const config = JSON.parse(configText || '{}');
+  const token = config.mcpServers.lumacut.env.LUMACUT_AGENT_TOKEN as string;
+  const headers = { 'x-lumacut-agent-token': token };
+  const current = await (await request.get('/api/agent/current', { headers })).json();
+  const clipId = current.project.clips[0].id as string;
+  const changed = await request.post(`/api/agent/sessions/${current.id}/commands`, {
+    headers,
+    data: { commands: [{ type: 'clip.set', clipId, patch: { volume: 0.15 } }] }
+  });
+  expect(changed.ok()).toBeTruthy();
+  await expect.poll(async () => page.evaluate((id) => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return project.clips?.find((clip: { id: string }) => clip.id === id)?.volume;
+  }, clipId), { timeout: 6000 }).toBe(0.15);
 });

@@ -30,6 +30,8 @@ export interface SettingsValues {
   showWaveforms: boolean;
   followPlayhead: boolean;
   rippleDelete: boolean;
+  agentBridgeEnabled: boolean;
+  agentBridgeToken: string;
   autoExpandKeyframes: boolean;
   autoKeyframe: boolean;
   exportDefaults: ExportDefaults;
@@ -56,6 +58,8 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   showWaveforms: true,
   followPlayhead: true,
   rippleDelete: true,
+  agentBridgeEnabled: false,
+  agentBridgeToken: '',
   autoExpandKeyframes: true,
   autoKeyframe: false,
   exportDefaults: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard', hardwareAcceleration: true, codec: 'auto', bitDepth: 8, hdr: false }
@@ -101,6 +105,8 @@ function valuesOf(state: SettingsState): SettingsValues {
     showWaveforms: state.showWaveforms,
     followPlayhead: state.followPlayhead,
     rippleDelete: state.rippleDelete,
+    agentBridgeEnabled: state.agentBridgeEnabled,
+    agentBridgeToken: state.agentBridgeToken,
     autoExpandKeyframes: state.autoExpandKeyframes,
     autoKeyframe: state.autoKeyframe,
     exportDefaults: state.exportDefaults

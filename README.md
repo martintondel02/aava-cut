@@ -360,7 +360,7 @@ The agent bridge is the first half of the agent story. The next milestone is a *
 - **Next:** full composited server-side export (transforms, text, transitions, effects, audio), session revision restore and transcript tools
 - **Then:** in-app prompt panel with the same tools, diff review and permission scopes
 
-Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md)**.
+Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md)**. The next milestone — composited export, offline audio, durable sessions, brief and markers — is specified in **[docs/RENDER_AND_SESSION_ROADMAP.md](docs/RENDER_AND_SESSION_ROADMAP.md)**.
 
 ---
 

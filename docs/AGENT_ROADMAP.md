@@ -204,6 +204,8 @@ The helper requires Node.js 20+. The editor itself does not. Frames and proxies 
 
 ## What comes next
 
+See **[RENDER_AND_SESSION_ROADMAP.md](RENDER_AND_SESSION_ROADMAP.md)** for the full composited renderer, offline audio, durable sessions, revision restore, project brief, markers and autonomy modes.
+
 Do M2 before the in-app agent panel. Agent iteration is only useful when previews and
 exports are fast and deterministic. The current real-time canvas capture is acceptable for
 the GUI, but it is the wrong foundation for an agent that may render dozens of previews.

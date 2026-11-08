@@ -1,13 +1,82 @@
-import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { test, expect, request as playwrightRequest } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
+
+const API = 'http://127.0.0.1:4317';
+const videoFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-test-fixture.mp4');
+const audioFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-test-audio.wav');
+let api: APIRequestContext;
+let videoAssetId = '';
+let audioAssetId = '';
+
+test.beforeAll(async () => {
+  api = await playwrightRequest.newContext({ baseURL: API });
+  const existing = await api.get('/api/assets');
+  if (existing.ok()) {
+    for (const asset of await existing.json() as Array<{ id: string; name: string }>) {
+      if (/lumacut-test/i.test(asset.name)) await api.delete(`/api/assets/${asset.id}`);
+    }
+  }
+  const video = await api.post('/api/assets', {
+    multipart: { files: { name: 'lumacut-test-fixture.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(videoFixture) } }
+  });
+  expect(video.ok()).toBeTruthy();
+  const videoBody = await video.json() as { assets: Array<{ id: string }>; errors?: Array<{ error: string }> };
+  if (!videoBody.assets[0]) throw new Error(`Video fixture upload failed: ${JSON.stringify(videoBody.errors || videoBody)}`);
+  videoAssetId = videoBody.assets[0].id;
+
+  const audio = await api.post('/api/assets', {
+    multipart: { files: { name: 'lumacut-test-audio.wav', mimeType: 'audio/wav', buffer: fs.readFileSync(audioFixture) } }
+  });
+  expect(audio.ok()).toBeTruthy();
+  const audioBody = await audio.json() as { assets: Array<{ id: string }>; errors?: Array<{ error: string }> };
+  if (!audioBody.assets[0]) throw new Error(`Audio fixture upload failed: ${JSON.stringify(audioBody.errors || audioBody)}`);
+  audioAssetId = audioBody.assets[0].id;
+});
+
+test.afterAll(async () => {
+  if (!api) return;
+  if (videoAssetId) await api.delete(`/api/assets/${videoAssetId}`).catch(() => {});
+  if (audioAssetId) await api.delete(`/api/assets/${audioAssetId}`).catch(() => {});
+  await api.dispose();
+});
+
+async function addFixtureClip(page: import('@playwright/test').Page) {
+  await page.locator('.media-card', { hasText: 'lumacut-test-fixture' }).dblclick();
+  await expect(page.locator('.timeline-clip')).toHaveCount(1);
+  await page.waitForTimeout(500);
+}
+
+async function addFixtureAudio(page: import('@playwright/test').Page) {
+  await page.locator('.rail-tab[title="Audio (2)"]').click();
+  await page.locator('.audio-row', { hasText: 'lumacut-test-audio' }).dblclick();
+  await expect(page.locator('.timeline-clip.clip-audio')).toHaveCount(1);
+}
+
+async function addThreeClips(page: import('@playwright/test').Page) {
+  await addFixtureClip(page);
+  await page.keyboard.press('Control+d');
+  await page.keyboard.press('Control+d');
+  await expect(page.locator('.timeline-clip')).toHaveCount(3);
+}
 
 test.describe('LumaCut editor', () => {
-  test('boots the demo film and paints the program monitor', async ({ page }) => {
+  test('starts blank and paints an imported clip', async ({ page, request }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto('/');
-    await expect(page.locator('.timeline-clip')).toHaveCount(17);
-    await expect(page.locator('.transport-current')).toContainText('00:00:02');
+    await expect(page.locator('.timeline-clip')).toHaveCount(0);
     await expect(page.locator('.track-header')).toHaveCount(5);
+    await expect(page.locator('.transport-current')).toContainText('00:00:00');
+
+    const assets = await request.get('/api/assets');
+    expect(assets.ok()).toBeTruthy();
+    const assetList = await assets.json() as Array<{ id: string; name: string }>;
+    expect(assetList.some((asset) => asset.id.startsWith('demo-'))).toBe(false);
+    expect(assetList.some((asset) => asset.name === 'lumacut-test-fixture')).toBe(true);
+
+    await addFixtureClip(page);
     const litPixels = await page.locator('.preview-canvas').evaluate((canvas: HTMLCanvasElement) => {
       const data = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data;
       let lit = 0;
@@ -22,35 +91,41 @@ test.describe('LumaCut editor', () => {
 
   test('splits a clip and undoes the edit', async ({ page }) => {
     await page.goto('/');
-    const aurora = page.locator('.timeline-clip', { hasText: 'Aurora Drift' }).first();
-    await aurora.click({ position: { x: 60, y: 25 } });
+    await addFixtureClip(page);
+    const zoom = Number((await page.locator('.zoom-readout').innerText()).match(/\d+/)?.[0] || 68);
+    const ruler = await page.locator('.timeline-ruler').boundingBox();
+    if (!ruler) throw new Error('ruler was not visible');
+    await page.mouse.click(ruler.x + zoom * 2, ruler.y + 14);
+    await page.locator('.timeline-clip').first().click({ position: { x: 60, y: 25 } });
     await page.keyboard.press('b');
-    await expect(page.locator('.timeline-clip')).toHaveCount(18);
+    await expect(page.locator('.timeline-clip')).toHaveCount(2);
     await page.keyboard.press('Control+z');
-    await expect(page.locator('.timeline-clip')).toHaveCount(17);
+    await expect(page.locator('.timeline-clip')).toHaveCount(1);
   });
 
   test('adds a new title on its own free track', async ({ page }) => {
     await page.goto('/');
     await page.locator('.rail-tab[title="Text (3)"]').click();
     await page.locator('.text-preset-card').first().click();
-    await expect(page.locator('.timeline-clip')).toHaveCount(18);
-    await expect(page.locator('.track-header')).toHaveCount(6);
+    await expect(page.locator('.timeline-clip')).toHaveCount(1);
+    await expect(page.locator('.track-header')).toHaveCount(5);
     await expect(page.locator('.clip-name-input')).toHaveValue('Editorial');
     await expect(page.locator('.transform-box')).toHaveCount(1);
   });
 
-  test('serves the media API', async ({ request }) => {
+  test('serves the media API without demo assets', async ({ request }) => {
     const health = await request.get('/api/health');
     expect(health.ok()).toBeTruthy();
     expect((await health.json()).ok).toBe(true);
     const assets = await request.get('/api/assets');
     expect(assets.ok()).toBeTruthy();
-    expect((await assets.json()).length).toBeGreaterThanOrEqual(9);
+    const list = await assets.json() as Array<{ id: string; name: string }>;
+    expect(list.some((asset) => /lumacut-test/i.test(asset.name))).toBe(true);
+    expect(list.some((asset) => asset.id.startsWith('demo-'))).toBe(false);
   });
 });
 
-test.describe('LumaCut 1.1 rework', () => {
+test.describe('LumaCut editor tools', () => {
   test('settings applies theme and interface scale', async ({ page }) => {
     await page.goto('/');
     await page.locator('.topbar-actions .icon-btn[title="Settings (Ctrl+,)"]').click();
@@ -72,7 +147,8 @@ test.describe('LumaCut 1.1 rework', () => {
 
   test('adds, drags and deletes timeline keyframes with spring easing', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.timeline-clip', { hasText: 'Aurora Drift' }).first().click({ position: { x: 60, y: 25 } });
+    await addFixtureClip(page);
+    await page.locator('.timeline-clip').first().click({ position: { x: 60, y: 25 } });
     const keyframes = page.locator('.inspector-section', { hasText: 'Keyframes' }).first();
     await keyframes.locator('.inspector-section-title').click();
     await keyframes.locator('.keyframe-add-grid button', { hasText: 'Opacity' }).click();
@@ -99,7 +175,7 @@ test.describe('LumaCut 1.1 rework', () => {
 
   test('applies master EQ and exposes per-track tone', async ({ page }) => {
     await page.goto('/');
-    await page.locator('.rail-tab[title="Audio (2)"]').click();
+    await addFixtureAudio(page);
     await page.locator('.eq-presets button', { hasText: 'Bass' }).click();
     await page.waitForTimeout(800);
     const masterEq = await page.evaluate(() => JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}').masterEq);
@@ -131,6 +207,7 @@ test.describe('LumaCut 1.1 rework', () => {
 
   test('migrates a 1.0 project with string effects and easing', async ({ page }) => {
     await page.goto('/');
+    await addFixtureClip(page);
     await page.waitForTimeout(900);
     const migrated = await page.evaluate(() => {
       const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
@@ -171,15 +248,16 @@ test.describe('LumaCut 1.1 rework', () => {
 
 test('auto-key writes a keyframe when a transform changes at the playhead', async ({ page }) => {
   await page.goto('/');
+  await addFixtureClip(page);
   await page.locator('.topbar-actions .icon-btn[title="Settings (Ctrl+,)"]').click();
   await page.locator('.settings-nav button', { hasText: 'Timeline' }).click();
   await page.locator('.toggle-row', { hasText: 'Auto-key by default' }).locator('.switch').click();
   await page.locator('.settings-topbar .btn-primary').click();
-  await page.locator('.timeline-clip', { hasText: 'Aurora Drift' }).first().click({ position: { x: 70, y: 25 } });
+  await page.locator('.timeline-clip').first().click({ position: { x: 70, y: 25 } });
   const ruler = await page.locator('.timeline-ruler').boundingBox();
   if (!ruler) throw new Error('ruler was not visible');
   const zoom = Number((await page.locator('.zoom-readout').innerText()).match(/\d+/)?.[0] || 44);
-  await page.mouse.click(ruler.x + zoom * 4, ruler.y + 14);
+  await page.mouse.click(ruler.x + zoom * 2, ruler.y + 14);
   const opacity = page.locator('.inspector-section', { hasText: 'Transform' }).first()
     .locator('.slider-row', { hasText: 'Opacity' }).locator('input[type=range]');
   await opacity.focus();
@@ -188,11 +266,56 @@ test('auto-key writes a keyframe when a transform changes at the playhead', asyn
   await expect(page.locator('.keyframe-lane')).toHaveCount(1);
 });
 
+test('extracts audio from a video clip to the bottom audio track', async ({ page }) => {
+  await page.goto('/');
+  await addFixtureClip(page);
+  await page.locator('.timeline-clip').first().click({ button: 'right', position: { x: 60, y: 25 } });
+  await expect(page.locator('.context-menu')).toBeVisible();
+  await page.locator('.context-menu button', { hasText: 'Extract audio' }).click();
+  await expect(page.locator('.timeline-clip.clip-audio')).toHaveCount(1);
+  await expect(page.locator('.track-header')).toHaveCount(5);
+});
+
+test('Ctrl+A selects all clips and leaves document text alone', async ({ page }) => {
+  await page.goto('/');
+  await addThreeClips(page);
+  await page.keyboard.press('Control+a');
+  await expect(page.locator('.timeline-clip.is-selected')).toHaveCount(3);
+  expect(await page.evaluate(() => window.getSelection()?.toString() || '')).toBe('');
+});
+
+test('Ctrl+drag marquee selects intersecting clips', async ({ page }) => {
+  await page.goto('/');
+  await addThreeClips(page);
+  const content = await page.locator('.timeline-content').boundingBox();
+  const titleRow = await page.locator('.track-row').first().boundingBox();
+  const mainRow = await page.locator('.track-row.track-video').first().boundingBox();
+  const zoom = Number((await page.locator('.zoom-readout').innerText()).match(/\d+/)?.[0] || 68);
+  if (!content || !titleRow || !mainRow) throw new Error('timeline geometry missing');
+  await page.keyboard.down('Control');
+  await page.mouse.move(content.x + 5, titleRow.y + 6);
+  await page.mouse.down();
+  await page.mouse.move(content.x + zoom * 6, mainRow.y + mainRow.height - 5, { steps: 10 });
+  await page.mouse.up();
+  await page.keyboard.up('Control');
+  await expect(page.locator('.timeline-clip.is-selected')).toHaveCount(2);
+});
+
+test('Space plays instead of activating a focused toolbar button', async ({ page }) => {
+  await page.goto('/');
+  await addFixtureClip(page);
+  await page.locator('.rail-tab[title="Audio (2)"]').click();
+  await page.keyboard.press('Space');
+  await expect(page.locator('.preview-panel')).toHaveClass(/is-playing/);
+  await page.keyboard.press('Space');
+  await expect(page.locator('.preview-panel')).not.toHaveClass(/is-playing/);
+});
+
 test('reports AMD hardware capabilities without breaking CPU fallback', async ({ request }) => {
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.4.1');
+  expect(capabilities.version).toBe('1.5.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -253,7 +376,7 @@ test('serves local caption capabilities and exposes the auto caption card', asyn
 });
 
 test('keeps canvas labels legible and media hint on one line', async ({ page }) => {
-  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   const aspectGrid = page.locator('.aspect-grid');
   await expect(aspectGrid).toBeVisible();
@@ -262,10 +385,7 @@ test('keeps canvas labels legible and media hint on one line', async ({ page }) 
   );
   expect(Math.min(...idSizes)).toBeGreaterThanOrEqual(8);
 
-  const mediaTab = page.locator('.rail-tab[title="Media (1)"]');
-  await mediaTab.click();
   const hint = page.locator('.panel-actions-hint');
-  if (!(await hint.isVisible().catch(() => false))) await mediaTab.click();
   await expect(hint).toBeVisible();
   const hintMetrics = await hint.evaluate((node) => ({
     scrollWidth: node.scrollWidth,
@@ -274,4 +394,30 @@ test('keeps canvas labels legible and media hint on one line', async ({ page }) 
   }));
   expect(hintMetrics.whiteSpace).toBe('nowrap');
   expect(hintMetrics.scrollWidth).toBeLessThanOrEqual(hintMetrics.clientWidth + 1);
+});
+test('context menu and playhead stay aligned at 120% UI scale', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('lumacut.settings.v1', JSON.stringify({ scale: 120 })));
+  await page.goto('/');
+  await addFixtureClip(page);
+  const clip = await page.locator('.timeline-clip').first().boundingBox();
+  if (!clip) throw new Error('clip missing');
+  const clickX = clip.x + 45;
+  const clickY = clip.y + 25;
+  await page.mouse.click(clickX, clickY, { button: 'right' });
+  await page.locator('.context-menu').waitFor();
+  await page.waitForTimeout(150);
+  const menu = await page.locator('.context-menu').boundingBox();
+  if (!menu) throw new Error('menu missing');
+  expect(Math.abs(menu.x - clickX)).toBeLessThan(25);
+  expect(menu.y).toBeGreaterThanOrEqual(0);
+  expect(menu.y + menu.height).toBeLessThanOrEqual(await page.evaluate(() => window.innerHeight) + 2);
+
+  await page.keyboard.press('Escape');
+  const ruler = await page.locator('.timeline-ruler').boundingBox();
+  if (!ruler) throw new Error('ruler missing');
+  const offset = 320;
+  await page.mouse.click(ruler.x + offset, ruler.y + 14);
+  const playhead = await page.locator('.timeline-playhead').boundingBox();
+  if (!playhead) throw new Error('playhead missing');
+  expect(Math.abs((playhead.x - ruler.x) - offset)).toBeLessThan(2);
 });

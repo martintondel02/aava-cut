@@ -28,8 +28,7 @@ export function AudioPanel() {
 
   const audioAssets = useMemo(() => assets.filter((asset) => asset.kind === 'audio'), [assets]);
   const filtered = audioAssets.filter((asset) => asset.name.toLowerCase().includes(search.toLowerCase()));
-  const uploaded = filtered.filter((asset) => asset.source === 'upload');
-  const bundled = filtered.filter((asset) => asset.source === 'demo');
+  const uploaded = filtered;
 
   useEffect(() => () => {
     audioRef.current?.pause();
@@ -142,22 +141,7 @@ export function AudioPanel() {
 
       <MasterEq />
 
-      <div className="audio-spotlight">
-        <div className="audio-spotlight-art"><AudioLines size={26} /></div>
-        <div>
-          <span className="eyebrow">Original score</span>
-          <strong>Slow Orbit</strong>
-          <p>An ambient bed made for this project. Drop it under your cut and fade it in.</p>
-        </div>
-        <button type="button" className="mini-play" onClick={() => {
-          const asset = audioAssets.find((item) => item.id === 'demo-ambient') || bundled[0];
-          if (asset) togglePreview(asset.id, asset.url);
-        }}>
-          {playingId === 'demo-ambient' ? <Pause size={13} /> : <Play size={13} />}
-        </button>
-      </div>
-
-      {uploaded.length > 0 && (
+      {uploaded.length > 0 ? (
         <AudioSection title="Your audio" count={uploaded.length}>
           {uploaded.map((asset) => (
             <AudioRow
@@ -171,27 +155,13 @@ export function AudioPanel() {
             />
           ))}
         </AudioSection>
+      ) : (
+        <div className="panel-empty compact">
+          <Music2 size={22} />
+          <strong>No audio yet</strong>
+          <p>Import music or record a voiceover to get started.</p>
+        </div>
       )}
-
-      <AudioSection title="LumaCut sound library" count={bundled.length}>
-        {bundled.length ? bundled.map((asset) => (
-          <AudioRow
-            key={asset.id}
-            asset={asset}
-            selected={selectedAssetId === asset.id}
-            playing={playingId === asset.id}
-            onPreview={() => togglePreview(asset.id, asset.url)}
-            onSelect={() => setSelectedAsset(asset.id)}
-            onAdd={() => addAssetToTimeline(asset.id)}
-          />
-        )) : (
-          <div className="panel-empty compact">
-            <Music2 size={22} />
-            <strong>No bundled sounds match</strong>
-            <p>Try a different search.</p>
-          </div>
-        )}
-      </AudioSection>
 
       <div className="panel-footer">
         <span>{audioAssets.length} sounds</span>

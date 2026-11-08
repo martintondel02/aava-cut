@@ -2180,3 +2180,89 @@ body { zoom: var(--ui-scale, 1); }
 [data-theme='light'] .auto-progress { background: rgba(15,44,37,.03); }
 [data-theme='light'] .auto-progress-track { background: rgba(15,44,37,.1); }
 [data-theme='light'] .auto-review-overlay { background: rgba(17,30,26,.45); }
+
+/* ---------- 1.5 readability pass ---------- */
+/* The editor packs a lot into a small canvas; these sizes keep labels
+   readable at 100–140% UI scale without turning the timeline into soup. */
+.icon-rail { flex-basis: 72px; width: 72px; padding-left: 8px; padding-right: 8px; }
+.rail-tab { height: 50px; }
+.rail-tab span { font-size: 9.5px; }
+.rail-small { width: 54px; }
+.rail-version { font-size: 8px; }
+.asset-panel { flex-basis: 322px; width: 322px; }
+.inspector { flex-basis: 322px; width: 322px; }
+.eyebrow { font-size: 10px; }
+.btn-small { height: 31px; font-size: 12px; }
+.panel-import-btn { font-size: 12px; }
+.panel-actions-hint { max-width: 150px; font-size: 9px; }
+.media-name, .audio-name { font-size: 11px; }
+.media-sub, .audio-duration { font-size: 9px; }
+.audio-row-bottom { font-size: 9px; }
+.section-mini-head { font-size: 9.5px; }
+.section-mini-head > span:last-child { font-size: 9px; }
+.caption-text { font-size: 10px; }
+.caption-time, .caption-duration { font-size: 9px; }
+.caption-style-name { font-size: 9.5px; }
+.field-label { font-size: 10.5px; }
+.field-hint, .slider-hint { font-size: 9.5px; }
+.inspector-section-title { font-size: 11px; }
+.clip-name-input { font-size: 12px; }
+.inspector-bottom-actions .btn { font-size: 11px; }
+.timeline-tool { font-size: 10.5px; }
+.ruler-label { font-size: 9px; }
+.zoom-readout { font-size: 9px; }
+.timeline-corner > span { font-size: 9px; }
+.track-name { font-size: 10.5px; }
+.track-meta { font-size: 9px; }
+.clip-name { font-size: 9.5px; }
+.clip-chip { font-size: 8px; }
+.clip-text-preview span { font-size: 10px; }
+.clip-duration-readout, .keyframe-count { font-size: 8px; }
+.caption-badge, .clip-filter-badge, .clip-effect-count, .clip-transition-badge { font-size: 7px; }
+.context-menu { width: 230px; }
+.context-menu > button { height: 32px; font-size: 12px; }
+.context-label { font-size: 9px; }
+.speed-quick-row button { height: 25px; font-size: 10px; }
+.popover button { font-size: 12.5px; }
+.popover-label { font-size: 9.5px; }
+.popover-note { font-size: 10px; }
+.track-menu { width: 180px; }
+.add-track-menu, .file-menu { width: 210px; }
+.auto-captions-copy { font-size: 9px; }
+.auto-field > span { font-size: 8.2px; }
+.auto-field select, .auto-field input, .auto-prompt input { font-size: 9.5px; }
+.auto-captions-badge { font-size: 8px; }
+.auto-captions-start { font-size: 10.5px; }
+.auto-captions-start > span:last-child { font-size: 8.2px; }
+.auto-captions-warning, .auto-captions-error { font-size: 8.6px; }
+.auto-model-note, .auto-progress-foot { font-size: 8.5px; }
+.auto-review-head p { font-size: 9px; }
+.auto-cue input { font-size: 10.5px; }
+.auto-cue-time, .auto-cue-confidence { font-size: 8.2px; }
+.settings-label { font-size: 11.5px; }
+.settings-help { font-size: 10px; }
+.settings-section-head p { font-size: 11.5px; }
+.storage-summary span, .settings-section-head .eyebrow { font-size: 9px; }
+.toast { font-size: 11px; }
+
+@media (max-width: 1280px) {
+  .icon-rail { flex-basis: 64px; width: 64px; }
+  .asset-panel { flex-basis: 286px; width: 286px; }
+  .inspector { flex-basis: 298px; width: 298px; }
+  .panel-actions-hint { display: none; }
+  .rail-tab span { font-size: 8.5px; }
+}
+@media (max-width: 1080px) {
+  .icon-rail { flex-basis: 58px; width: 58px; }
+  .rail-tab span { font-size: 8px; }
+}
+
+.timeline-marquee {
+  position: absolute;
+  z-index: 11;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 2px;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(114,245,209,.08);
+}

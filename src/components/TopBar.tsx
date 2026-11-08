@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown, Cloud, Download, FilePlus2, FolderOpen, Keyboard, LayoutTemplate, Redo2, Save,
-  Settings2, Sparkles, Undo2, Upload
+  Settings2, Undo2, Upload
 } from 'lucide-react';
 import { ASPECT_PRESETS } from '../types';
 import { useEditorStore } from '../store/editorStore';
@@ -38,7 +38,6 @@ export function TopBar() {
   const setAspect = useEditorStore((state) => state.setAspect);
   const openExport = useEditorStore((state) => state.openExport);
   const newProject = useEditorStore((state) => state.newProject);
-  const loadDemoProject = useEditorStore((state) => state.loadDemoProject);
   const exportProjectFile = useEditorStore((state) => state.exportProjectFile);
   const importProject = useEditorStore((state) => state.importProject);
   const saveProjectToServer = useEditorStore((state) => state.saveProjectToServer);
@@ -118,7 +117,6 @@ export function TopBar() {
               <button type="button" onClick={() => { saveProjectToServer(); setFileOpen(false); }}><Save size={15} /> Save to disk <kbd>Ctrl S</kbd></button>
               <button type="button" onClick={() => { exportProjectFile(); setFileOpen(false); }}><Download size={15} /> Download project file</button>
               <div className="popover-separator" />
-              <button type="button" onClick={() => { loadDemoProject(); setFileOpen(false); }}><Sparkles size={15} /> Load demo film</button>
               <button type="button" onClick={openProjectFile}><Upload size={15} /> Import .lumacut</button>
             </div>
           )}

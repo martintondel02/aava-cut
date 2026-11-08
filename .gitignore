@@ -6,7 +6,6 @@ exports/
 data/assets.json
 data/models/
 data/project-*.json
-.demo-tmp/
 test-results/
 playwright-report/
 *.log

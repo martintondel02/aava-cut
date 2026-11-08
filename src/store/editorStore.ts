@@ -8,8 +8,8 @@ import { useSettingsStore } from './settingsStore';
 import { migrateProject } from '../lib/migrate';
 import { channelForClip, channelsForClip, effectChannelId, ensureEffectLayer, makeEffectLayer, valueAt } from '../lib/keyframes';
 import {
-  baseTextStyle, blankProject, cloneProject, createMediaClip, createShapeClip, createStickerClip, createTextClip,
-  defaultTrackFor, presetToClip, seedProject, supportsTrack, trackForKind
+  baseTextStyle, blankProject, clipDefaults, cloneProject, createMediaClip, createShapeClip, createStickerClip, createTextClip,
+  defaultTrackFor, presetToClip, supportsTrack, trackForKind
 } from '../lib/clips';
 import { clamp, findFreeStart, projectDuration, uid } from '../lib/utils';
 
@@ -98,6 +98,9 @@ interface EditorState {
   addSticker: (sticker: string) => void;
   addShape: (shape: NonNullable<Clip['shape']>) => void;
   addCaption: (text: string, start?: number, duration?: number) => void;
+  selectAllClips: () => void;
+  setSelectedClipIds: (ids: string[]) => void;
+  extractAudio: (clipId: string) => void;
   importCaptions: (entries: Array<{ start: number; end: number; text: string }>, replace?: boolean) => void;
   updateCaptionStyles: (patch: Partial<TextStyle>) => void;
 
@@ -130,7 +133,6 @@ interface EditorState {
   setBackground: (color: string) => void;
   setFps: (fps: number) => void;
   newProject: () => void;
-  loadDemoProject: () => void;
   importProject: (data: unknown) => void;
   exportProjectFile: () => void;
   saveProjectToServer: () => Promise<void>;
@@ -324,18 +326,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   timelineHeight: 324,
 
   bootstrap: async () => {
-    let assets = FALLBACK_ASSETS;
+    let assets: MediaAsset[] = [];
     let error: string | null = null;
     try {
       const response = await fetch('/api/assets');
       if (!response.ok) throw new Error(`Media server returned ${response.status}`);
       const data = (await response.json()) as MediaAsset[];
-      if (Array.isArray(data) && data.length) assets = data;
+      if (Array.isArray(data)) assets = data.filter((asset) => asset.source !== 'demo' && !asset.id.startsWith('demo-'));
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
     const stored = parseStoredProject();
-    const project = migrateProject(stored || seedProject(assets));
+    let project = stored ? migrateProject(stored) : blankProject(assets);
+    if (project.id === 'lumacut-demo-film' || project.name === 'Chase the Light') {
+      project = blankProject(assets);
+    } else if (project.clips.some((clip) => clip.assetId?.startsWith('demo-'))) {
+      project.clips = project.clips.filter((clip) => !clip.assetId?.startsWith('demo-'));
+    }
     set({
       assets,
       assetsError: error,
@@ -344,7 +351,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       project,
       lastSavedAt: stored ? new Date().toISOString() : null,
       selectedAssetId: assets[0]?.id || null,
-      playhead: stored ? 0 : 2.15
+      playhead: 0
     });
     scheduleSave(project);
     get().loadExportHistory();
@@ -628,6 +635,69 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       project.clips.push(clip);
     });
     set({ selectedClipIds: [], activePanel: 'captions' });
+  },
+
+  selectAllClips: () => {
+    const project = get().project;
+    if (!project) return;
+    set({ selectedClipIds: project.clips.map((clip) => clip.id), selectedKeyframe: null });
+  },
+
+  setSelectedClipIds: (ids) => {
+    const project = get().project;
+    if (!project) return;
+    const valid = ids.filter((id) => project.clips.some((clip) => clip.id === id));
+    set({ selectedClipIds: valid, selectedKeyframe: null });
+  },
+
+  extractAudio: (clipId) => {
+    const state = get();
+    const project = state.project;
+    const clip = project?.clips.find((item) => item.id === clipId);
+    if (!project || !clip) return;
+    if (clip.kind !== 'video' || !clip.assetId) {
+      state.addToast('Select a video clip to extract audio', 'info');
+      return;
+    }
+    const asset = state.assets.find((item) => item.id === clip.assetId);
+    if (!asset || asset.hasAudio === false) {
+      state.addToast('This video has no audio track', 'info');
+      return;
+    }
+    let audioId = '';
+    get().mutateProject((draft) => {
+      const audioTracks = draft.tracks.filter((track) => track.kind === 'audio' && !track.locked);
+      const bottom = audioTracks[audioTracks.length - 1];
+      const trackId = bottom && trackIsFree(draft, bottom.id, clip.start, clip.duration)
+        ? bottom.id
+        : addTrackForKind(draft, 'audio');
+      const audio = clipDefaults({
+        ...clip,
+        id: uid('clip'),
+        kind: 'audio',
+        trackId,
+        name: `${clip.name} — audio`,
+        effects: [],
+        adjust: undefined,
+        text: undefined,
+        sticker: undefined,
+        shape: undefined,
+        shapeColor: undefined,
+        transition: undefined,
+        fadeIn: 0,
+        fadeOut: 0,
+        kenBurns: false,
+        keyframes: clip.keyframes
+          .filter((frame) => frame.property === 'volume')
+          .map((frame) => ({ ...frame, id: uid('kf') }))
+      });
+      audioId = audio.id;
+      draft.clips.push(audio);
+    });
+    if (audioId) {
+      set({ selectedClipIds: [audioId], selectedKeyframe: null, activePanel: 'audio' });
+      state.addToast('Audio extracted to a new bottom track', 'success');
+    }
   },
 
   importCaptions: (entries, replace = false) => {
@@ -981,13 +1051,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ project, history: [], future: [], selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false, activePanel: 'media' });
     scheduleSave(project);
     get().addToast('New project created', 'success');
-  },
-  loadDemoProject: () => {
-    const state = get();
-    const project = seedProject(state.assets);
-    set({ project, history: [], future: [], selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false, activePanel: 'media' });
-    scheduleSave(project);
-    get().addToast('Demo film loaded', 'success');
   },
   importProject: (data) => {
     try {

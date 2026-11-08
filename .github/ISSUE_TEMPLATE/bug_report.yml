@@ -19,8 +19,8 @@ body:
     attributes:
       label: Steps to reproduce
       placeholder: |
-        1. Open the demo film
-        2. Select the first clip
+        1. Open LumaCut
+        2. Import a clip and add it to the timeline
         3. ...
     validations:
       required: true
@@ -34,7 +34,7 @@ body:
     id: version
     attributes:
       label: LumaCut version / commit
-      placeholder: e.g. 1.4.1 or main@abc123
+      placeholder: e.g. 1.5.0 or main@abc123
     validations:
       required: true
   - type: dropdown

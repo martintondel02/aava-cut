@@ -370,14 +370,15 @@ Aava Cut 2.0 is the first product under the new house.
 ### Release naming
 
 ```text
-Aava-Cut-2.0.0-x86_64.AppImage
-Aava-Cut-2.0.0-amd64.deb
-Aava-Cut-2.0.0-x86_64.rpm
+Aava-Cut-2.0.1-x86_64.AppImage
+Aava-Cut-2.0.1-amd64.deb
+Aava-Cut-2.0.1-x86_64.rpm
 ```
 
 ### Domain and contact
 
 - Canonical: `https://aava.dev`
+- Preview: `https://martintondel02.github.io/aava-site/`
 - Email: `hello@aava.dev`
 - Support: `support@aava.dev`
 
@@ -417,4 +418,4 @@ Aava Cut is an independent product. It is not affiliated with CapCut, ByteDance,
 
 ---
 
-*Last updated: Aava Cut 2.0.0.*
+*Last updated: Aava Cut 2.0.1.*

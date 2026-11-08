@@ -520,7 +520,7 @@ export function ExportDialog() {
                   <div className="export-codec-hint">
                     <Info size={11} />
                     <span>H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart Aava Cut.</span>
-                    <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer">Guide</a>
+                    <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer">Guide</a>
                   </div>
                 )}
               </div>

@@ -16,7 +16,7 @@ function changedClipIds(before: Project | null, after: Project): string[] {
 }
 
 function makeToken() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `lc_${crypto.randomUUID().replace(/-/g, '')}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `av_${crypto.randomUUID().replace(/-/g, '')}`;
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
   return `av_${Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')}`;

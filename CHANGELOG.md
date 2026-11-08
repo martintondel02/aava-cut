@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.1 — 2026-11-08
+
+### Added
+
+- **Aava website** — landing page for the suite at `aava.dev`, currently deployed at
+  `https://martintondel02.github.io/aava-site/` while DNS is configured.
+- Website link in **Settings → About**.
+- GitHub repository links updated to `martintondel02/aava-cut`.
+
+### Changed
+
+- GitHub repository renamed from `lumacut` to `aava-cut`.
+- Package and release artifacts are now `Aava-Cut-2.0.1-*`.
+- Public site covers the Aava Cut release, the broader Aava suite roadmap, download
+  packages and the brand guide.
+
+### Verification
+
+- Typecheck and production build pass
+- Full Playwright suite passes
+- AppImage, DEB and RPM build
+- Website desktop and mobile validated; no horizontal overflow
+
 ## 2.0.0 — 2026-11-08
 
 ### Rebrand

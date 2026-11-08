@@ -5,8 +5,8 @@ Thanks for caring about local-first video editing. This guide covers the develop
 ## Development setup
 
 ```bash
-git clone https://github.com/martintondel02/lumacut.git
-cd lumacut
+git clone https://github.com/martintondel02/aava-cut.git
+cd aava-cut
 npm install
 npm run dev
 ```

@@ -11,15 +11,16 @@
 
 <p align="center">
   <a href="docs/BRAND.md"><strong>Read the Aava brand guide →</strong></a><br>
-  <sub>Aava is the public product house for creative, office and developer software. Aava Cut is its first release.</sub>
+  <sub>Aava is the public product house for creative, office and developer software. Aava Cut is its first release.</sub><br>
+  <sub><a href="https://martintondel02.github.io/aava-site/">Website preview</a> · canonical <a href="https://aava.dev">aava.dev</a> (DNS pending)</sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/martintondel02/lumacut/releases/latest"><img src="https://img.shields.io/github/v/release/martintondel02/lumacut?style=flat-square&color=72f5d1&label=download" alt="Latest release"></a>
+  <a href="https://github.com/martintondel02/aava-cut/releases/latest"><img src="https://img.shields.io/github/v/release/martintondel02/aava-cut?style=flat-square&color=72f5d1&label=download" alt="Latest release"></a>
   <a href="#bring-your-own-agent"><img src="https://img.shields.io/badge/MCP-live%20agent%20bridge-72f5d1?style=flat-square" alt="MCP live agent bridge"></a>
   <a href="#stock-media-from-pixabay"><img src="https://img.shields.io/badge/Pixabay-stock%20media-f7d66b?style=flat-square" alt="Pixabay stock media"></a>
   <a href="#free-sound-effects"><img src="https://img.shields.io/badge/Lots%20of%20Sounds-SFX-72f5d1?style=flat-square" alt="Lots of Sounds free sound effects"></a>
-  <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/martintondel02/aava-cut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/aava-cut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
   <img src="https://img.shields.io/badge/AMD-Radeon%20VAAPI-ED1C24?style=flat-square" alt="AMD Radeon">
@@ -49,13 +50,13 @@
 
 ## Install
 
-**[Download the latest release →](https://github.com/martintondel02/lumacut/releases/latest)**
+**[Download the latest release →](https://github.com/martintondel02/aava-cut/releases/latest)**
 
 | Package | Best for |
 | --- | --- |
-| **`Aava-Cut-2.0.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`Aava-Cut-2.0.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`Aava-Cut-2.0.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`Aava-Cut-2.0.1-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`Aava-Cut-2.0.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`Aava-Cut-2.0.1-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -67,7 +68,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./Aava-Cut-2.0.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.0.1-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -88,7 +89,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./Aava-Cut-2.0.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./Aava-Cut-2.0.1-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -97,7 +98,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./Aava-Cut-2.0.0-amd64.deb
+sudo apt install ./Aava-Cut-2.0.1-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -115,14 +116,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x Aava-Cut-2.0.0-x86_64.AppImage
-./Aava-Cut-2.0.0-x86_64.AppImage
+chmod +x Aava-Cut-2.0.1-x86_64.AppImage
+./Aava-Cut-2.0.1-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./Aava-Cut-2.0.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.0.1-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -130,8 +131,8 @@ chmod +x Aava-Cut-2.0.0-x86_64.AppImage
 ```bash
 sudo pacman -S --needed git nodejs npm ffmpeg vulkan-icd-loader vulkan-radeon
 
-git clone https://github.com/martintondel02/lumacut.git
-cd lumacut
+git clone https://github.com/martintondel02/aava-cut.git
+cd aava-cut
 npm ci
 npm run desktop
 ```
@@ -156,14 +157,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x Aava-Cut-2.0.0-x86_64.AppImage
-./Aava-Cut-2.0.0-x86_64.AppImage
+chmod +x Aava-Cut-2.0.1-x86_64.AppImage
+./Aava-Cut-2.0.1-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./Aava-Cut-2.0.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.0.1-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -478,7 +479,7 @@ Restart Aava Cut after installing; the server probes codecs at startup. Ubuntu's
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./Aava-Cut-2.0.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.0.1-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
@@ -502,8 +503,8 @@ Requirements:
 - **FFmpeg** and **ffprobe** on `PATH` (tested with FFmpeg 9)
 
 ```bash
-git clone https://github.com/martintondel02/lumacut.git
-cd lumacut
+git clone https://github.com/martintondel02/aava-cut.git
+cd aava-cut
 npm install
 npm run dev
 ```

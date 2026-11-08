@@ -32,6 +32,7 @@ export interface SettingsValues {
   followPlayhead: boolean;
   rippleDelete: boolean;
   captionAnimation: TextStyle['animation'];
+  pixabayApiKey: string;
   agentBridgeEnabled: boolean;
   agentBridgeToken: string;
   autoExpandKeyframes: boolean;
@@ -61,6 +62,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   followPlayhead: true,
   rippleDelete: true,
   captionAnimation: 'pop',
+  pixabayApiKey: '',
   agentBridgeEnabled: false,
   agentBridgeToken: '',
   autoExpandKeyframes: true,
@@ -109,6 +111,7 @@ function valuesOf(state: SettingsState): SettingsValues {
     followPlayhead: state.followPlayhead,
     rippleDelete: state.rippleDelete,
     captionAnimation: state.captionAnimation,
+    pixabayApiKey: state.pixabayApiKey,
     agentBridgeEnabled: state.agentBridgeEnabled,
     agentBridgeToken: state.agentBridgeToken,
     autoExpandKeyframes: state.autoExpandKeyframes,

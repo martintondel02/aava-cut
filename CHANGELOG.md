@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.12.0 — 2026-11-08
+
+### Added
+
+- **Pixabay stock media** integration
+  - search photos and videos from the Media panel
+  - preview results and add them straight to the timeline
+  - import downloads media into the local LumaCut library instead of hotlinking
+  - Pixabay API key management under Settings → Pixabay
+- **Attribution everywhere**
+  - Pixabay badge on every search result and imported asset
+  - contributor link to the original Pixabay page
+  - Pixabay Content License links in the browser and footer
+- **Sound panel links** to Pixabay music and sound-effect libraries
+- 24-hour server-side search cache and API-key-aware requests
+
+### Notes
+
+- Pixabay's public API currently documents photo and video endpoints only. Music and SFX are linked out to Pixabay and imported as local files.
+- The API key is stored in local browser settings and is sent only to the local LumaCut server.
+- Pixabay requires attribution whenever results are displayed; LumaCut keeps the badge, creator and license visible.
+
+### Verification
+
+- 30/30 Playwright tests pass
+- Added tests for Pixabay key handling, URL validation, clean attributed results and Settings integration
+- Typecheck, production build, AppImage, DEB and RPM pass
+
 ## 1.11.0 — 2026-11-08
 
 ### Added

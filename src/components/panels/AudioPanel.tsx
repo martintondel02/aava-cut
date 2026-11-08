@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, Mic, Music2, Pause, Play, Plus, Search, Square, X } from 'lucide-react';
+import { AudioLines, ExternalLink, Globe2, Mic, Music2, Pause, Play, Plus, Search, Square, X } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Segmented } from '../ui';
 import { useEditorStore } from '../../store/editorStore';
@@ -137,6 +137,20 @@ export function AudioPanel() {
           {recording ? <Square size={13} fill="currentColor" /> : <Mic size={14} />}
           {recording ? 'Stop' : 'Record'}
         </button>
+      </div>
+
+      <div className="pixabay-audio-card">
+        <div className="pixabay-audio-head">
+          <span className="pixabay-badge">Pixabay</span>
+          <span className="eyebrow">Music & sound effects</span>
+        </div>
+        <strong>Find the bed and the punctuation.</strong>
+        <p>Pixabay's public API covers photos and videos. Open its music and sound-effect libraries, then import the downloaded file here.</p>
+        <div className="pixabay-audio-links">
+          <a href={`https://pixabay.com/music/search/${encodeURIComponent(search)}/`} target="_blank" rel="noreferrer"><Music2 size={13} /> Music <ExternalLink size={11} /></a>
+          <a href={`https://pixabay.com/sound-effects/search/${encodeURIComponent(search)}/`} target="_blank" rel="noreferrer"><AudioLines size={13} /> Sound effects <ExternalLink size={11} /></a>
+        </div>
+        <span className="pixabay-attribution">Audio from Pixabay · Pixabay Content License</span>
       </div>
 
       {visualizer && (

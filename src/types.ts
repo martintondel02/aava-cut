@@ -16,7 +16,7 @@ export interface MediaAsset {
   id: string;
   name: string;
   kind: AssetKind;
-  source: 'demo' | 'upload';
+  source: 'demo' | 'upload' | 'pixabay';
   url: string;
   thumbnail: string | null;
   duration: number;
@@ -25,6 +25,13 @@ export interface MediaAsset {
   hasAudio?: boolean;
   size?: number;
   createdAt?: string;
+  provider?: 'Pixabay';
+  creator?: string;
+  creatorUrl?: string;
+  sourceUrl?: string;
+  license?: string;
+  licenseUrl?: string;
+  tags?: string;
   peaks?: number[];
   analysis?: {
     sceneCuts: number[];

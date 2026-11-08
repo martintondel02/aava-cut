@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
-import { Film, Image as ImageIcon, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react';
+import { Film, Globe2, Image as ImageIcon, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react';
 import type { MediaAsset } from '../../types';
 import { useEditorStore } from '../../store/editorStore';
 import { formatBytes, formatTime } from '../../lib/utils';
+import { PixabayBrowser } from '../PixabayBrowser';
 
 export function MediaPanel() {
   const assets = useEditorStore((state) => state.assets);
@@ -16,6 +17,7 @@ export function MediaPanel() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'video' | 'image'>('all');
   const [dragging, setDragging] = useState(false);
+  const [source, setSource] = useState<'library' | 'pixabay'>('library');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const mediaAssets = useMemo(() => assets.filter((asset) => asset.kind === 'video' || asset.kind === 'image'), [assets]);
@@ -42,6 +44,13 @@ export function MediaPanel() {
         onChange={(event) => { importFiles(event.target.files); event.target.value = ''; }}
       />
 
+      <div className="media-source-tabs">
+        <button type="button" className={source === 'library' ? 'is-active' : ''} onClick={() => setSource('library')}>My library</button>
+        <button type="button" className={source === 'pixabay' ? 'is-active' : ''} onClick={() => setSource('pixabay')}><Globe2 size={12} /> Pixabay</button>
+      </div>
+
+      {source === 'pixabay' ? <PixabayBrowser /> : (
+        <>
       <div className="panel-actions-row">
         <button type="button" className="btn btn-primary panel-import-btn" onClick={() => inputRef.current?.click()}>
           <Plus size={16} /> Import media
@@ -97,7 +106,7 @@ export function MediaPanel() {
               selected={selectedAssetId === asset.id}
               onSelect={() => setSelectedAsset(asset.id)}
               onAdd={() => addAssetToTimeline(asset.id)}
-              onRemove={asset.source === 'upload' ? () => void removeAsset(asset.id) : undefined}
+              onRemove={asset.source !== 'demo' ? () => void removeAsset(asset.id) : undefined}
             />
           ))}
         </div>
@@ -116,6 +125,8 @@ export function MediaPanel() {
       </div>
 
       {dragging && <div className="panel-drop-overlay">Drop to import</div>}
+        </>
+      )}
     </div>
   );
 }
@@ -146,6 +157,7 @@ function AssetCard({
       <div className="media-thumb" style={asset.thumbnail ? { backgroundImage: `url(${asset.thumbnail})` } : undefined}>
         {!asset.thumbnail && <div className="media-thumb-fallback"><Film size={22} /></div>}
         <span className="media-kind-badge">{asset.kind === 'video' ? <Film size={10} /> : <ImageIcon size={10} />}{kindLabel}</span>
+        {asset.provider === 'Pixabay' && <span className="media-pixabay-badge">Pixabay</span>}
         {asset.kind === 'video' && <span className="media-duration-badge">{formatTime(asset.duration)}</span>}
         <button
           type="button"
@@ -172,6 +184,11 @@ function AssetCard({
           {asset.kind === 'video' ? `${asset.width}×${asset.height}` : `${asset.width}×${asset.height}`}
           {asset.size ? ` · ${formatBytes(asset.size)}` : ''}
         </span>
+        {asset.provider === 'Pixabay' && (
+          <a className="media-attribution" href={asset.sourceUrl || 'https://pixabay.com/'} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>
+            <Globe2 size={10} /> Pixabay · {asset.creator || 'contributor'}
+          </a>
+        )}
       </div>
     </article>
   );

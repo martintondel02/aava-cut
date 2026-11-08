@@ -319,11 +319,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.10.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.11.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.10.0</span></h2>
+                    <h2>LumaCut <span>1.11.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -331,7 +331,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.10 agent vision and proxy tools</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.11 timeline zoom, full imports and caption animations</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>

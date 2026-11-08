@@ -154,6 +154,30 @@ export function Timeline() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || Math.abs(event.deltaY) < 0.01) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = scroller.getBoundingClientRect();
+      const localX = (event.clientX - rect.left) / uiScale;
+      const pointerX = localX + scroller.scrollLeft;
+      const timeAtPointer = pointerX / Math.max(1, zoom);
+      const nextZoom = clamp(zoom * Math.exp(-event.deltaY * 0.0016), 12, 220);
+      if (Math.abs(nextZoom - zoom) < 0.01) return;
+      setZoom(nextZoom);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, timeAtPointer * nextZoom - localX);
+        });
+      });
+    };
+    scroller.addEventListener('wheel', onWheel, { passive: false });
+    return () => scroller.removeEventListener('wheel', onWheel);
+  }, [zoom, uiScale, setZoom]);
+
   const fitToView = useCallback(() => {
     const viewport = scrollRef.current?.clientWidth || 1200;
     const next = clamp((viewport - 54) / Math.max(1, duration + 2), 12, 220);

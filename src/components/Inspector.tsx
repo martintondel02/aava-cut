@@ -17,7 +17,7 @@ const ANIMATION_LABELS: Record<string, string> = {
   'slide-up': 'Slide up', 'slide-down': 'Slide down', zoom: 'Zoom', spin: 'Spin'
 };
 const BLENDS = ['source-over', 'screen', 'multiply', 'overlay', 'soft-light', 'lighten', 'darken', 'color-dodge'] as const;
-const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'zoom', 'typewriter'] as const;
+const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'zoom', 'typewriter', 'pop', 'bounce'] as const;
 
 export function Inspector() {
   const project = useEditorStore((state) => state.project);

@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.11.0 — 2026-11-08
+
+### Added
+
+- **Ctrl/⌘ + wheel** zooms the timeline in and out around the pointer
+- **Caption animations**: Pop in, Bounce, Typewriter, Fade and Slide up
+  - applied to every existing cue from Caption Studio
+  - new captions inherit the selected caption animation
+  - Inspector exposes the same Pop and Bounce options for text clips
+
+### Fixed
+
+- Importing a media asset now uses its **full duration** by default
+  - previously clips were silently capped at 12 seconds and had to be dragged out
+- The media clip helper and the timeline import path now share the same full-duration behavior
+
+### Verification
+
+- 28/28 Playwright tests pass
+- New tests cover long-clip import, Ctrl+wheel zoom and caption animation application
+- Typecheck, production build, AppImage, DEB and RPM pass
+
 ## 1.10.0 — 2026-11-08
 
 ### Added — agent vision and verification

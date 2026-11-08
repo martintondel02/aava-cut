@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { test, expect, request as playwrightRequest } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
@@ -8,9 +9,11 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 const API = 'http://127.0.0.1:4317';
 const videoFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-test-fixture.mp4');
 const audioFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-test-audio.wav');
+const longFixture = path.join(process.cwd(), 'tests/fixtures/lumacut-long-fixture.mp4');
 let api: APIRequestContext;
 let videoAssetId = '';
 let audioAssetId = '';
+let longAssetId = '';
 
 test.beforeAll(async () => {
   api = await playwrightRequest.newContext({ baseURL: API });
@@ -28,6 +31,15 @@ test.beforeAll(async () => {
   if (!videoBody.assets[0]) throw new Error(`Video fixture upload failed: ${JSON.stringify(videoBody.errors || videoBody)}`);
   videoAssetId = videoBody.assets[0].id;
 
+  execFileSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x180:rate=30', '-t', '18', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', longFixture]);
+  const long = await api.post('/api/assets', {
+    multipart: { files: { name: 'lumacut-long-fixture.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(longFixture) } }
+  });
+  expect(long.ok()).toBeTruthy();
+  const longBody = await long.json() as { assets: Array<{ id: string }>; errors?: Array<{ error: string }> };
+  if (!longBody.assets[0]) throw new Error(`Long fixture upload failed: ${JSON.stringify(longBody.errors || longBody)}`);
+  longAssetId = longBody.assets[0].id;
+
   const audio = await api.post('/api/assets', {
     multipart: { files: { name: 'lumacut-test-audio.wav', mimeType: 'audio/wav', buffer: fs.readFileSync(audioFixture) } }
   });
@@ -41,6 +53,8 @@ test.afterAll(async () => {
   if (!api) return;
   if (videoAssetId) await api.delete(`/api/assets/${videoAssetId}`).catch(() => {});
   if (audioAssetId) await api.delete(`/api/assets/${audioAssetId}`).catch(() => {});
+  if (longAssetId) await api.delete(`/api/assets/${longAssetId}`).catch(() => {});
+  try { fs.unlinkSync(longFixture); } catch {}
   await api.dispose();
 });
 
@@ -324,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.10.0');
+  expect(capabilities.version).toBe('1.11.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -667,4 +681,54 @@ test('live Agent Bridge applies an agent command to the open editor', async ({ p
     const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
     return project.clips?.find((clip: { id: string }) => clip.id === id)?.volume;
   }, clipId), { timeout: 6000 }).toBe(0.15);
+});
+test('imports the entire duration of a long clip', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.media-card', { hasText: 'lumacut-long-fixture' }).dblclick();
+  await expect(page.locator('.timeline-clip')).toHaveCount(1);
+  await page.waitForTimeout(700);
+  const duration = await page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return project.clips?.[0]?.duration as number;
+  });
+  expect(duration).toBeGreaterThan(17.5);
+});
+
+test('Ctrl+wheel zooms the timeline around the pointer', async ({ page }) => {
+  await page.goto('/');
+  const readZoom = async () => Number((await page.locator('.zoom-readout').innerText()).match(/\d+/)?.[0] || 0);
+  await page.locator('.timeline-tool[title="Zoom out"]').click();
+  await page.locator('.timeline-tool[title="Zoom out"]').click();
+  const before = await readZoom();
+  const scroller = page.locator('.timeline-scroll');
+  const box = await scroller.boundingBox();
+  if (!box) throw new Error('timeline scroller is not visible');
+  await page.mouse.move(box.x + box.width / 2, box.y + 80);
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -260);
+  await page.keyboard.up('Control');
+  await page.waitForTimeout(150);
+  expect(await readZoom()).toBeGreaterThan(before);
+});
+
+test('applies caption-specific animations to all cues and new cues', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.rail-tab', { hasText: 'Captions' }).click();
+  await page.locator('.caption-compose textarea').first().fill('Caption animation test');
+  await page.locator('.caption-compose .btn-primary').first().click();
+  await expect(page.locator('.timeline-clip.clip-text')).toHaveCount(1);
+  await page.locator('.caption-animation-grid button', { hasText: 'Typewriter' }).click();
+  await page.waitForTimeout(700);
+  const animation = await page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return project.clips?.find((clip: { caption?: boolean }) => clip.caption)?.text?.animation;
+  });
+  expect(animation).toBe('typewriter');
+  await page.locator('.caption-animation-grid button', { hasText: 'Bounce' }).click();
+  await page.waitForTimeout(700);
+  const bounce = await page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return project.clips?.find((clip: { caption?: boolean }) => clip.caption)?.text?.animation;
+  });
+  expect(bounce).toBe('bounce');
 });

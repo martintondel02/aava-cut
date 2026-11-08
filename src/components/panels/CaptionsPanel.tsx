@@ -1,9 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
 import { Captions, Download, FileText, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
+import { useSettingsStore } from '../../store/settingsStore';
 import { buildSrt, parseSrt, scriptToCues } from '../../lib/srt';
 import { downloadBlob, formatTime } from '../../lib/utils';
 import { AutoCaptions } from '../captions/AutoCaptions';
+
+const CAPTION_ANIMATIONS = [
+  { id: 'none', label: 'None' },
+  { id: 'pop', label: 'Pop in' },
+  { id: 'bounce', label: 'Bounce' },
+  { id: 'typewriter', label: 'Typewriter' },
+  { id: 'fade', label: 'Fade' },
+  { id: 'slide-up', label: 'Slide up' }
+] as const;
 
 const STYLE_PRESETS = [
   {
@@ -34,6 +44,8 @@ export function CaptionsPanel() {
   const selectClip = useEditorStore((state) => state.selectClip);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const addToast = useEditorStore((state) => state.addToast);
+  const captionAnimation = useSettingsStore((state) => state.captionAnimation);
+  const updateSettings = useSettingsStore((state) => state.update);
   const [mode, setMode] = useState<'single' | 'script'>('single');
   const [singleText, setSingleText] = useState('');
   const [script, setScript] = useState('');
@@ -167,6 +179,25 @@ export function CaptionsPanel() {
               {preset.id === 'highlight' ? <span className="caption-highlight">Your words</span> : 'Your words'}
             </span>
             <span className="caption-style-name">{preset.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="section-mini-head"><span>Caption animation</span><span>applies to all cues</span></div>
+      <div className="caption-animation-grid">
+        {CAPTION_ANIMATIONS.map((animation) => (
+          <button
+            type="button"
+            key={animation.id}
+            className={captionAnimation === animation.id ? 'is-active' : ''}
+            onClick={() => {
+              updateSettings({ captionAnimation: animation.id });
+              updateCaptionStyles({ animation: animation.id });
+              addToast(`${animation.label} caption animation applied`, 'success');
+            }}
+          >
+            <span className={`caption-animation-glyph glyph-${animation.id}`}>{animation.id === 'none' ? '—' : 'Aa'}</span>
+            <span>{animation.label}</span>
           </button>
         ))}
       </div>

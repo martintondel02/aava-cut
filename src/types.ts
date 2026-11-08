@@ -67,7 +67,7 @@ export interface TextStyle {
   radius: number;
   uppercase: boolean;
   italic: boolean;
-  animation: 'none' | 'fade' | 'slide-up' | 'slide-down' | 'zoom' | 'typewriter';
+  animation: 'none' | 'fade' | 'slide-up' | 'slide-down' | 'zoom' | 'typewriter' | 'pop' | 'bounce';
   maxWidth: number;
 }
 

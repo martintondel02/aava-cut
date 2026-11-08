@@ -148,8 +148,8 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
               );
             })}
             <div className="settings-nav-footer">
-              <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={14} /> GitHub</a>
-              <a href="https://github.com/martintondel02/lumacut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer"><CircleHelp size={14} /> Roadmap</a>
+              <a href="https://github.com/martintondel02/aava-cut" target="_blank" rel="noreferrer"><Github size={14} /> GitHub</a>
+              <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer"><CircleHelp size={14} /> Roadmap</a>
             </div>
           </nav>
 
@@ -418,21 +418,22 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About Aava Cut" eyebrow="Version 2.0.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About Aava Cut" eyebrow="Version 2.0.1" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark"><LogoMark size={50} /></div>
                   <div>
-                    <h2>Aava Cut <span>2.0.0</span></h2>
+                    <h2>Aava Cut <span>2.0.1</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
                 </div>
                 <div className="about-links">
-                  <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/docs/BRAND.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Aava brand guide</strong><em>Logo, colour, voice and product naming</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>Aava Cut 2.0 and brand guide</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
+                  <a href="https://martintondel02.github.io/aava-site/" target="_blank" rel="noreferrer"><Globe2 size={16} /><span><strong>Aava website</strong><em>aava.dev · suite home and releases</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/BRAND.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Aava brand guide</strong><em>Logo, colour, voice and product naming</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>Aava Cut 2.0.1, website and brand guide</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/aava-cut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>
                 <div className="about-facts">
                   <div><span>Runtime</span><strong>{navigator.userAgent.includes('Electron') ? 'Electron desktop' : 'Web app'}</strong></div>
@@ -546,7 +547,7 @@ function AgentBridgeCard({
       <div className="agent-bridge-notes">
         <ShieldCheck size={14} />
         <span>Localhost only. The token can be rotated by disabling and re-enabling the bridge.</span>
-        <a href="https://github.com/martintondel02/lumacut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer">Roadmap <ArrowUpRight size={12} /></a>
+        <a href="https://github.com/martintondel02/aava-cut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer">Roadmap <ArrowUpRight size={12} /></a>
       </div>
     </div>
   );

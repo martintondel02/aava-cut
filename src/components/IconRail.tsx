@@ -60,7 +60,7 @@ export function IconRail() {
         <button type="button" className="rail-tab rail-small" title="Keyboard shortcuts (?)" onClick={openHelp}>
           <Keyboard size={18} />
         </button>
-        <div className="rail-version">2.0</div>
+        <div className="rail-version">2.0.1</div>
       </div>
     </nav>
   );

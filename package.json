@@ -1,6 +1,6 @@
 {
   "name": "aava-cut",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "description": "Aava Cut \u2014 a local-first video editor for Linux with H.264/H.265/AV1, 10-bit HDR10, AMD Radeon acceleration and a live MCP agent bridge.",
   "type": "module",
@@ -107,10 +107,10 @@
   "homepage": "https://aava.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/martintondel02/lumacut.git"
+    "url": "git+https://github.com/martintondel02/aava-cut.git"
   },
   "bugs": {
-    "url": "https://github.com/martintondel02/lumacut/issues"
+    "url": "https://github.com/martintondel02/aava-cut/issues"
   },
   "license": "MIT",
   "keywords": [

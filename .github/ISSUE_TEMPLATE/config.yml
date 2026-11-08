@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Aava brand guide
-    url: https://github.com/martintondel02/lumacut/blob/main/docs/BRAND.md
+    url: https://github.com/martintondel02/aava-cut/blob/main/docs/BRAND.md
     about: Read the planned 1.1 animation, audio, theme and packaging work.
   - name: Security report
-    url: https://github.com/martintondel02/lumacut/security/advisories/new
+    url: https://github.com/martintondel02/aava-cut/security/advisories/new
     about: Report a vulnerability privately.

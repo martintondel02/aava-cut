@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('2.0.0');
+  expect(capabilities.version).toBe('2.0.1');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -643,7 +643,7 @@ test('MCP stdio bridge exposes project and command tools', async ({ request }) =
     args: [path.join(process.cwd(), 'server/mcp.mjs')],
     env
   });
-  const client = new Client({ name: 'aava-test', version: '2.0.0' });
+  const client = new Client({ name: 'aava-test', version: '2.0.1' });
   try {
     await client.connect(transport);
     const tools = await client.listTools();

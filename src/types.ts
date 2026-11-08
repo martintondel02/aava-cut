@@ -135,12 +135,17 @@ export interface Project {
   updatedAt: string;
 }
 
+export type ExportCodec = 'auto' | 'h264' | 'hevc' | 'av1';
+
 export interface ExportSettings {
   resolution: '1080p' | '720p' | '4k';
   fps: 24 | 30 | 60;
   format: 'mp4' | 'webm';
   quality: 'standard' | 'high';
   hardwareAcceleration: boolean;
+  codec: ExportCodec;
+  bitDepth: 8 | 10;
+  hdr: boolean;
   name: string;
 }
 
@@ -153,6 +158,17 @@ export interface HardwareEncoderInfo {
   backend: 'vaapi' | 'amf' | 'vulkan';
   renderNode?: string;
   profile?: string[];
+  tenBit?: boolean;
+}
+
+export interface CodecCapability {
+  codec: 'h264' | 'hevc' | 'av1' | 'vp9';
+  label: string;
+  formats: Array<'mp4' | 'webm'>;
+  maxBitDepth: 8 | 10;
+  hdr: boolean;
+  software: string | null;
+  hardware: HardwareEncoderInfo | null;
 }
 
 export interface HardwareCapabilities {
@@ -170,7 +186,8 @@ export interface HardwareCapabilities {
 export interface ServerCapabilities {
   version: string;
   hardware: HardwareCapabilities;
-  software: { h264: string; vp9: string };
+  software: { h264: string; hevc: string | null; av1: string | null; vp9: string };
+  codecs: Record<'h264' | 'hevc' | 'av1', CodecCapability>;
 }
 
 export interface ExportResult {
@@ -182,6 +199,8 @@ export interface ExportResult {
   hardware?: boolean;
   codec?: string;
   encoder?: string;
+  bitDepth?: number;
+  hdr?: boolean;
   acceleration?: string;
 }
 

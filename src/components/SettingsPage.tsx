@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Check, CircleHelp, Download, ExternalLink, Gauge, Github, Info, LayoutPanelTop, Moon, Monitor,
+  Check, CircleHelp, Cpu, Download, ExternalLink, Gauge, Github, Info, LayoutPanelTop, Moon, Monitor,
   Palette, Play, RotateCcw, Settings2, Sparkles, Sun, TimerReset, Volume2, X
 } from 'lucide-react';
 import { useSettingsStore, type Accent, type ThemeMode } from '../store/settingsStore';
@@ -236,7 +236,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'export' && (
-              <SettingsSection title="Export" eyebrow="Delivery" description="These defaults are applied every time you open the export dialog.">
+              <SettingsSection title="Export" eyebrow="Delivery" description="These defaults are applied every time you open the export dialog. Codec, bit depth and HDR10 are chosen per export.">
                 <div className="settings-group">
                   <div className="settings-group-head"><div><span className="settings-label">Default resolution</span><span className="settings-help">You can still change this per export.</span></div></div>
                   <Segmented
@@ -306,19 +306,20 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.2.0" description="A local-first video editor for Linux, tuned for AMD Radeon and Fedora.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.3.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.2.0</span></h2>
+                    <h2>LumaCut <span>1.3.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
-                    <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>Local-first</span><span>Electron</span></div>
+                    <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
                 </div>
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.2 hardware and Fedora release notes</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.3 codecs, HDR and release notes</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/screenshot.png" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Demo film</strong><em>Chase the Light</em></span><ExternalLink size={13} /></a>
                 </div>
                 <div className="about-facts">
@@ -326,6 +327,8 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                   <div><span>Audio engine</span><strong>Web Audio API</strong></div>
                   <div><span>Encoding</span><strong>FFmpeg {serverOnline ? '· online' : '· offline'}</strong></div>
                   <div><span>GPU acceleration</span><strong>{hardware?.detected ? hardware.label || 'CPU fallback' : 'CPU fallback'}</strong></div>
+                  <div><span>Codecs</span><strong>H.264 · H.265 · AV1</strong></div>
+                  <div><span>Bit depth</span><strong>8-bit · 10-bit · HDR10</strong></div>
                   <div><span>Packages</span><strong>AppImage · DEB · RPM</strong></div>
                   <div><span>Privacy</span><strong>Local only</strong></div>
                 </div>

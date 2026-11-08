@@ -1,6 +1,6 @@
-# AMD Radeon acceleration & Fedora packaging
+# AMD Radeon acceleration, codecs & Fedora packaging
 
-LumaCut 1.2 is tuned for AMD Radeon desktops and Fedora Linux. It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
+LumaCut 1.3 is tuned for AMD Radeon desktops and Fedora Linux. It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
 
 ## How detection works
 
@@ -12,7 +12,7 @@ LumaCut 1.2 is tuned for AMD Radeon desktops and Fedora Linux. It does not just 
    - AV1 (`av1_vaapi`)
    - VP9 (`vp9_vaapi`)
 4. Each probe encodes a short 640×360 test frame. Only encoders that actually open and encode are reported as available.
-5. The server exposes the result at `/api/capabilities`; the Export dialog and Settings → About show the chosen encoder.
+5. The server exposes the result plus a codec catalog at `/api/capabilities`; the Export dialog and Settings → About show the chosen encoder.
 
 Hardware exports run through this path:
 
@@ -24,12 +24,61 @@ canvas capture (WebM)
   → AAC (MP4) or Opus (WebM)
 ```
 
-## Encoder choice
+## Codec picker
+
+The export dialog has an explicit **Auto / H.264 / H.265 / AV1** picker plus an **8-bit / 10-bit** selector and an **HDR10** toggle. Auto keeps the old “best available” behaviour; the explicit choices are for delivery requirements.
+
+| Codec | Containers | Bit depth | Hardware path | Software path |
+| --- | --- | --- | --- | --- |
+| H.264 | MP4 | 8-bit only | `h264_vaapi` | `libx264` / `libopenh264` / `mpeg4` |
+| H.265 / HEVC | MP4 | 8-bit or 10-bit | `hevc_vaapi` | `libx265` |
+| AV1 | MP4 or WebM | 8-bit or 10-bit | `av1_vaapi` | `libsvtav1` / `libaom-av1` |
+| VP9 | WebM | 8-bit | `vp9_vaapi` | `libvpx-vp9` |
+
+The picker only enables a codec when the local server reports a working hardware or software encoder. H.264 is intentionally limited to 8-bit.
+
+## H.265 / HEVC installation
+
+Fedora's official `ffmpeg-free` build often does **not** include `libx265`. If the H.265 card is disabled, install an FFmpeg build that has it and restart LumaCut:
+
+```bash
+# 1. Enable RPM Fusion free (once)
+sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+
+# 2. Replace Fedora's limited build with RPM Fusion's FFmpeg
+sudo dnf swap ffmpeg-free ffmpeg --allowerasing
+# If ffmpeg-free was not installed: sudo dnf install ffmpeg
+
+# 3. Verify
+ffmpeg -hide_banner -encoders | grep libx265
+```
+
+On Ubuntu, the distribution FFmpeg normally includes `libx265`:
+
+```bash
+sudo apt install ffmpeg
+```
+
+Hardware HEVC is also supported when the driver exposes `hevc_vaapi`; LumaCut probes it with a real encode. Some AMD/Mesa combinations expose AV1 but not H.264/HEVC; in that case use AV1 for hardware or install libx265 for software H.265.
+
+H.265 is covered by patent pools in some jurisdictions. Check that your use and distribution comply with the applicable licensing.
+
+## 10-bit and HDR10
+
+- **10-bit** is available for H.265 and AV1. H.264 remains 8-bit.
+- **HDR10** is available for MP4, 10-bit, H.265 or AV1.
+- HDR output uses a color-managed conversion from the 8-bit SDR canvas to **PQ / BT.2020** at a 100-nit reference. It tags the file correctly for HDR displays, but it **does not recover HDR highlights from an SDR timeline**. A future native HDR rendering pipeline would be needed for source-HDR grading.
+- The server passes color metadata into the FFmpeg encode and reports the actual `bitDepth`, `hdr`, `codec` and encoder in the export response.
+- Hardware 10-bit encoding uses `p010` upload into VAAPI. Software 10-bit uses `yuv420p10le`.
+
+Hardware 10-bit was validated with AV1 VAAPI on Radeon; H.265 10-bit requires either `hevc_vaapi` or `libx265`.
+
+## Preferred hardware order
 
 | Container | Preference order | Notes |
 | --- | --- | --- |
-| MP4 | H.264 → HEVC → AV1 | H.264 is offered only when the driver exposes a working VAAPI H.264 encoder. |
-| WebM | AV1 → VP9 | Falls back to software VP9 if no hardware WebM codec is available. |
+| Auto + MP4 | H.264 → HEVC → AV1 | H.264 is offered only when the driver exposes a working VAAPI H.264 encoder. |
+| Auto + WebM | AV1 → VP9 | Falls back to software VP9 if no hardware WebM codec is available. |
 
 On a system like Fedora 45 with an RDNA4 Radeon RX 9070 XT, Mesa may expose **AV1 VAAPI** while H.264/HEVC VAAPI is not available. In that case LumaCut automatically uses AMD AV1 for MP4 and WebM. That is real hardware acceleration; it is not a software fallback.
 
@@ -58,7 +107,7 @@ sudo dnf install mesa-dri-drivers
 ## Install the RPM
 
 ```bash
-sudo dnf install ./LumaCut-1.2.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.3.0-x86_64.rpm
 ```
 
 The RPM installs:
@@ -79,7 +128,7 @@ npm run build
 npx electron-builder --linux rpm --publish never
 ```
 
-The resulting package is written to `release/LumaCut-1.2.0-x86_64.rpm`.
+The resulting package is written to `release/LumaCut-1.3.0-x86_64.rpm`.
 
 ## Disabling acceleration
 

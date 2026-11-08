@@ -192,11 +192,43 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.2.0');
+  expect(capabilities.version).toBe('1.3.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
   expect(Array.isArray(capabilities.hardware.encoders)).toBe(true);
   expect(capabilities.software.h264).toBeTruthy();
   expect(capabilities.software.vp9).toBeTruthy();
+  expect(capabilities.codecs).toHaveProperty('h264');
+  expect(capabilities.codecs).toHaveProperty('hevc');
+  expect(capabilities.codecs).toHaveProperty('av1');
+  expect(capabilities.codecs.h264.maxBitDepth).toBe(8);
+  expect(capabilities.codecs.hevc.maxBitDepth).toBe(10);
+  expect(capabilities.codecs.av1.maxBitDepth).toBe(10);
+});
+
+test('codec picker handles 8-bit H.264 and 10-bit HDR AV1', async ({ page, request }) => {
+  const capabilityResponse = await request.get('/api/capabilities');
+  const capabilities = await capabilityResponse.json();
+  const av1Available = Boolean(capabilities.codecs.av1.software || capabilities.codecs.av1.hardware);
+  test.skip(!av1Available, 'This FFmpeg build has no AV1 encoder.');
+
+  await page.goto('/');
+  await page.locator('.export-btn').click();
+  await expect(page.locator('.codec-cards button')).toHaveCount(4);
+  const h264 = page.locator('.codec-cards button', { hasText: 'H.264' });
+  const av1 = page.locator('.codec-cards button', { hasText: 'AV1' });
+  const tenBit = page.locator('.export-option-row .segmented button', { hasText: '10-bit' }).first();
+  const hdr = page.locator('.export-hdr-control .switch');
+
+  await h264.click();
+  await expect(page.locator('.export-summary')).toContainText('H.264 8-bit');
+  await expect(tenBit).toBeDisabled();
+
+  await av1.click();
+  await expect(tenBit).toBeEnabled();
+  await tenBit.click();
+  await expect(hdr).toBeEnabled();
+  await hdr.click();
+  await expect(page.locator('.export-summary')).toContainText('AV1 10-bit HDR10');
 });

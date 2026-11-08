@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.3.0 — 2026-11-08
+
+The codec and 10-bit release.
+
+### Added
+
+- Explicit **Auto / H.264 / H.265 / AV1** codec picker with live availability from the local server
+- **8-bit and 10-bit** output selection; H.265 and AV1 support 10-bit, H.264 is 8-bit only
+- **HDR10** output for MP4 10-bit H.265/AV1, using a color-managed SDR → PQ/BT.2020 conversion
+- 10-bit AV1 VAAPI hardware encoding, including p010 upload into the AMD encoder
+- H.265/HEVC software support through `libx265`, with install guidance when the encoder is missing
+- Codec availability, bit depth and HDR metadata in the export result and UI summary
+- Codec catalogue exposed at `/api/capabilities` for the picker and install hints
+
+### Changed
+
+- Export dialog now groups codec, bit depth and HDR10 alongside the existing format/quality controls
+- AMD acceleration controls follow the selected codec and bit depth
+- HDR is intentionally restricted to MP4 + 10-bit + H.265/AV1
+- H.264 remains the compatibility choice and is always 8-bit
+
+### Notes
+
+- HDR10 is converted from the 8-bit SDR canvas. It tags and color-manages the output as PQ/BT.2020 but cannot reconstruct HDR highlights that are not in the timeline.
+- Fedora's stock `ffmpeg-free` may not include `libx265`; the H.265 card stays disabled until RPM Fusion FFmpeg (or a working HEVC VAAPI driver) is available.
+
 ## 1.2.0 — 2026-11-08
 
 The AMD and Fedora release.

@@ -160,6 +160,8 @@ async function saveAssets(assets) {
 let assets = await loadAssets();
 
 let h264Encoder = 'libopenh264';
+let hevcEncoder = null;
+let av1Encoder = null;
 let vp9Encoder = 'libvpx-vp9';
 let encoderList = '';
 try {
@@ -168,6 +170,9 @@ try {
   if (/\blibx264\b/.test(stdout)) h264Encoder = 'libx264';
   else if (/\blibopenh264\b/.test(stdout)) h264Encoder = 'libopenh264';
   else if (/\bmpeg4\b/.test(stdout)) h264Encoder = 'mpeg4';
+  if (/\blibx265\b/.test(stdout)) hevcEncoder = 'libx265';
+  if (/\blibsvtav1\b/.test(stdout)) av1Encoder = 'libsvtav1';
+  else if (/\blibaom-av1\b/.test(stdout)) av1Encoder = 'libaom-av1';
   if (!/\blibvpx-vp9\b/.test(stdout)) vp9Encoder = /\blibvpx\b/.test(stdout) ? 'libvpx' : 'libvpx-vp9';
 } catch {
   // Keep the defaults; the export call will surface an actionable FFmpeg error.
@@ -215,15 +220,16 @@ async function readGpuNames() {
   return [...names];
 }
 
-async function probeVaapi(node, candidate) {
+async function probeVaapi(node, candidate, tenBit = false) {
+  const profile = tenBit && candidate.codec === 'hevc' ? ['-profile:v', 'main10'] : candidate.profile;
   await execFileP('ffmpeg', [
     '-hide_banner', '-loglevel', 'error',
     '-init_hw_device', `vaapi=amd:${node}`,
     '-f', 'lavfi', '-i', 'color=c=black:s=640x360:r=30:d=0.2',
-    '-vf', 'format=nv12,hwupload',
+    '-vf', tenBit ? 'format=p010,hwupload' : 'format=nv12,hwupload',
     '-c:v', candidate.encoder,
     '-rc_mode', 'CQP', '-qp', '28',
-    ...candidate.profile,
+    ...profile,
     '-f', 'null', '-'
   ], { timeout: 6000 });
 }
@@ -251,13 +257,18 @@ async function detectHardware() {
       if (found.has(candidate.codec)) continue;
       try {
         await probeVaapi(node, candidate);
+        let tenBit = false;
+        if (candidate.codec === 'hevc' || candidate.codec === 'av1') {
+          try { await probeVaapi(node, candidate, true); tenBit = true; } catch {}
+        }
         found.set(candidate.codec, {
           codec: candidate.codec,
           encoder: candidate.encoder,
           label: `AMD VAAPI · ${candidate.label}`,
           backend: 'vaapi',
           renderNode: node,
-          profile: candidate.profile
+          profile: candidate.profile,
+          tenBit
         });
       } catch {}
     }
@@ -271,34 +282,57 @@ async function detectHardware() {
 }
 
 const hardware = await detectHardware();
+const findHardware = (codec) => hardware.encoders.find((entry) => entry.codec === codec) || null;
+const codecs = {
+  h264: {
+    codec: 'h264', label: 'H.264', formats: ['mp4'], maxBitDepth: 8, hdr: false,
+    software: h264Encoder, hardware: findHardware('h264')
+  },
+  hevc: {
+    codec: 'hevc', label: 'H.265 (HEVC)', formats: ['mp4'], maxBitDepth: 10, hdr: true,
+    software: hevcEncoder, hardware: findHardware('hevc')
+  },
+  av1: {
+    codec: 'av1', label: 'AV1', formats: ['mp4', 'webm'], maxBitDepth: 10, hdr: true,
+    software: av1Encoder, hardware: findHardware('av1')
+  },
+  vp9: {
+    codec: 'vp9', label: 'VP9', formats: ['webm'], maxBitDepth: 8, hdr: false,
+    software: vp9Encoder, hardware: findHardware('vp9')
+  }
+};
+
 if (hardware.detected) {
-  const codecs = hardware.encoders.map((entry) => entry.codec).join(', ') || 'no working VAAPI encoder';
-  console.log(`GPU: ${hardware.gpuNames.join(' / ')} · ${hardware.renderNodes.join(', ')} · ${codecs}`);
+  const names = hardware.encoders.map((entry) => `${entry.codec}${entry.tenBit ? ' 10-bit' : ''}`).join(', ') || 'no working VAAPI encoder';
+  console.log(`GPU: ${hardware.gpuNames.join(' / ')} · ${hardware.renderNodes.join(', ')} · ${names}`);
 } else {
   console.log('GPU: no AMD Radeon detected · software encoding');
 }
+console.log(`Software codecs: ${[h264Encoder, hevcEncoder, av1Encoder, vp9Encoder].filter(Boolean).join(', ')}`);
 
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.2.0',
+    version: '1.3.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
     hardware: {
       detected: hardware.detected,
       label: hardware.preferred?.label || null,
-      codec: hardware.preferred?.codec || null
+      codec: hardware.preferred?.codec || null,
+      tenBit: Boolean(hardware.preferred?.tenBit)
     }
   });
 });
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.2.0',
+    version: '1.3.0',
     hardware,
-    software: { h264: h264Encoder, vp9: vp9Encoder }
+    software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
+    codecs
   });
 });
 
@@ -399,34 +433,143 @@ function finishArgs(args, fps, duration, outPath) {
   return args;
 }
 
-function softwareArgs(inputPath, outPath, { format, quality, fps, duration }) {
+const HDR_FILTER = 'zscale=pin=bt709:tin=bt709:min=bt709:rin=limited:p=bt709:t=linear:m=bt709:r=limited,format=gbrpf32le,zscale=pin=bt709:tin=linear:min=bt709:rin=limited:p=bt2020:t=smpte2084:m=bt2020nc:r=limited,format=yuv420p10le';
+
+function filterFor(kind, bitDepth, hdr) {
+  if (hdr) return kind === 'hardware' ? `${HDR_FILTER},format=p010,hwupload` : HDR_FILTER;
+  if (bitDepth === 10) return kind === 'hardware' ? 'format=p010,hwupload' : 'format=yuv420p10le';
+  return kind === 'hardware' ? 'format=nv12,hwupload' : null;
+}
+
+function colorArgs(bitDepth, hdr) {
+  if (hdr) return ['-color_primaries', 'bt2020', '-color_trc', 'smpte2084', '-colorspace', 'bt2020nc'];
+  if (bitDepth === 10) return ['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709'];
+  return [];
+}
+
+function hevcInstallHelp() {
+  return 'H.265/HEVC needs an FFmpeg build with libx265 or a working hevc_vaapi driver. On Fedora, enable RPM Fusion and install ffmpeg (or swap ffmpeg-free for ffmpeg), then restart LumaCut. See docs/HARDWARE.md.';
+}
+
+function resolveExportPlan({ format, codec, bitDepth, hdr, acceleration }) {
+  if (codec === 'auto') {
+    if (bitDepth !== 8 || hdr) {
+      const error = new Error('Choose H.265 or AV1 for 10-bit and HDR output.');
+      error.statusCode = 400;
+      throw error;
+    }
+    const hardwareChoice = acceleration === 'auto' ? hardware.preferredFor[format] : null;
+    if (hardwareChoice) {
+      return {
+        primary: { kind: 'hardware', hardware: hardwareChoice, encoder: hardwareChoice.encoder, codec: hardwareChoice.codec, bitDepth: 8, hdr: false },
+        fallback: { kind: 'software', encoder: format === 'mp4' ? h264Encoder : vp9Encoder, codec: format === 'mp4' ? 'h264' : 'vp9', bitDepth: 8, hdr: false }
+      };
+    }
+    return {
+      primary: { kind: 'software', encoder: format === 'mp4' ? h264Encoder : vp9Encoder, codec: format === 'mp4' ? 'h264' : 'vp9', bitDepth: 8, hdr: false },
+      fallback: null
+    };
+  }
+
+  const meta = codecs[codec];
+  if (!meta) {
+    const error = new Error('Unknown codec.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!meta.formats.includes(format)) {
+    const error = new Error(`${meta.label} is not supported in ${format.toUpperCase()}. Choose MP4 or AV1.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  if (bitDepth > meta.maxBitDepth) {
+    const error = new Error(`${meta.label} supports a maximum of ${meta.maxBitDepth}-bit output. Choose ${meta.maxBitDepth === 10 ? '8-bit or 10-bit' : '8-bit'}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  if (hdr) {
+    if (format !== 'mp4' || bitDepth !== 10 || !meta.hdr) {
+      const error = new Error('HDR10 output requires MP4, 10-bit, and H.265 or AV1.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  const hardwareChoice = meta.hardware && (bitDepth === 8 || meta.hardware.tenBit) ? meta.hardware : null;
+  const softwareChoice = meta.software || null;
+  if (acceleration === 'auto' && hardwareChoice) {
+    return {
+      primary: { kind: 'hardware', hardware: hardwareChoice, encoder: hardwareChoice.encoder, codec, bitDepth, hdr },
+      fallback: softwareChoice ? { kind: 'software', encoder: softwareChoice, codec, bitDepth, hdr } : null
+    };
+  }
+  if (softwareChoice) {
+    return {
+      primary: { kind: 'software', encoder: softwareChoice, codec, bitDepth, hdr },
+      fallback: null
+    };
+  }
+  if (hardwareChoice) {
+    const error = new Error(`AMD GPU acceleration is off and no software ${meta.label} encoder is installed. ${codec === 'hevc' ? hevcInstallHelp() : ''}`.trim());
+    error.statusCode = 400;
+    throw error;
+  }
+  const error = new Error(`${meta.label} encoding is unavailable. ${codec === 'hevc' ? hevcInstallHelp() : 'Install an FFmpeg build with an AV1 encoder and restart LumaCut.'}`);
+  error.statusCode = 400;
+  throw error;
+}
+
+function softwareArgs(inputPath, outPath, { format, quality, fps, duration, codec, bitDepth, hdr, encoder }) {
   const args = ['-y', '-hide_banner', '-loglevel', 'error', '-i', inputPath];
-  if (format === 'mp4') {
-    if (h264Encoder === 'mpeg4') {
+  const filter = filterFor('software', bitDepth, hdr);
+  if (filter) args.push('-vf', filter);
+
+  if (codec === 'h264') {
+    if (encoder === 'mpeg4') {
       args.push('-c:v', 'mpeg4', '-q:v', quality === 'high' ? '2' : '4');
     } else {
-      args.push('-c:v', h264Encoder, '-pix_fmt', 'yuv420p');
-      if (h264Encoder === 'libx264') args.push('-preset', quality === 'high' ? 'slow' : 'veryfast', '-crf', quality === 'high' ? '18' : '22');
-      else if (h264Encoder === 'libopenh264') args.push('-preset', quality === 'high' ? 'quality' : 'balanced', '-b:v', quality === 'high' ? '18M' : '9M');
+      args.push('-c:v', encoder, '-pix_fmt', 'yuv420p');
+      if (encoder === 'libx264') args.push('-preset', quality === 'high' ? 'slow' : 'veryfast', '-crf', quality === 'high' ? '18' : '22');
+      else if (encoder === 'libopenh264') args.push('-preset', quality === 'high' ? 'quality' : 'balanced', '-b:v', quality === 'high' ? '18M' : '9M');
       else args.push('-b:v', quality === 'high' ? '18M' : '9M');
     }
+  } else if (codec === 'hevc') {
+    args.push('-c:v', encoder || 'libx265', '-preset', quality === 'high' ? 'slow' : 'medium', '-crf', quality === 'high' ? '20' : '24', '-tag:v', 'hvc1');
+    args.push('-pix_fmt', bitDepth === 10 ? 'yuv420p10le' : 'yuv420p');
+    if (hdr) args.push('-x265-params', 'hdr10=1:repeat-headers=1');
+  } else if (codec === 'av1') {
+    if (encoder === 'libsvtav1') {
+      args.push('-c:v', 'libsvtav1', '-preset', quality === 'high' ? '6' : '9', '-crf', quality === 'high' ? '28' : '34');
+    } else {
+      args.push('-c:v', 'libaom-av1', '-b:v', '0', '-crf', quality === 'high' ? '28' : '34', '-cpu-used', '6', '-row-mt', '1');
+    }
+    args.push('-pix_fmt', bitDepth === 10 ? 'yuv420p10le' : 'yuv420p');
+  } else {
+    args.push('-c:v', encoder || vp9Encoder, '-b:v', '0', '-crf', quality === 'high' ? '26' : '34');
+  }
+
+  args.push(...colorArgs(bitDepth, hdr));
+  if (format === 'mp4') {
     args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
   } else {
-    args.push('-c:v', vp9Encoder, '-b:v', '0', '-crf', quality === 'high' ? '26' : '34', '-c:a', 'libopus', '-b:a', '160k');
+    args.push('-c:a', 'libopus', '-b:a', '160k');
   }
   return finishArgs(args, fps, duration, outPath);
 }
 
-function hardwareArgs(inputPath, outPath, hw, { format, quality, fps, duration }) {
+function hardwareArgs(inputPath, outPath, hw, { format, quality, fps, duration, codec, bitDepth, hdr }) {
   const args = [
     '-y', '-hide_banner', '-loglevel', 'error',
     '-vaapi_device', hw.renderNode,
     '-i', inputPath,
-    '-vf', 'format=nv12,hwupload',
+    '-vf', filterFor('hardware', bitDepth, hdr),
     '-c:v', hw.encoder,
-    '-rc_mode', 'CQP', '-qp', quality === 'high' ? '20' : '26',
-    ...(hw.profile || [])
+    '-rc_mode', 'CQP', '-qp', quality === 'high' ? '18' : '24'
   ];
+  if (codec === 'h264') args.push('-profile:v', 'main');
+  else if (codec === 'hevc') args.push('-profile:v', bitDepth === 10 ? 'main10' : 'main');
+  else if (codec === 'av1') args.push('-profile:v', 'main');
+  args.push(...colorArgs(bitDepth, hdr));
   if (format === 'mp4') {
     args.push('-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart');
   } else {
@@ -442,32 +585,35 @@ app.post('/api/export', exportUpload.single('video'), async (req, res) => {
   const format = req.body.format === 'webm' ? 'webm' : 'mp4';
   const quality = req.body.quality === 'high' ? 'high' : 'standard';
   const acceleration = req.body.acceleration === 'off' ? 'off' : 'auto';
+  const codec = ['auto', 'h264', 'hevc', 'av1'].includes(req.body.codec) ? req.body.codec : 'auto';
+  const bitDepth = req.body.bitDepth === '10' ? 10 : 8;
+  const hdr = req.body.hdr === '1' || req.body.hdr === 'true';
   const fps = Math.max(12, Math.min(60, Math.round(Number(req.body.fps) || 30)));
   const duration = Math.max(0, Math.min(3600, Number(req.body.duration) || 0));
   const base = slug(req.body.name || 'lumacut-export');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
   const outName = `${base}-${stamp}.${format}`;
   const outPath = path.join(exportDir, outName);
-  const requestedHw = acceleration === 'auto' ? hardware.preferredFor[format] : null;
-  const attempts = requestedHw ? [requestedHw, null] : [null];
-  let usedHw = null;
   let lastError = null;
   try {
-    for (const hw of attempts) {
+    const plan = resolveExportPlan({ format, codec, bitDepth, hdr, acceleration });
+    const attempts = [plan.primary, plan.fallback].filter(Boolean);
+    let used = null;
+    for (const attempt of attempts) {
       try {
-        const args = hw
-          ? hardwareArgs(req.file.path, outPath, hw, { format, quality, fps, duration })
-          : softwareArgs(req.file.path, outPath, { format, quality, fps, duration });
+        const args = attempt.kind === 'hardware'
+          ? hardwareArgs(req.file.path, outPath, attempt.hardware, { format, quality, fps, duration, codec: attempt.codec, bitDepth: attempt.bitDepth, hdr: attempt.hdr })
+          : softwareArgs(req.file.path, outPath, { format, quality, fps, duration, codec: attempt.codec, bitDepth: attempt.bitDepth, hdr: attempt.hdr, encoder: attempt.encoder });
         await execFileP('ffmpeg', args, { timeout: 20 * 60 * 1000 });
-        usedHw = hw;
+        used = attempt;
         break;
       } catch (error) {
         lastError = error;
-        if (hw) console.warn(`Hardware encode failed (${hw.encoder}); falling back to software.`);
+        if (attempt.kind === 'hardware') console.warn(`Hardware encode failed (${attempt.encoder}); falling back if possible.`);
       }
     }
-    if (!usedHw && lastError && attempts.length === 1) throw lastError;
-    if (!fs.existsSync(outPath)) throw lastError || new Error('The encoder did not produce a file');
+    if (!used) throw lastError || new Error('No encoder was able to produce the file.');
+    if (!fs.existsSync(outPath)) throw new Error('The encoder did not produce a file.');
     try { await fsp.unlink(req.file.path); } catch {}
     const stat = await fsp.stat(outPath);
     res.json({
@@ -477,14 +623,16 @@ app.post('/api/export', exportUpload.single('video'), async (req, res) => {
       path: outPath,
       size: stat.size,
       format,
-      hardware: Boolean(usedHw),
-      encoder: usedHw?.encoder || (format === 'mp4' ? h264Encoder : vp9Encoder),
-      codec: usedHw?.codec || (format === 'mp4' ? (h264Encoder === 'mpeg4' ? 'mpeg4' : 'h264') : 'vp9'),
-      acceleration: usedHw ? 'amd-vaapi' : 'software'
+      hardware: used.kind === 'hardware',
+      encoder: used.encoder,
+      codec: used.codec,
+      bitDepth: used.bitDepth,
+      hdr: used.hdr,
+      acceleration: used.kind === 'hardware' ? 'amd-vaapi' : 'software'
     });
   } catch (error) {
     try { await fsp.unlink(req.file.path); } catch {}
-    res.status(500).json({ error: 'Export failed', detail: String(error?.stderr || error?.message || error).slice(-4000) });
+    res.status(error.statusCode || 500).json({ error: 'Export failed', detail: String(error?.stderr || error?.message || error).slice(-4000) });
   }
 });
 

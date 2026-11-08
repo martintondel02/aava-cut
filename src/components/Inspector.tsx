@@ -23,6 +23,7 @@ export function Inspector() {
   const project = useEditorStore((state) => state.project);
   const assets = useEditorStore((state) => state.assets);
   const clip = useEditorStore(selectSelectedClip);
+  const extractAudio = useEditorStore((state) => state.extractAudio);
   const playhead = useEditorStore((state) => state.playhead);
   const beginEdit = useEditorStore((state) => state.beginEdit);
   const endEdit = useEditorStore((state) => state.endEdit);
@@ -486,6 +487,9 @@ export function Inspector() {
             <div className="keyframe-inline-row">
               <button type="button" onClick={() => addKeyframe(clip.id, 'volume')}><Diamond size={10} /> Volume keyframe</button>
               <button type="button" onClick={() => addClipFade(clip.id, 'audio')}>Fade in & out</button>
+              {clip.kind === 'video' && clip.assetId && assets.find((asset) => asset.id === clip.assetId)?.hasAudio !== false && (
+                <button type="button" onClick={() => extractAudio(clip.id)}><Music2 size={10} /> Extract audio</button>
+              )}
             </div>
           </Section>
         )}

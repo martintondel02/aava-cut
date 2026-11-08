@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.0 — 2026-11-08
+
+The timeline UX and editing release.
+
+### Added
+
+- **Ctrl/⌘ + drag marquee selection** on the timeline; **Ctrl/⌘ + A** selects every clip
+- **Extract audio** from a video clip into the bottom audio track via the clip context menu
+- Larger, higher-contrast UI typography across panels, inspector, timeline, menus, captions and settings
+- Fixed UI-scale coordinate handling for context menus, playhead scrubbing, clip dragging, keyframe dragging and track detection
+- Blank first-run project; bundled demo media, demo film and demo audio library removed
+
+### Changed
+
+- Space is captured as play/pause even when a toolbar button has focus, instead of activating the button
+- Ctrl/⌘ + A no longer selects page text unless focus is in a text field
+- Context menus clamp within the viewport at 80–140% UI scale
+- The media library now contains only user-imported assets
+
 ## 1.4.1 — 2026-11-08
 
 The readability polish release.

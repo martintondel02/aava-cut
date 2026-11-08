@@ -115,32 +115,13 @@ async function ensureWaveform(asset) {
   return asset;
 }
 
-function demoAssets() {
-  const manifestPath = path.join(publicDir, 'demo', 'manifest.json');
-  if (!fs.existsSync(manifestPath)) return [];
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  return manifest.assets.map((a) => ({
-    ...a,
-    id: a.id,
-    source: 'demo',
-    url: `/demo/${a.file}`,
-    thumbnail: a.thumbnail ? `/demo/${a.thumbnail}` : null,
-    createdAt: manifest.generatedAt,
-    size: fs.existsSync(path.join(publicDir, 'demo', a.file)) ? fs.statSync(path.join(publicDir, 'demo', a.file)).size : 0,
-    peaks: []
-  }));
-}
-
 async function loadAssets() {
   let stored = [];
   if (fs.existsSync(assetsFile)) {
     try { stored = JSON.parse(fs.readFileSync(assetsFile, 'utf8')); } catch { stored = []; }
   }
-  const demo = demoAssets();
-  const byId = new Map();
-  for (const asset of stored) byId.set(asset.id, asset);
-  for (const asset of demo) byId.set(asset.id, { ...asset, ...(byId.get(asset.id) || {}), ...asset, peaks: byId.get(asset.id)?.peaks || [] });
-  const all = [...byId.values()].filter((a) => a.kind !== 'audio' || true);
+  const all = stored.filter((asset) => asset.source !== 'demo' && !String(asset.id).startsWith('demo-'));
+  const removedDemo = all.length !== stored.length;
 
   // Make the library instantly usable: pre-compute waveform data once, persist it.
   let changed = false;
@@ -150,7 +131,7 @@ async function loadAssets() {
       changed = true;
     }
   }
-  if (changed) await saveAssets(all);
+  if (changed || removedDemo) await saveAssets(all);
   return all;
 }
 
@@ -315,7 +296,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.4.1',
+    version: '1.5.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -330,7 +311,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.4.1',
+    version: '1.5.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs

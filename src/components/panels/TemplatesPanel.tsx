@@ -10,7 +10,6 @@ export function TemplatesPanel() {
   const addClipsToTimeline = useEditorStore((state) => state.addClipsToTimeline);
   const mutateProject = useEditorStore((state) => state.mutateProject);
   const setAspect = useEditorStore((state) => state.setAspect);
-  const loadDemoProject = useEditorStore((state) => state.loadDemoProject);
   const addToast = useEditorStore((state) => state.addToast);
 
   const addPack = (name: string, factory: (start: number) => Clip[]) => {
@@ -145,10 +144,6 @@ export function TemplatesPanel() {
         </button>
       </div>
 
-      <button type="button" className="panel-link-row" onClick={loadDemoProject}>
-        <span>Want a starting point?</span>
-        <span>Reload demo film →</span>
-      </button>
     </div>
   );
 }

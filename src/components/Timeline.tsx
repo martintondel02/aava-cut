@@ -64,6 +64,7 @@ export function Timeline() {
   const zoom = useEditorStore((state) => state.zoom);
   const snapping = useEditorStore((state) => state.snapping);
   const showWaveforms = useSettingsStore((state) => state.showWaveforms);
+  const uiScale = useSettingsStore((state) => state.scale / 100);
   const selectedClipIds = useEditorStore((state) => state.selectedClipIds);
   const selectedKeyframe = useEditorStore((state) => state.selectedKeyframe);
   const selectKeyframe = useEditorStore((state) => state.selectKeyframe);
@@ -79,6 +80,7 @@ export function Timeline() {
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const setPlaying = useEditorStore((state) => state.setPlaying);
   const selectClip = useEditorStore((state) => state.selectClip);
+  const setSelectedClipIds = useEditorStore((state) => state.setSelectedClipIds);
   const splitSelected = useEditorStore((state) => state.splitSelected);
   const deleteSelected = useEditorStore((state) => state.deleteSelected);
   const duplicateSelected = useEditorStore((state) => state.duplicateSelected);
@@ -90,6 +92,7 @@ export function Timeline() {
   const removeTrack = useEditorStore((state) => state.removeTrack);
   const reorderTrack = useEditorStore((state) => state.reorderTrack);
   const addAssetToTimeline = useEditorStore((state) => state.addAssetToTimeline);
+  const extractAudio = useEditorStore((state) => state.extractAudio);
   const setActivePanel = useEditorStore((state) => state.setActivePanel);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -107,6 +110,7 @@ export function Timeline() {
   const [keyframeMenuOpen, setKeyframeMenuOpen] = useState(false);
   const [cornerAddOpen, setCornerAddOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; clipId: string } | null>(null);
+  const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const addTrackRef = useRef<HTMLDivElement>(null);
   const keyframeMenuRef = useRef<HTMLDivElement>(null);
   const cornerAddRef = useRef<HTMLDivElement>(null);
@@ -222,21 +226,83 @@ export function Timeline() {
     return () => window.removeEventListener('pointerdown', close);
   }, [cornerAddOpen]);
 
+  useEffect(() => {
+    if (!contextMenu) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setContextMenu(null); };
+    const onPointer = (event: PointerEvent) => {
+      if (!(event.target as Element).closest('.context-menu')) setContextMenu(null);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointer);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointer);
+    };
+  }, [contextMenu]);
+
   const timeFromClientX = useCallback((clientX: number): number => {
     const rect = contentRef.current?.getBoundingClientRect();
     if (!rect) return 0;
-    return clamp((clientX - rect.left) / zoom, 0, duration + 6);
-  }, [zoom, duration]);
+    return clamp((clientX - rect.left) / (zoom * uiScale), 0, duration + 6);
+  }, [zoom, duration, uiScale]);
 
   const trackIdFromClientY = useCallback((clientY: number): string | null => {
     const rect = contentRef.current?.getBoundingClientRect();
     if (!rect) return null;
-    const localY = clientY - rect.top;
+    const localY = (clientY - rect.top) / uiScale;
     for (const item of trackLayout) {
       if (localY >= item.top && localY < item.top + item.height) return item.track.id;
     }
     return null;
-  }, [trackLayout]);
+  }, [trackLayout, uiScale]);
+
+  const beginMarquee = (event: React.PointerEvent) => {
+    if (event.button !== 0 || (!event.ctrlKey && !event.metaKey)) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.timeline-clip, .timeline-playhead, .ruler-playhead')) return;
+    const content = contentRef.current;
+    if (!content) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = content.getBoundingClientRect();
+    const startX = (event.clientX - rect.left) / uiScale;
+    const startY = (event.clientY - rect.top) / uiScale;
+    const base: string[] = [];
+    let moved = false;
+    const update = (clientX: number, clientY: number) => {
+      const x = (clientX - rect.left) / uiScale;
+      const y = (clientY - rect.top) / uiScale;
+      if (!moved && Math.hypot(x - startX, y - startY) < 4) return;
+      moved = true;
+      const box = {
+        left: Math.min(startX, x), top: Math.min(startY, y),
+        right: Math.max(startX, x), bottom: Math.max(startY, y)
+      };
+      setMarquee({ x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top });
+      const hits: string[] = [];
+      content.querySelectorAll<HTMLElement>('.timeline-clip[data-clip-id]').forEach((node) => {
+        const id = node.dataset.clipId;
+        if (!id) return;
+        const nodeRect = node.getBoundingClientRect();
+        const left = (nodeRect.left - rect.left) / uiScale;
+        const top = (nodeRect.top - rect.top) / uiScale;
+        const right = (nodeRect.right - rect.left) / uiScale;
+        const bottom = (nodeRect.bottom - rect.top) / uiScale;
+        if (right >= box.left && left <= box.right && bottom >= box.top && top <= box.bottom) hits.push(id);
+      });
+      setSelectedClipIds([...new Set([...base, ...hits])]);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      setMarquee(null);
+    };
+    const move = (moveEvent: PointerEvent) => update(moveEvent.clientX, moveEvent.clientY);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
 
   const beginScrub = (event: React.PointerEvent) => {
     if (event.button !== 0) return;
@@ -245,7 +311,7 @@ export function Timeline() {
     const update = (clientX: number) => {
       const rect = rulerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setPlayhead(clamp((clientX - rect.left) / zoom, 0, duration));
+      setPlayhead(clamp((clientX - rect.left) / (zoom * uiScale), 0, duration));
     };
     update(event.clientX);
     scrubbing.current = true;
@@ -269,7 +335,7 @@ export function Timeline() {
     event.preventDefault();
     const assetId = event.dataTransfer.getData('application/x-lumacut-asset') || event.dataTransfer.getData('text/plain');
     const rect = contentRef.current?.getBoundingClientRect();
-    const time = rect ? clamp((event.clientX - rect.left) / zoom, 0, duration + 5) : playhead;
+    const time = rect ? clamp((event.clientX - rect.left) / (zoom * uiScale), 0, duration + 5) : playhead;
     setDropTarget(null);
     if (assetId) {
       const asset = assets.find((item) => item.id === assetId);
@@ -279,6 +345,10 @@ export function Timeline() {
     }
     void height;
   };
+
+  const contextClip = project && contextMenu ? project.clips.find((clip) => clip.id === contextMenu.clipId) || null : null;
+  const contextAsset = contextClip?.assetId ? assets.find((asset) => asset.id === contextClip.assetId) || null : null;
+  const canExtractAudio = Boolean(contextClip && contextClip.kind === 'video' && contextAsset?.hasAudio !== false);
 
   const tickStep = chooseTickStep(zoom);
   const ticks = [];
@@ -460,6 +530,7 @@ export function Timeline() {
               className="timeline-content"
               ref={contentRef}
               style={{ width: contentWidth, height: tracksHeight }}
+              onPointerDown={beginMarquee}
               onDragOver={(event) => {
                 event.preventDefault();
                 event.dataTransfer.dropEffect = 'copy';
@@ -482,7 +553,7 @@ export function Timeline() {
                   className={`track-row track-${track.kind} ${track.hidden ? 'is-hidden' : ''} ${dropTarget?.trackId === track.id ? 'is-drop-target' : ''}`}
                   style={{ top, height }}
                   onClick={(event) => {
-                    if (!scrubbing.current) setPlayhead(clamp(timeFromClientX(event.clientX), 0, duration));
+                    if (!scrubbing.current && !event.ctrlKey && !event.metaKey) setPlayhead(clamp(timeFromClientX(event.clientX), 0, duration));
                   }}
                 >
                   <div className="track-row-grid" />
@@ -517,6 +588,7 @@ export function Timeline() {
                 );
               })}
 
+              {marquee && <div className="timeline-marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height }} />}
               <div className="timeline-playhead" style={{ left: playhead * zoom, height: tracksHeight }}>
                 <span className="playhead-handle" />
               </div>
@@ -530,10 +602,16 @@ export function Timeline() {
         <ClipContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          uiScale={uiScale}
           onClose={() => setContextMenu(null)}
           onSplit={() => { splitSelected(); setContextMenu(null); }}
           onDuplicate={() => { duplicateSelected(); setContextMenu(null); }}
           onCopy={() => { copySelected(); setContextMenu(null); }}
+          onExtractAudio={() => {
+            if (contextClip) extractAudio(contextClip.id);
+            setContextMenu(null);
+          }}
+          canExtractAudio={canExtractAudio}
           onDelete={() => { deleteSelected(); setContextMenu(null); }}
           onTransition={() => {
             const clip = project.clips.find((item) => item.id === contextMenu.clipId);
@@ -777,6 +855,7 @@ function ClipBlock({
   const addKeyframeAt = useEditorStore((state) => state.addKeyframeAt);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const showWaveforms = useSettingsStore((state) => state.showWaveforms);
+  const uiScale = useSettingsStore((state) => state.scale / 100);
   const playhead = useEditorStore((state) => state.playhead);
   const beginEdit = useEditorStore((state) => state.beginEdit);
   const endEdit = useEditorStore((state) => state.endEdit);
@@ -798,7 +877,7 @@ function ClipBlock({
         beginEdit();
         editStarted.current = true;
       }
-      const dxSeconds = (event.clientX - drag.startClientX) / zoom;
+      const dxSeconds = (event.clientX - drag.startClientX) / (zoom * uiScale);
       const candidates = buildSnapCandidates(project, clip.id, playhead);
       const threshold = 8 / zoom;
       if (drag.mode === 'move') {
@@ -879,7 +958,7 @@ function ClipBlock({
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
     };
-  }, [drag, project, clip.id, clip.duration, clip.speed, clip.trimIn, clip.trackId, zoom, snapping, playhead, trackAtY, updateClip, updateClipDeep, beginEdit, endEdit, onSnapGuide]);
+  }, [drag, project, clip.id, clip.duration, clip.speed, clip.trimIn, clip.trackId, zoom, uiScale, snapping, playhead, trackAtY, updateClip, updateClipDeep, beginEdit, endEdit, onSnapGuide]);
 
   const startDrag = (mode: DragMode, event: React.PointerEvent) => {
     if (event.button !== 0) return;
@@ -921,7 +1000,7 @@ function ClipBlock({
     const originTime = frame.time;
     let editing = false;
     const move = (moveEvent: PointerEvent) => {
-      const delta = (moveEvent.clientX - startX) / zoom;
+      const delta = (moveEvent.clientX - startX) / (zoom * uiScale);
       if (!editing && Math.abs(moveEvent.clientX - startX) < 2) return;
       if (!editing) { beginEdit(); editing = true; }
       let nextTime = clamp(originTime + delta, 0, clip.duration);
@@ -952,7 +1031,7 @@ function ClipBlock({
   const addLaneKeyframe = (event: React.MouseEvent, lane: KeyframeChannel) => {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
-    const time = clamp((event.clientX - rect.left) / zoom, 0, clip.duration);
+    const time = clamp((event.clientX - rect.left) / (zoom * uiScale), 0, clip.duration);
     addKeyframeAt(clip.id, lane.id, time);
     setPlayhead(clip.start + time);
   };
@@ -961,10 +1040,10 @@ function ClipBlock({
 
   return (
     <div
+      data-clip-id={clip.id}
       className={`timeline-clip clip-${clip.kind} ${selected ? 'is-selected' : ''} ${track.hidden ? 'is-track-hidden' : ''} ${drag ? 'is-dragging' : ''} ${clip.caption ? 'is-caption' : ''}`}
       style={{ left: clip.start * zoom, top: top + 4, width, height: height - 8, '--clip-color': color } as React.CSSProperties}
       onPointerDown={(event) => startDrag('move', event)}
-      onClick={(event) => { event.stopPropagation(); onSelect(event.shiftKey || event.metaKey || event.ctrlKey); }}
       onDoubleClick={(event) => { event.stopPropagation(); if (clip.kind === 'text') setActivePanel('text'); }}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -1073,24 +1152,28 @@ function ClipBlock({
 }
 
 function ClipContextMenu({
-  x, y, onClose, onSplit, onDuplicate, onCopy, onDelete, onTransition, onAddFade, onSpeed
+  x, y, uiScale, canExtractAudio, onClose, onSplit, onDuplicate, onCopy, onExtractAudio, onDelete, onTransition, onAddFade, onSpeed
 }: {
   x: number;
   y: number;
+  uiScale: number;
+  canExtractAudio: boolean;
   onClose: () => void;
   onSplit: () => void;
   onDuplicate: () => void;
   onCopy: () => void;
+  onExtractAudio: () => void;
   onDelete: () => void;
   onTransition: () => void;
   onAddFade: () => void;
   onSpeed: (speed: number) => void;
 }) {
   return (
-    <div className="context-menu" style={{ left: Math.min(x, window.innerWidth - 218), top: Math.min(y, window.innerHeight - 310) }} onPointerDown={(event) => event.stopPropagation()}>
+    <div className="context-menu" style={{ left: Math.min(x / uiScale, window.innerWidth / uiScale - 240), top: Math.min(y / uiScale, window.innerHeight / uiScale - 380) }} onPointerDown={(event) => event.stopPropagation()}>
       <button type="button" onClick={onSplit}><Scissors size={14} /> Split at playhead <kbd>B</kbd></button>
       <button type="button" onClick={onDuplicate}><CopyPlus size={14} /> Duplicate <kbd>⌘D</kbd></button>
       <button type="button" onClick={onCopy}><Copy size={14} /> Copy <kbd>⌘C</kbd></button>
+      {canExtractAudio && <button type="button" onClick={onExtractAudio}><Music2 size={14} /> Extract audio</button>}
       <button type="button" onClick={onDelete} className="danger"><Trash2Icon /> Delete <kbd>Del</kbd></button>
       <div className="popover-separator" />
       <button type="button" onClick={onTransition}><Layers size={14} /> Change transition</button>

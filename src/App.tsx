@@ -106,6 +106,7 @@ export default function App() {
       const state = useEditorStore.getState();
       const target = event.target as HTMLElement | null;
       const isField = /^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName || '') || Boolean(target?.isContentEditable);
+      const isTypingField = /^(INPUT|TEXTAREA)$/.test(target?.tagName || '') || Boolean(target?.isContentEditable);
       const mod = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
 
@@ -128,9 +129,12 @@ export default function App() {
       if (mod && key === 'b') { event.preventDefault(); state.setPlaying(false); state.splitSelected(); return; }
       if (mod && key === 'c' && !isField) { event.preventDefault(); state.copySelected(); return; }
       if (mod && key === 'v' && !isField) { event.preventDefault(); state.paste(); return; }
+      if (mod && key === 'a' && !isField) { event.preventDefault(); state.selectAllClips(); return; }
 
-      if (event.code === 'Space') {
+      if (event.code === 'Space' && !isTypingField) {
         event.preventDefault();
+        event.stopPropagation();
+        target?.blur();
         if (!state.isPlaying) void mediaPool.ensureContext().resume();
         state.togglePlayback();
         return;
@@ -160,8 +164,8 @@ export default function App() {
       if (key === 'escape') { if (state.selectedKeyframe) state.selectKeyframe(state.selectedKeyframe.clipId, null); else state.selectClip(null); return; }
       if (!mod && PANEL_KEYS[event.key]) { state.setActivePanel(PANEL_KEYS[event.key]); return; }
     };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
   // Drop files anywhere to import.

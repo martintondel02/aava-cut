@@ -43,9 +43,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.4.1-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.4.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.4.1-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`LumaCut-1.5.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.5.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.5.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -57,7 +57,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.4.1-x86_64.rpm
+sudo dnf install ./LumaCut-1.5.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -78,7 +78,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.4.1-x86_64.rpm
+sudo dnf install --nogpgcheck ./LumaCut-1.5.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -87,7 +87,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.4.1-amd64.deb
+sudo apt install ./LumaCut-1.5.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -105,14 +105,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.4.1-x86_64.AppImage
-./LumaCut-1.4.1-x86_64.AppImage
+chmod +x LumaCut-1.5.0-x86_64.AppImage
+./LumaCut-1.5.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.4.1-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.5.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -146,14 +146,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.4.1-x86_64.AppImage
-./LumaCut-1.4.1-x86_64.AppImage
+chmod +x LumaCut-1.5.0-x86_64.AppImage
+./LumaCut-1.5.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.4.1-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.5.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -196,7 +196,7 @@ Most editors make you choose between a polished timeline and owning your footage
 | --- | --- |
 | **Multi-track timeline** | Video, overlay, titles, captions, soundtrack and SFX tracks |
 | **Direct manipulation** | Drag clips in time or across compatible tracks, trim in/out, snap |
-| **Clip operations** | Split, duplicate, copy/paste, multi-select, delete, lock-safe editing |
+| **Clip operations** | Split, duplicate, copy/paste, Ctrl/⌘-drag marquee, Ctrl/⌘-click, Ctrl/⌘+A, delete, lock-safe editing |
 | **Track management** | Add, remove with confirmation, drag-reorder, rename, recolor, hide, lock |
 | **Audio tracks** | Mute, solo, per-track gain and a 3-band tone stack |
 | **Navigation** | Ruler scrubbing, 12–220 px/s zoom, fit-to-view, resizable timeline |
@@ -223,6 +223,7 @@ Most editors make you choose between a polished timeline and owning your footage
 | **Preview = export** | The track EQ, master EQ and gain bus feed both the monitor and the capture destination |
 | **Voiceover** | Record a microphone take and drop it onto the timeline |
 | **Fades** | Per-clip audio fades, volume keyframes and transition-aware mixing |
+| **Extract audio** | Lift audio from a video clip onto the bottom audio track from the context menu or Inspector |
 
 ### Program monitor
 
@@ -253,7 +254,7 @@ Most editors make you choose between a polished timeline and owning your footage
 | --- | --- |
 | **Theme** | System / Dark / Light, applied before first paint, plus a quick top-bar toggle |
 | **Accent** | Mint, blue, amber and rose, with coordinated light-theme tokens |
-| **Interface scale** | 80–140% with layouts verified at 1200–1600 px and high-scale fallbacks |
+| **Interface scale** | 80–140% with corrected pointer/menu coordinates and a larger, higher-contrast type scale |
 | **Density** | Comfortable and compact spacing for smaller displays |
 | **Motion** | Reduced-motion preference and `prefers-reduced-motion` support |
 | **Playback** | Preview quality, loop, follow playhead, waveform visibility and auto-expand keyframes |
@@ -279,8 +280,7 @@ Most editors make you choose between a polished timeline and owning your footage
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="LumaCut 1.4 dark editor with keyframe lanes, local auto captions and the live audio visualizer" width="100%">
-</p>
+  </p>
 
 <p align="center">
   <img src="docs/screenshots/light-mode.png" alt="LumaCut in light mode with effects and keyframes" width="49%">
@@ -309,7 +309,7 @@ Most editors make you choose between a polished timeline and owning your footage
 
 ### Local auto captions
 
-LumaCut 1.4 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
+LumaCut 1.5 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
 
 - **Default model:** Whisper large-v3-turbo q5_0, 547 MiB, multilingual, comfortable on an 8 GB GPU.
 - **Smaller model:** Whisper small, 466 MiB, for lower-end GPUs and CPUs.
@@ -324,7 +324,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for requirements, model man
 
 ## AMD Radeon acceleration
 
-LumaCut 1.4.1 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.5.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -361,7 +361,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.4.1-x86_64.rpm
+sudo dnf install ./LumaCut-1.5.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
@@ -391,7 +391,7 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173**. The first launch loads the demo film **“Chase the Light”**, so every control is ready to try.
+Open **http://127.0.0.1:5173**. The first launch starts with a blank project; import media to begin.
 
 ### Production web build
 
@@ -484,16 +484,6 @@ Double-click a media item to add it at the playhead. Drop media anywhere to impo
 
 ---
 
-## The demo film
-
-LumaCut ships with **“Chase the Light”**, an original 28-second demo cut built from locally generated media. Every asset is synthesized by `scripts/generate-demo.mjs` with SVG and FFmpeg — no third-party footage, no licensing surprises.
-
-It includes four cinematic clips, two stills, an original ambient score, sound effects, transitions, grades, titles, a picture-in-picture overlay and a caption-ready timeline.
-
-```bash
-npm run setup:demo   # regenerate the demo library
-```
-
 ---
 
 ## Architecture
@@ -514,7 +504,7 @@ src/
 server/
   index.mjs            Express media server, FFprobe metadata, waveforms, AMD detection and FFmpeg export
 electron/main.cjs      Desktop shell + embedded local server
-scripts/               Demo generation and Linux installer
+scripts/               Linux installer and maintenance scripts
 tests/                 Playwright smoke tests
 ```
 
@@ -550,7 +540,6 @@ The visualizer taps the analyser and never modifies the signal. Master and track
 | `exports/` | Finished MP4 / WebM renders (source runs) |
 | `data/assets.json` | Media library index and waveform peaks (source runs) |
 | `~/Videos/LumaCut/` | Media, exports and data for packaged desktop builds |
-| `public/demo/` | Generated demo film, stills and audio |
 | Browser local storage | Instant project autosave |
 | `*.lumacut` | Portable project downloads |
 
@@ -575,11 +564,20 @@ For the tests, install the Playwright browser once:
 npx playwright install chromium
 ```
 
-The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration, AMD capabilities, the codec/HDR picker and the auto-caption capability surface.
+The test suite covers the blank first-run project, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration, marquee selection, extract-audio, keyboard shortcuts, AMD capabilities, the codec/HDR picker, the 120% scale alignment and the auto-caption capability surface.
 
 ---
 
 ## Roadmap
+
+**1.5 “Timeline UX” is shipped.**
+
+- [x] Ctrl/⌘-drag marquee selection, Ctrl/⌘-click and select-all
+- [x] Extract audio from video to the bottom audio track
+- [x] Fixed UI-scale coordinate bugs for the playhead, track hit-testing and context menus
+- [x] Larger, higher-contrast text across the editor
+- [x] Space and Ctrl/⌘+A keyboard conflict fixes
+- [x] Removed bundled demo media and demo project; blank first-run project
 
 **1.4 “Local Auto Captions” is shipped.**
 
@@ -638,7 +636,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for auto-caption setup and 
 - **Auto captions are local and review-first.** Whisper can mishear music, overlapping speech or names; edit cues before applying them. Speaker labels are not yet included.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
-- The audio visualizer is **monitor-only** in 1.4. It is intentionally not baked into the exported video.
+- The audio visualizer is **monitor-only** in 1.5. It is intentionally not baked into the exported video.
 - **HDR10 is converted from the SDR canvas.** It sets PQ/BT.2020 and 10-bit output but cannot restore highlights that were never in the SDR timeline.
 - **H.265 software encoding needs libx265.** Fedora's stock `ffmpeg-free` may not include it; install RPM Fusion FFmpeg or use AV1 hardware encoding.
 - Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`. H.265 requires `libx265` in that FFmpeg build.
@@ -664,4 +662,4 @@ If LumaCut helps you make something, star the repo — it makes the next rework 
 
 MIT © LumaCut contributors. See [LICENSE](LICENSE).
 
-Bundled fonts: Montserrat and Open Sans under the SIL Open Font License; Liberation Serif under the SIL Open Font License. Demo media is generated locally and included under the same MIT terms as the project.
+Bundled fonts: Montserrat and Open Sans under the SIL Open Font License; Liberation Serif under the SIL Open Font License. User-imported media stays local and is not redistributed with the project.

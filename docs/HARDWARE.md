@@ -1,6 +1,6 @@
 # AMD Radeon acceleration, codecs & Fedora packaging
 
-LumaCut 1.4 is tuned for AMD Radeon desktops and Fedora Linux. Auto captions use the same Vulkan device through a bundled whisper.cpp runtime; see [AUTOCAPTIONS.md](AUTOCAPTIONS.md). It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
+LumaCut 1.5 is tuned for AMD Radeon desktops and Fedora Linux. Auto captions use the same Vulkan device through a bundled whisper.cpp runtime; see [AUTOCAPTIONS.md](AUTOCAPTIONS.md). It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
 
 ## How detection works
 
@@ -107,7 +107,7 @@ sudo dnf install mesa-dri-drivers
 ## Install the RPM
 
 ```bash
-sudo dnf install ./LumaCut-1.4.1-x86_64.rpm
+sudo dnf install ./LumaCut-1.5.0-x86_64.rpm
 ```
 
 The RPM installs:
@@ -128,7 +128,7 @@ npm run build
 npx electron-builder --linux rpm --publish never
 ```
 
-The resulting package is written to `release/LumaCut-1.4.1-x86_64.rpm`.
+The resulting package is written to `release/LumaCut-1.5.0-x86_64.rpm`.
 
 ## Disabling acceleration
 

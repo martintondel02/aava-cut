@@ -120,6 +120,8 @@ async function ensureWaveform(asset) {
 const analysisJobs = new Map();
 const pixabayCache = new Map();
 const PIXABAY_CACHE_TTL = 24 * 60 * 60 * 1000;
+const soundsCache = new Map();
+const SOUNDS_CACHE_TTL = 60 * 60 * 1000;
 
 function pixabayKey(req) {
   return String(req.get('x-pixabay-key') || process.env.PIXABAY_API_KEY || '').trim();
@@ -652,7 +654,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.12.0',
+    version: '1.13.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -667,7 +669,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.12.0',
+    version: '1.13.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -885,6 +887,132 @@ app.delete('/api/captions/jobs/:id', (req, res) => {
   const cancelled = captionService.cancelJob(req.params.id);
   if (!cancelled) return res.status(404).json({ error: 'Caption job not found' });
   res.json({ ok: true });
+});
+
+app.get('/api/sounds/search', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  const tags = String(req.query.tags || '').trim().slice(0, 200);
+  const limit = Math.max(1, Math.min(12, Number(req.query.limit) || 8));
+  const cacheKey = crypto.createHash('sha256').update(`los|${q}|${tags}|${limit}`).digest('hex');
+  const cached = soundsCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return res.json({ ...cached.data, cached: true });
+  try {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (q) params.set('q', q);
+    if (tags) params.set('tags', tags);
+    const response = await fetch(`https://api.lotsofsounds.com/api/v1/sounds/sample?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(30000)
+    });
+    const bodyText = await response.text();
+    if (!response.ok) return res.status(502).json({ error: 'Lots of Sounds search failed', detail: bodyText.slice(0, 500) });
+    const data = JSON.parse(bodyText);
+    const hits = (data.data || []).map((sound) => ({
+      provider: 'Lots of Sounds',
+      id: String(sound.id),
+      name: String(sound.name || 'Sound effect'),
+      description: String(sound.description || ''),
+      tags: Array.isArray(sound.tags) ? sound.tags : [],
+      duration: Number(sound.duration) || 0,
+      previewUrl: `/api/sounds/stream/${encodeURIComponent(sound.id)}`,
+      pageURL: 'https://www.lotsofsounds.com/',
+      license: 'CC0 sample · Lots of Sounds',
+      licenseUrl: 'https://www.lotsofsounds.com/license'
+    }));
+    const payload = {
+      provider: 'Lots of Sounds',
+      hits,
+      pagination: data.pagination || null,
+      attribution: {
+        text: 'Sound effects from Lots of Sounds',
+        url: 'https://www.lotsofsounds.com/',
+        license: 'CC0 sample collection',
+        licenseUrl: 'https://www.lotsofsounds.com/license'
+      },
+      note: data.meta?.message || ''
+    };
+    soundsCache.set(cacheKey, { data: payload, expiresAt: Date.now() + SOUNDS_CACHE_TTL });
+    res.json(payload);
+  } catch (error) {
+    res.status(502).json({ error: 'Lots of Sounds search failed', detail: String(error?.message || error) });
+  }
+});
+
+app.get('/api/sounds/stream/:id', async (req, res) => {
+  try {
+    const response = await fetch(`https://api.lotsofsounds.com/api/v1/sounds/sample/${encodeURIComponent(req.params.id)}/stream`, {
+      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) return res.status(502).json({ error: 'Could not resolve the sound preview' });
+    const data = await response.json();
+    const stream = String(data?.data?.stream_url || '');
+    let parsed;
+    try { parsed = new URL(stream); } catch { parsed = null; }
+    if (!parsed || parsed.protocol !== 'https:' || parsed.hostname !== 'files.lotsofsounds.com') {
+      return res.status(502).json({ error: 'Lots of Sounds returned an unsupported stream URL' });
+    }
+    res.redirect(302, stream);
+  } catch (error) {
+    res.status(502).json({ error: 'Could not resolve the sound preview', detail: String(error?.message || error) });
+  }
+});
+
+app.post('/api/sounds/import', async (req, res) => {
+  const id = String(req.body?.id || '').trim();
+  if (!/^[a-z0-9-]{2,64}$/i.test(id)) return res.status(400).json({ error: 'Invalid sound ID' });
+  try {
+    const streamResponse = await fetch(`https://api.lotsofsounds.com/api/v1/sounds/sample/${encodeURIComponent(id)}/stream`, {
+      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30000)
+    });
+    if (!streamResponse.ok) return res.status(502).json({ error: 'Could not resolve the sound download' });
+    const streamData = await streamResponse.json();
+    const stream = String(streamData?.data?.stream_url || '');
+    let parsed;
+    try { parsed = new URL(stream); } catch { parsed = null; }
+    if (!parsed || parsed.protocol !== 'https:' || parsed.hostname !== 'files.lotsofsounds.com') {
+      return res.status(502).json({ error: 'Lots of Sounds returned an unsupported media URL' });
+    }
+    const response = await fetch(stream, { signal: AbortSignal.timeout(120000) });
+    if (!response.ok) throw new Error(`Download failed (${response.status})`);
+    if (Number(response.headers.get('content-length') || 0) > 80 * 1024 * 1024) throw new Error('Sound file is larger than 80 MB');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 80 * 1024 * 1024) throw new Error('Sound file is larger than 80 MB');
+    const title = String(req.body?.name || streamData?.data?.name || 'Lots of Sounds effect').trim().slice(0, 100) || 'Lots of Sounds effect';
+    const finalFile = path.join(mediaDir, `lotsofsounds-${Date.now()}-${slug(title)}-${crypto.randomBytes(3).toString('hex')}.mp3`);
+    await fsp.writeFile(finalFile, buffer);
+    const info = await probe(finalFile);
+    const asset = {
+      id: randomId('sound'),
+      name: title,
+      kind: 'audio',
+      source: 'lots-of-sounds',
+      provider: 'Lots of Sounds',
+      url: `/media/${path.basename(finalFile)}`,
+      thumbnail: null,
+      duration: info.duration,
+      width: 0,
+      height: 0,
+      hasAudio: true,
+      mime: info.mime || 'audio/mpeg',
+      size: buffer.length,
+      createdAt: new Date().toISOString(),
+      peaks: [],
+      creator: 'Lots of Sounds',
+      creatorUrl: 'https://www.lotsofsounds.com/',
+      sourceUrl: 'https://www.lotsofsounds.com/',
+      license: 'CC0 sample · Lots of Sounds',
+      licenseUrl: 'https://www.lotsofsounds.com/license',
+      tags: String(req.body?.description || '').slice(0, 500)
+    };
+    try { asset.thumbnail = await makeThumbnail(finalFile, 'audio', asset.id); } catch {}
+    try { asset.peaks = await extractPeaks(finalFile, info.duration); } catch {}
+    assets.push(asset);
+    await saveAssets(assets);
+    void ensureAssetAnalysis(asset).catch(() => {});
+    res.status(201).json({ asset, attribution: { text: 'Sound effect from Lots of Sounds', url: asset.sourceUrl, license: asset.license } });
+  } catch (error) {
+    res.status(502).json({ error: 'Lots of Sounds import failed', detail: String(error?.message || error) });
+  }
 });
 
 app.get('/api/pixabay/search', async (req, res) => {

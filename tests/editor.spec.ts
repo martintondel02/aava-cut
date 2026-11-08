@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.12.0');
+  expect(capabilities.version).toBe('1.13.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -785,4 +785,64 @@ test('Pixabay search renders clean attributed results', async ({ page }) => {
   await expect(page.locator('.pixabay-card-badge')).toHaveText('Pixabay');
   await expect(page.locator('.pixabay-card-copy a')).toContainText('Pixabay Creator on Pixabay');
   await expect(page.locator('.pixabay-footer')).toContainText('Pixabay Content License');
+});
+test('resizes both side panels and persists their widths', async ({ page }) => {
+  await page.goto('/');
+  const leftPanel = page.locator('.asset-panel');
+  const rightPanel = page.locator('.inspector');
+  const leftBefore = (await leftPanel.boundingBox())!.width;
+  const rightBefore = (await rightPanel.boundingBox())!.width;
+  const leftHandle = await page.locator('.panel-resizer[data-side="left"]').boundingBox();
+  if (!leftHandle) throw new Error('left panel resizer missing');
+  await page.mouse.move(leftHandle.x + 2, leftHandle.y + 260);
+  await page.mouse.down();
+  await page.mouse.move(leftHandle.x + 92, leftHandle.y + 260, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await leftPanel.boundingBox())!.width).toBeGreaterThan(leftBefore + 60);
+  const rightHandle = await page.locator('.panel-resizer[data-side="right"]').boundingBox();
+  if (!rightHandle) throw new Error('right panel resizer missing');
+  await page.mouse.move(rightHandle.x + 2, rightHandle.y + 260);
+  await page.mouse.down();
+  await page.mouse.move(rightHandle.x - 92, rightHandle.y + 260, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await rightPanel.boundingBox())!.width).toBeGreaterThan(rightBefore + 60);
+  const widths = await page.evaluate(() => {
+    const settings = JSON.parse(localStorage.getItem('lumacut.settings.v1') || '{}');
+    return { left: settings.leftPanelWidth, right: settings.rightPanelWidth };
+  });
+  expect(widths.left).toBeGreaterThan(leftBefore + 60);
+  expect(widths.right).toBeGreaterThan(rightBefore + 60);
+});
+
+test('Lots of Sounds search renders effects with attribution', async ({ page }) => {
+  await page.route('**/api/sounds/search**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        provider: 'Lots of Sounds',
+        hits: [{
+          provider: 'Lots of Sounds', id: 'fs-11587', name: 'Microwave Ding',
+          description: 'Short notification ding when a microwave finishes',
+          tags: ['ding', 'notification', 'kitchen'], duration: 2.9,
+          previewUrl: '/api/sounds/stream/fs-11587', pageURL: 'https://www.lotsofsounds.com/',
+          license: 'CC0 sample · Lots of Sounds', licenseUrl: 'https://www.lotsofsounds.com/license'
+        }],
+        attribution: {
+          text: 'Sound effects from Lots of Sounds', url: 'https://www.lotsofsounds.com/',
+          license: 'CC0 sample collection', licenseUrl: 'https://www.lotsofsounds.com/license'
+        }
+      })
+    });
+  });
+  await page.goto('/');
+  await page.locator('.rail-tab[title="Audio (2)"]').click();
+  await page.locator('.media-source-tabs button', { hasText: 'Sound effects' }).click();
+  await page.locator('.sounds-search input').fill('notification');
+  await page.locator('.sounds-search button').click();
+  await expect(page.locator('.sound-card')).toHaveCount(1);
+  await expect(page.locator('.sound-card')).toContainText('Microwave Ding');
+  await expect(page.locator('.sound-tags')).toContainText('notification');
+  await expect(page.locator('.sounds-attribution')).toContainText('Lots of Sounds');
+  await expect(page.locator('.sounds-attribution')).toContainText('CC0');
 });

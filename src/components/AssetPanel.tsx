@@ -23,13 +23,13 @@ const TITLES: Record<PanelTab, { title: string; eyebrow: string }> = {
   templates: { title: 'Templates', eyebrow: 'Start strong' }
 };
 
-export function AssetPanel() {
+export function AssetPanel({ width }: { width?: number }) {
   const activePanel = useEditorStore((state) => state.activePanel);
   const setLeftPanelOpen = useEditorStore((state) => state.setLeftPanelOpen);
   const meta = TITLES[activePanel];
 
   return (
-    <aside className="asset-panel">
+    <aside className="asset-panel" style={width ? { flexBasis: width, width } : undefined}>
       <div className="asset-panel-head">
         <div>
           <span className="eyebrow">{meta.eyebrow}</span>

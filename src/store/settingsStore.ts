@@ -33,6 +33,8 @@ export interface SettingsValues {
   rippleDelete: boolean;
   captionAnimation: TextStyle['animation'];
   pixabayApiKey: string;
+  leftPanelWidth: number;
+  rightPanelWidth: number;
   agentBridgeEnabled: boolean;
   agentBridgeToken: string;
   autoExpandKeyframes: boolean;
@@ -63,6 +65,8 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   rippleDelete: true,
   captionAnimation: 'pop',
   pixabayApiKey: '',
+  leftPanelWidth: 340,
+  rightPanelWidth: 340,
   agentBridgeEnabled: false,
   agentBridgeToken: '',
   autoExpandKeyframes: true,
@@ -81,6 +85,8 @@ function readSettings(): SettingsValues {
       ...DEFAULT_SETTINGS,
       ...parsed,
       scale: Math.min(140, Math.max(80, Number(parsed.scale) || DEFAULT_SETTINGS.scale)),
+      leftPanelWidth: Math.min(640, Math.max(260, Number(parsed.leftPanelWidth) || DEFAULT_SETTINGS.leftPanelWidth)),
+      rightPanelWidth: Math.min(640, Math.max(280, Number(parsed.rightPanelWidth) || DEFAULT_SETTINGS.rightPanelWidth)),
       exportDefaults: { ...DEFAULT_SETTINGS.exportDefaults, ...(parsed.exportDefaults || {}) }
     };
   } catch {
@@ -112,6 +118,8 @@ function valuesOf(state: SettingsState): SettingsValues {
     rippleDelete: state.rippleDelete,
     captionAnimation: state.captionAnimation,
     pixabayApiKey: state.pixabayApiKey,
+    leftPanelWidth: state.leftPanelWidth,
+    rightPanelWidth: state.rightPanelWidth,
     agentBridgeEnabled: state.agentBridgeEnabled,
     agentBridgeToken: state.agentBridgeToken,
     autoExpandKeyframes: state.autoExpandKeyframes,

@@ -13,6 +13,7 @@
   <a href="https://github.com/martintondel02/lumacut/releases/latest"><img src="https://img.shields.io/github/v/release/martintondel02/lumacut?style=flat-square&color=72f5d1&label=download" alt="Latest release"></a>
   <a href="#bring-your-own-agent"><img src="https://img.shields.io/badge/MCP-live%20agent%20bridge-72f5d1?style=flat-square" alt="MCP live agent bridge"></a>
   <a href="#stock-media-from-pixabay"><img src="https://img.shields.io/badge/Pixabay-stock%20media-f7d66b?style=flat-square" alt="Pixabay stock media"></a>
+  <a href="#free-sound-effects"><img src="https://img.shields.io/badge/Lots%20of%20Sounds-SFX-72f5d1?style=flat-square" alt="Lots of Sounds free sound effects"></a>
   <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
@@ -29,6 +30,7 @@
   <a href="#install">Install</a> ·
   <a href="#bring-your-own-agent">Agent bridge</a> ·
   <a href="#stock-media-from-pixabay">Pixabay</a> ·
+  <a href="#free-sound-effects">Sound effects</a> ·
   <a href="#features">Features</a> ·
   <a href="#local-auto-captions">Auto captions</a> ·
   <a href="#amd-radeon-acceleration">AMD acceleration</a> ·
@@ -46,9 +48,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.12.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.12.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.12.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`LumaCut-1.13.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.13.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.13.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -60,7 +62,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.12.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.13.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -81,7 +83,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.12.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./LumaCut-1.13.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -90,7 +92,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.12.0-amd64.deb
+sudo apt install ./LumaCut-1.13.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -108,14 +110,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.12.0-x86_64.AppImage
-./LumaCut-1.12.0-x86_64.AppImage
+chmod +x LumaCut-1.13.0-x86_64.AppImage
+./LumaCut-1.13.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.12.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.13.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -149,14 +151,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.12.0-x86_64.AppImage
-./LumaCut-1.12.0-x86_64.AppImage
+chmod +x LumaCut-1.13.0-x86_64.AppImage
+./LumaCut-1.13.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.12.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.13.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -262,6 +264,20 @@ Imported media is downloaded into your local LumaCut library — no hotlinking. 
 
 ---
 
+## Free sound effects
+
+LumaCut connects to the **Lots of Sounds** free sample API for CC0 sound effects — no key, no account.
+
+1. Open **Audio → Sound effects**.
+2. Search for a door knock, notification, whoosh, riser or room tone.
+3. Preview it, then hit **Use** to download it into the local library and add it to the timeline.
+
+Attribution stays visible with every result: **Sound effects from Lots of Sounds**, a link to [lotsofsounds.com](https://www.lotsofsounds.com/) and the CC0 sample license. Downloads are stored locally; previews are temporary signed streams.
+
+> The free endpoint is a curated sample collection. The authenticated Lots of Sounds API adds full-catalog search, filters and production downloads. Pixabay music and SFX links remain available in the Sound panel for those libraries.
+
+---
+
 ## Features
 
 ### Timeline & track management
@@ -269,6 +285,7 @@ Imported media is downloaded into your local LumaCut library — no hotlinking. 
 | | |
 | --- | --- |
 | **Stock media** | Pixabay photo and video search, creator attribution, local downloads, 24h cache |
+| **Sound effects** | Lots of Sounds CC0 sample search, preview, local download and timeline insert, no API key |
 | **Multi-track timeline** | Video, overlay, titles, captions, soundtrack and SFX tracks |
 | **Direct manipulation** | Drag clips in time or across compatible tracks, trim in/out, snap; double-click imports the full asset duration |
 | **Clip operations** | Split, duplicate, copy/paste, Ctrl/⌘-drag marquee, Ctrl/⌘-click, Ctrl/⌘+A, ripple delete toggle, lock-safe editing |
@@ -329,6 +346,7 @@ Imported media is downloaded into your local LumaCut library — no hotlinking. 
 | | |
 | --- | --- |
 | **Theme** | System / Dark / Light, applied before first paint, plus a quick top-bar toggle |
+| **Workspace layout** | Drag the left and right panel edges to resize; widths persist, double-click to reset |
 | **Accent** | Mint, blue, amber and rose, with coordinated light-theme tokens |
 | **Interface scale** | 80–140% with corrected pointer/menu coordinates and a larger, higher-contrast type scale |
 | **Typography** | 35% larger UI text across the editor, with wider panels and intentional two-line format hints |
@@ -384,7 +402,7 @@ Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_
 
 ## AMD Radeon acceleration
 
-LumaCut 1.12.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.13.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -421,7 +439,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.12.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.13.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.

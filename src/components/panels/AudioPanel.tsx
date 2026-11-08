@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AudioLines, ExternalLink, Globe2, Mic, Music2, Pause, Play, Plus, Search, Square, X } from 'lucide-react';
+import { AudioLines, ExternalLink, Globe2, Mic, Music2, Pause, Play, Plus, Search, Square, Volume2, X } from 'lucide-react';
 import { useSettingsStore } from '../../store/settingsStore';
 import { Segmented } from '../ui';
 import { useEditorStore } from '../../store/editorStore';
@@ -7,6 +7,7 @@ import { formatBytes, formatTime } from '../../lib/utils';
 import { WaveformMini } from '../Waveform';
 import { MasterEq } from '../MasterEq';
 import { AudioVisualizer } from '../AudioVisualizer';
+import { SoundEffectsBrowser } from '../SoundEffectsBrowser';
 
 export function AudioPanel() {
   const assets = useEditorStore((state) => state.assets);
@@ -17,6 +18,7 @@ export function AudioPanel() {
   const uploading = useEditorStore((state) => state.uploading);
   const addToast = useEditorStore((state) => state.addToast);
   const [search, setSearch] = useState('');
+  const [source, setSource] = useState<'library' | 'sounds'>('library');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const isPlaying = useEditorStore((state) => state.isPlaying);
   const visualizer = useSettingsStore((state) => state.visualizer);
@@ -113,6 +115,13 @@ export function AudioPanel() {
   return (
     <div className="panel-page audio-panel">
       <input ref={inputRef} type="file" multiple accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" hidden onChange={(event) => { importAudio(event.target.files); event.target.value = ''; }} />
+      <div className="media-source-tabs">
+        <button type="button" className={source === 'library' ? 'is-active' : ''} onClick={() => setSource('library')}>My audio</button>
+        <button type="button" className={source === 'sounds' ? 'is-active' : ''} onClick={() => setSource('sounds')}><Volume2 size={12} /> Sound effects</button>
+      </div>
+
+      {source === 'sounds' ? <SoundEffectsBrowser /> : (
+        <>
       <div className="panel-actions-row">
         <button type="button" className="btn btn-primary panel-import-btn" onClick={() => inputRef.current?.click()}>
           <Plus size={16} /> Import audio
@@ -197,6 +206,8 @@ export function AudioPanel() {
         <span>{audioAssets.length} sounds</span>
         <span>{uploading ? 'Importing…' : 'Drop audio onto the timeline'}</span>
       </div>
+        </>
+      )}
     </div>
   );
 }
@@ -243,7 +254,7 @@ function AudioRow({
         </div>
         <WaveformMini peaks={peaks} color={playing ? '#b6ffe6' : '#5fd3b3'} bars={56} />
         <div className="audio-row-bottom">
-          <span>{asset.source === 'demo' ? 'Bundled sound' : 'Imported'}</span>
+          {asset.provider === 'Lots of Sounds' ? <a className="audio-source-link" href={asset.sourceUrl || 'https://www.lotsofsounds.com/'} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Lots of Sounds</a> : <span>{asset.source === 'demo' ? 'Bundled sound' : 'Imported'}</span>}
           {asset.size ? <span>{formatBytes(asset.size)}</span> : <span>48 kHz</span>}
         </div>
       </div>

@@ -100,6 +100,7 @@ interface EditorState {
   addCaption: (text: string, start?: number, duration?: number) => void;
   selectAllClips: () => void;
   setSelectedClipIds: (ids: string[]) => void;
+  applyExternalProject: (project: Project) => void;
   extractAudio: (clipId: string) => void;
   importCaptions: (entries: Array<{ start: number; end: number; text: string }>, replace?: boolean) => void;
   updateCaptionStyles: (patch: Partial<TextStyle>) => void;
@@ -648,6 +649,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!project) return;
     const valid = ids.filter((id) => project.clips.some((clip) => clip.id === id));
     set({ selectedClipIds: valid, selectedKeyframe: null });
+  },
+
+  applyExternalProject: (project) => {
+    const state = get();
+    const next = cloneProject(project);
+    set({
+      project: next,
+      history: state.project ? [...state.history, state.project].slice(-50) : state.history,
+      future: [],
+      selectedClipIds: [],
+      selectedKeyframe: null,
+      lastSavedAt: new Date().toISOString()
+    });
+    saveProjectLocally(next);
   },
 
   extractAudio: (clipId) => {

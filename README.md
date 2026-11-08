@@ -6,11 +6,12 @@
 
 <p align="center">
   <strong>A local-first, CapCut-style video editor for Linux.</strong><br>
-  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ, AMD Radeon hardware encoding and 10-bit HDR delivery — tuned for Fedora, packaged for Linux.
+  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ, AMD Radeon hardware encoding and 10-bit HDR delivery — tuned for Fedora, packaged for Linux. **Now with a live MCP agent bridge.**
 </p>
 
 <p align="center">
   <a href="https://github.com/martintondel02/lumacut/releases/latest"><img src="https://img.shields.io/github/v/release/martintondel02/lumacut?style=flat-square&color=72f5d1&label=download" alt="Latest release"></a>
+  <a href="#bring-your-own-agent"><img src="https://img.shields.io/badge/MCP-live%20agent%20bridge-72f5d1?style=flat-square" alt="MCP live agent bridge"></a>
   <a href="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml"><img src="https://github.com/martintondel02/lumacut/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
@@ -25,6 +26,7 @@
 
 <p align="center">
   <a href="#install">Install</a> ·
+  <a href="#bring-your-own-agent">Agent bridge</a> ·
   <a href="#features">Features</a> ·
   <a href="#local-auto-captions">Auto captions</a> ·
   <a href="#amd-radeon-acceleration">AMD acceleration</a> ·
@@ -42,9 +44,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.8.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.8.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.8.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`LumaCut-1.9.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.9.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.9.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -56,7 +58,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.8.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.9.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -77,7 +79,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.8.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./LumaCut-1.9.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -86,7 +88,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.8.0-amd64.deb
+sudo apt install ./LumaCut-1.9.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -104,14 +106,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.8.0-x86_64.AppImage
-./LumaCut-1.8.0-x86_64.AppImage
+chmod +x LumaCut-1.9.0-x86_64.AppImage
+./LumaCut-1.9.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.8.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.9.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -145,14 +147,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.8.0-x86_64.AppImage
-./LumaCut-1.8.0-x86_64.AppImage
+chmod +x LumaCut-1.9.0-x86_64.AppImage
+./LumaCut-1.9.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.8.0-x86_64.AppImage --appimage-extract-and-run
+./LumaCut-1.9.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -184,6 +186,54 @@ Most editors make you choose between a polished timeline and owning your footage
 - **Hackable.** React + TypeScript on the front end, a small Express/FFmpeg media server, and an Electron shell. Read it, run it, change it.
 
 > LumaCut is an independent, original project inspired by modern mobile/desktop editors. It is not affiliated with CapCut or ByteDance.
+
+---
+
+## Bring your own agent
+
+LumaCut 1.9 ships a **live MCP bridge**. Connect Claude Code, Codex, DeepSeek Harness, OpenCode or any MCP-capable client to the editor you already have open — the agent gets validated timeline tools, not shell access.
+
+### Connect in four steps
+
+1. Open **Settings → Agent bridge**.
+2. Enable the bridge. LumaCut generates a local session token and starts a live project session.
+3. Copy the ready-made **MCP client config**.
+4. Paste it into your harness config, then prompt normally.
+
+```json
+{
+  "mcpServers": {
+    "lumacut": {
+      "command": "node",
+      "args": ["/opt/LumaCut/resources/app/server/mcp.mjs"],
+      "env": {
+        "LUMACUT_AGENT_URL": "http://127.0.0.1:4320",
+        "LUMACUT_AGENT_TOKEN": "lc_…"
+      }
+    }
+  }
+}
+```
+
+The bridge is localhost-only. The optional MCP helper requires **Node.js 20+**; the editor itself does not.
+
+### What the agent can do
+
+- Read the live project, tracks, clips, keyframes, assets and thumbnails
+- Move, trim, split, ripple-delete, add media and change audio/visual properties
+- Create previewable proposals with a rationale and structured diff
+- Apply or reject a proposal while the human keeps editing
+- Work against the same undoable project the UI uses
+
+Prompt examples:
+
+> Tighten the opening: remove the second clip, ripple the rest left, and put the B-roll on the main track at 12 seconds.
+
+> Make the middle section 20% faster by trimming the three longest clips, then show me the diff before applying.
+
+> Move all soundtrack clips to start exactly with the main video and lower the music under the voiceover.
+
+See the full [Agent roadmap](docs/AGENT_ROADMAP.md) for the tool surface, security model and the upcoming headless renderer.
 
 ---
 
@@ -295,13 +345,19 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for requirements, model man
 
 ## Agent roadmap
 
-LumaCut is being built toward an **agent-operable editor**: external harnesses will connect through MCP and edit the timeline through validated, previewable commands. See **[docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md)** for the architecture, milestones and the experimental command API.
+The agent bridge is the first half of the agent story. The next milestone is a **headless renderer**: deterministic preview frames and final renders without real-time browser capture. That unlocks visual iteration and contact sheets for agents.
+
+- **Shipped:** validated command core, live session sync, local token, MCP stdio server, proposals, asset thumbnails
+- **Next:** server-side frame/preview rendering, contact sheets, scene detection and transcript tools
+- **Then:** in-app prompt panel with the same tools, diff review and permission scopes
+
+Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_ROADMAP.md)**.
 
 ---
 
 ## AMD Radeon acceleration
 
-LumaCut 1.8.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.9.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -338,7 +394,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.8.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.9.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.

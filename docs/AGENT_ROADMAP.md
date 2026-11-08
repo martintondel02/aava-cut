@@ -31,7 +31,7 @@ is expressed as a **validated command batch**, not as direct mutation of the pro
 
 ## Milestones
 
-### Milestone 1 — Agent-ready command core (in progress)
+### Milestone 1 — Agent-ready command core (shipped in 1.9)
 
 - [x] Pure, headless project command module at `shared/project-commands.mjs`
 - [x] All-or-nothing validation; locked-track and overlap checks
@@ -40,13 +40,16 @@ is expressed as a **validated command batch**, not as direct mutation of the pro
 - [x] Local agent sessions with in-memory project state
 - [x] Proposal endpoint plus apply/reject
 - [x] Dry-run command batches
-- [ ] Sync the live editor project into an agent session
+- [x] Sync the live editor project into an agent session
 - [ ] Move the interactive store onto the same command module
 - [ ] Frame-accurate/rational time units
-- [ ] Local auth token and approval policy
+- [x] Local session token and editor opt-in
+- [ ] Approval policy for direct destructive commands
 
-The command core currently uses the same JSON shape as the editor (`Project v2`). The
-session API is the backend foundation for MCP; it is not yet wired to the open editor.
+The command core uses the same JSON shape as the editor (`Project v2`). LumaCut 1.9
+wires the open editor to the session with revision-safe sync, so an MCP agent can edit
+the live timeline. The interactive store still has its own mutation code; moving it onto
+the shared command module is a cleanup milestone.
 
 ### Milestone 2 — Headless renderer
 
@@ -57,14 +60,16 @@ session API is the backend foundation for MCP; it is not yet wired to the open e
 - Keep the canvas monitor as an interactive preview, not the final renderer
 - Replace the current real-time export capture path over time
 
-### Milestone 3 — MCP bridge
+### Milestone 3 — MCP bridge (stdio shipped in 1.9)
 
-- `lumacut-mcp` stdio server, plus an optional Streamable HTTP endpoint
-- Tools wrap the M1 session API
-- Resources: project JSON, asset metadata, transcripts, waveforms, contact sheets
-- Progress notifications for long renders
-- Config snippets for Claude Code, Codex, DeepSeek Harness and OpenCode
-- Local token, project-scoped access, no arbitrary shell tools
+- [x] `lumacut-mcp` stdio server
+- [x] Tools wrap the live session API
+- [x] Asset thumbnail image content for visual inspection
+- [x] Config snippets for Claude Code, Codex, DeepSeek Harness and OpenCode
+- [x] Local token, project-scoped access, no arbitrary shell tools
+- [ ] Optional Streamable HTTP endpoint
+- [ ] Transcript, waveform and contact-sheet resources
+- [ ] Progress notifications for long renders
 
 Planned tools:
 
@@ -94,14 +99,20 @@ The server binds only to localhost. These endpoints are available now:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/agent/capabilities` | Command list and API version |
-| `POST` | `/api/agent/sessions` | Create a session with a project snapshot |
+| `GET` | `/api/agent/capabilities` | Command list, API version and MCP helper path |
+| `POST` | `/api/agent/sessions` | Create a token-bound session with a project snapshot |
+| `GET` | `/api/agent/current` | Resolve the newest session for a token |
+| `POST` | `/api/agent/sessions/:id/sync` | Revision-safe sync from the open editor |
 | `GET` | `/api/agent/sessions/:id` | Read the current project and proposals |
 | `POST` | `/api/agent/sessions/:id/commands` | Validate/apply a command batch; `dryRun: true` previews |
 | `POST` | `/api/agent/sessions/:id/proposals` | Store a previewable proposal |
 | `POST` | `/api/agent/sessions/:id/proposals/:pid/apply` | Apply a proposal |
 | `POST` | `/api/agent/sessions/:id/proposals/:pid/reject` | Discard a proposal |
 | `DELETE` | `/api/agent/sessions/:id` | Drop a session |
+
+All session, command and proposal endpoints require the header
+`x-lumacut-agent-token`. The token is generated in **Settings → Agent bridge** and is
+shown only in the MCP config card.
 
 Commands:
 
@@ -146,15 +157,39 @@ curl -s http://127.0.0.1:4317/api/agent/sessions/agent_abc/commands \
 
 ## Security boundary
 
-- The server is currently localhost-only and unauthenticated. Do not expose it to a LAN.
-- Before shipping MCP, add a per-session token and an explicit editor opt-in.
+- The server binds to localhost only. Do not expose it to a LAN.
+- Sessions are bound to a generated token; the editor must explicitly enable Agent Bridge.
 - Agents get **editor commands**, not shell access or arbitrary filesystem paths.
-- Destructive operations should produce a proposal by default; direct apply is an explicit
-  permission.
+- Destructive operations can be proposed first; the human applies or rejects them.
 - Session state is in-memory and expires after two hours.
+- A token is revoked by disabling the bridge or restarting the app.
+
+## MCP setup
+
+1. Open **Settings → Agent bridge** and enable it.
+2. Copy the generated MCP config.
+3. Paste it into the MCP client configuration.
+4. Prompt the agent normally.
+
+```json
+{
+  "mcpServers": {
+    "lumacut": {
+      "command": "node",
+      "args": ["/opt/LumaCut/resources/app/server/mcp.mjs"],
+      "env": {
+        "LUMACUT_AGENT_URL": "http://127.0.0.1:4320",
+        "LUMACUT_AGENT_TOKEN": "lc_…"
+      }
+    }
+  }
+}
+```
+
+The helper requires Node.js 20+. The editor itself does not.
 
 ## What comes next
 
-Do M2 before the MCP UI. Agent iteration is only useful when previews and exports are fast
-and deterministic. The current real-time canvas capture is acceptable for the GUI, but it
-is the wrong foundation for an agent that may render dozens of previews.
+Do M2 before the in-app agent panel. Agent iteration is only useful when previews and
+exports are fast and deterministic. The current real-time canvas capture is acceptable for
+the GUI, but it is the wrong foundation for an agent that may render dozens of previews.

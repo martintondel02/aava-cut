@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  Check, CircleHelp, Cpu, Download, ExternalLink, Gauge, Github, Info, LayoutPanelTop, Moon, Monitor,
-  Palette, Play, RotateCcw, Settings2, Sparkles, Sun, TimerReset, Volume2, X
+  ArrowUpRight, Bot, Check, CircleHelp, Copy, Cpu, Download, ExternalLink, Gauge, Github, Info, KeyRound, LayoutPanelTop, Moon, Monitor,
+  Palette, Play, RotateCcw, Settings2, ShieldCheck, Sparkles, Sun, Terminal, TimerReset, Volume2, X
 } from 'lucide-react';
 import { useSettingsStore, type Accent, type ThemeMode } from '../store/settingsStore';
 import { useEditorStore, STORAGE_KEY } from '../store/editorStore';
 import { Segmented, ToggleRow } from './ui';
 
-type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'export' | 'storage' | 'about';
+type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'agent' | 'export' | 'storage' | 'about';
 
 const SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeof Palette }> = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'playback', label: 'Playback', icon: Play },
   { id: 'timeline', label: 'Timeline', icon: LayoutPanelTop },
+  { id: 'agent', label: 'Agent bridge', icon: Bot },
   { id: 'export', label: 'Export', icon: Download },
   { id: 'storage', label: 'Storage', icon: TimerReset },
   { id: 'about', label: 'About', icon: Info }
@@ -54,6 +55,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [section, setSection] = useState<SettingsSection>('appearance');
   const [serverOnline, setServerOnline] = useState(false);
   const [hardware, setHardware] = useState<{ detected: boolean; label: string | null; codec: string | null } | null>(null);
+  const [agentInfo, setAgentInfo] = useState<{ mcpPath?: string; apiVersion?: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/health')
@@ -64,6 +66,10 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
         setHardware(data.hardware || null);
       })
       .catch(() => setServerOnline(false));
+    fetch('/api/agent/capabilities')
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data) => { if (data) setAgentInfo(data); })
+      .catch(() => {});
   }, []);
 
   const resetAll = () => {
@@ -236,6 +242,12 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
               </SettingsSection>
             )}
 
+            {section === 'agent' && (
+              <SettingsSection title="Agent bridge" eyebrow="Bring your own agent" description="Connect Claude Code, Codex, DeepSeek Harness or OpenCode to the live timeline through a local MCP server. The agent gets validated editing tools, not shell access.">
+                <AgentBridgeCard settings={settings} serverOnline={serverOnline} agentInfo={agentInfo} addToast={addToast} />
+              </SettingsSection>
+            )}
+
             {section === 'export' && (
               <SettingsSection title="Export" eyebrow="Delivery" description="These defaults are applied every time you open the export dialog. Codec, bit depth and HDR10 are chosen per export.">
                 <div className="settings-group">
@@ -307,11 +319,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.8.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.9.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.8.0</span></h2>
+                    <h2>LumaCut <span>1.9.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -319,7 +331,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.8 agent command core and release notes</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.9 live agent bridge and release notes</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>
@@ -339,6 +351,103 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
           </main>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function makeAgentToken() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `lc_${crypto.randomUUID().replace(/-/g, '')}`;
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return `lc_${Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function AgentBridgeCard({
+  settings,
+  serverOnline,
+  agentInfo,
+  addToast
+}: {
+  settings: ReturnType<typeof useSettingsStore.getState>;
+  serverOnline: boolean;
+  agentInfo: { mcpPath?: string; apiVersion?: string } | null;
+  addToast: (message: string, kind?: 'info' | 'success' | 'error') => void;
+}) {
+  const token = settings.agentBridgeToken;
+  const enabled = settings.agentBridgeEnabled;
+  const maskedToken = token ? `${token.slice(0, 12)}…${token.slice(-6)}` : 'Generated when enabled';
+  const mcpPath = agentInfo?.mcpPath || 'server/mcp.mjs';
+  const config = JSON.stringify({
+    mcpServers: {
+      lumacut: {
+        command: 'node',
+        args: [mcpPath],
+        env: {
+          LUMACUT_AGENT_URL: window.location.origin,
+          LUMACUT_AGENT_TOKEN: token || '<enable Agent Bridge to generate>'
+        }
+      }
+    }
+  }, null, 2);
+
+  const copy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast(`${label} copied`, 'success');
+    } catch {
+      addToast('Clipboard access was blocked', 'error');
+    }
+  };
+
+  const toggle = (checked: boolean) => {
+    const nextToken = token || makeAgentToken();
+    settings.update({ agentBridgeEnabled: checked, agentBridgeToken: nextToken });
+  };
+
+  return (
+    <div className={`agent-bridge-card ${enabled ? 'is-live' : ''}`}>
+      <div className="agent-bridge-hero">
+        <div className="agent-orbit"><Bot size={22} /></div>
+        <div className="agent-bridge-copy">
+          <span className="eyebrow">Local MCP · live timeline</span>
+          <h3>Give your agent the timeline.</h3>
+          <p>External harnesses connect to the open project over localhost. Every edit is a validated command with a previewable diff.</p>
+        </div>
+        <span className={`agent-bridge-status ${enabled && serverOnline ? 'is-live' : ''}`}><i />{enabled ? (serverOnline ? 'Live' : 'Waiting for server') : 'Off'}</span>
+      </div>
+
+      <ToggleRow
+        label="Enable Agent Bridge"
+        hint="Starts a live local session and keeps the open timeline in sync. Disable to revoke access."
+        checked={enabled}
+        onChange={toggle}
+      />
+
+      <div className="agent-bridge-grid">
+        <div className="agent-bridge-field">
+          <span><Terminal size={12} /> MCP endpoint</span>
+          <code>{window.location.origin}</code>
+        </div>
+        <div className="agent-bridge-field">
+          <span><KeyRound size={12} /> Session token</span>
+          <code>{maskedToken}</code>
+          <button type="button" className="icon-btn" title="Copy session token" disabled={!token} onClick={() => void copy(token, 'Token')}><Copy size={13} /></button>
+        </div>
+      </div>
+
+      <div className="agent-bridge-config">
+        <div className="agent-bridge-config-head">
+          <span><Terminal size={13} /> MCP client config</span>
+          <button type="button" className="btn btn-small" disabled={!token} onClick={() => void copy(config, 'MCP config')}><Copy size={12} /> Copy config</button>
+        </div>
+        <pre>{config}</pre>
+      </div>
+
+      <div className="agent-bridge-notes">
+        <ShieldCheck size={14} />
+        <span>Localhost only. The token can be rotated by disabling and re-enabling the bridge.</span>
+        <a href="https://github.com/martintondel02/lumacut/blob/main/docs/AGENT_ROADMAP.md" target="_blank" rel="noreferrer">Roadmap <ArrowUpRight size={12} /></a>
       </div>
     </div>
   );

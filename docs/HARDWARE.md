@@ -107,7 +107,7 @@ sudo dnf install mesa-dri-drivers
 ## Install the RPM
 
 ```bash
-sudo dnf install ./LumaCut-1.6.1-x86_64.rpm
+sudo dnf install ./LumaCut-1.6.2-x86_64.rpm
 ```
 
 The RPM installs:
@@ -128,7 +128,7 @@ npm run build
 npx electron-builder --linux rpm --publish never
 ```
 
-The resulting package is written to `release/LumaCut-1.6.1-x86_64.rpm`.
+The resulting package is written to `release/LumaCut-1.6.2-x86_64.rpm`.
 
 ## Disabling acceleration
 

@@ -2686,3 +2686,21 @@ body.is-resizing-x, body.is-resizing-x * { cursor: col-resize !important; user-s
 .sounds-empty p { max-width: 230px; color: var(--muted); font-size: calc(8.5px * var(--type-scale, 1.35)); line-height: 1.5; }
 .audio-source-link { color: var(--accent); text-decoration: none; }
 .audio-source-link:hover { text-decoration: underline; }
+
+/* ---------- TikTok audio import ---------- */
+.tiktok-audio-card { display: flex; flex-direction: column; gap: 6px; padding: 11px; border-radius: 9px; border: 1px solid rgba(255,255,255,.11); background: linear-gradient(135deg, rgba(255,255,255,.045), rgba(114,245,209,.025)); }
+.tiktok-audio-head { display: flex; align-items: center; gap: 6px; }
+.tiktok-badge { display: inline-flex; padding: 2px 6px; border-radius: 3px; background: #fff; color: #111; font-family: 'Montserrat', sans-serif; font-size: max(8px, calc(6.5px * var(--type-scale, 1.35))); font-weight: 800; letter-spacing: .02em; }
+.tiktok-audio-card > strong { color: var(--text-soft); font-size: calc(11px * var(--type-scale, 1.35)); }
+.tiktok-audio-card > p { color: var(--muted); font-size: calc(8.5px * var(--type-scale, 1.35)); line-height: 1.45; }
+.tiktok-url-row { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 2px 3px 2px 8px; border: 1px solid var(--line); border-radius: 7px; background: rgba(0,0,0,.2); }
+.tiktok-url-row > svg { color: var(--faint); flex: 0 0 auto; }
+.tiktok-url-row input { min-width: 0; flex: 1; border: 0; background: transparent; color: var(--text); font-size: calc(9px * var(--type-scale, 1.35)); }
+.tiktok-url-row input::placeholder { color: var(--faint); }
+.tiktok-url-row .btn { height: 25px; padding: 0 8px; flex: 0 0 auto; }
+.tiktok-consent { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: max(8px, calc(7px * var(--type-scale, 1.35))); cursor: pointer; }
+.tiktok-consent input { accent-color: var(--accent); width: 12px; height: 12px; }
+.tiktok-legal { display: flex; align-items: flex-start; gap: 4px; color: var(--faint); font-size: max(8px, calc(6.5px * var(--type-scale, 1.35))); line-height: 1.35; }
+.tiktok-legal svg { color: #ffc76b; flex: 0 0 auto; }
+.tiktok-link { display: inline-flex; align-items: center; gap: 3px; align-self: flex-start; color: var(--faint); font-size: max(8px, calc(6.5px * var(--type-scale, 1.35))); text-decoration: none; }
+.tiktok-link:hover { color: var(--text-soft); }

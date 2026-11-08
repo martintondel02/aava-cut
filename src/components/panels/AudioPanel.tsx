@@ -8,6 +8,7 @@ import { WaveformMini } from '../Waveform';
 import { MasterEq } from '../MasterEq';
 import { AudioVisualizer } from '../AudioVisualizer';
 import { SoundEffectsBrowser } from '../SoundEffectsBrowser';
+import { TikTokAudioCard } from '../TikTokAudioCard';
 
 export function AudioPanel() {
   const assets = useEditorStore((state) => state.assets);
@@ -135,6 +136,8 @@ export function AudioPanel() {
         {search && <button type="button" onClick={() => setSearch('')}><X size={13} /></button>}
       </div>
 
+      <TikTokAudioCard />
+
       <div className={`voiceover-card ${recording ? 'is-recording' : ''}`}>
         <span className="voiceover-icon"><Mic size={17} /></span>
         <div>
@@ -254,7 +257,7 @@ function AudioRow({
         </div>
         <WaveformMini peaks={peaks} color={playing ? '#b6ffe6' : '#5fd3b3'} bars={56} />
         <div className="audio-row-bottom">
-          {asset.provider === 'Lots of Sounds' ? <a className="audio-source-link" href={asset.sourceUrl || 'https://www.lotsofsounds.com/'} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Lots of Sounds</a> : <span>{asset.source === 'demo' ? 'Bundled sound' : 'Imported'}</span>}
+          {asset.provider === 'Lots of Sounds' || asset.provider === 'TikTok' ? <a className="audio-source-link" href={asset.sourceUrl || 'https://www.tiktok.com/'} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>{asset.provider}</a> : <span>{asset.source === 'demo' ? 'Bundled sound' : 'Imported'}</span>}
           {asset.size ? <span>{formatBytes(asset.size)}</span> : <span>48 kHz</span>}
         </div>
       </div>

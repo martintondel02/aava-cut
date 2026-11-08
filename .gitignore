@@ -10,3 +10,5 @@ test-results/
 playwright-report/
 *.log
 .DS_Store
+# Bundled by scripts/fetch-yt-dlp.mjs at package time
+vendor/yt-dlp/

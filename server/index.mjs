@@ -117,6 +117,30 @@ async function ensureWaveform(asset) {
   return asset;
 }
 
+let tiktokBusy = false;
+
+function findYtDlp() {
+  const candidates = [
+    process.env.LUMACUT_YTDLP,
+    path.join(root, '..', 'bin', 'yt-dlp'),
+    path.join(root, 'vendor', 'yt-dlp', 'yt-dlp'),
+    '/usr/bin/yt-dlp',
+    '/usr/local/bin/yt-dlp'
+  ].filter(Boolean);
+  return candidates.find((candidate) => {
+    try { return fs.existsSync(candidate) && fs.statSync(candidate).isFile(); } catch { return false; }
+  }) || null;
+}
+
+function isTikTokUrl(value) {
+  try {
+    const parsed = new URL(String(value));
+    return parsed.protocol === 'https:' && [
+      'www.tiktok.com', 'tiktok.com', 'm.tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'
+    ].includes(parsed.hostname.toLowerCase());
+  } catch { return false; }
+}
+
 const analysisJobs = new Map();
 const pixabayCache = new Map();
 const PIXABAY_CACHE_TTL = 24 * 60 * 60 * 1000;
@@ -654,7 +678,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.13.0',
+    version: '1.14.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -669,7 +693,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.13.0',
+    version: '1.14.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -887,6 +911,92 @@ app.delete('/api/captions/jobs/:id', (req, res) => {
   const cancelled = captionService.cancelJob(req.params.id);
   if (!cancelled) return res.status(404).json({ error: 'Caption job not found' });
   res.json({ ok: true });
+});
+
+app.get('/api/tiktok/capabilities', (req, res) => {
+  const binary = findYtDlp();
+  res.json({ available: Boolean(binary), provider: 'TikTok', extractor: binary ? 'bundled yt-dlp' : null });
+});
+
+app.post('/api/tiktok/import', async (req, res) => {
+  const url = String(req.body?.url || '').trim();
+  if (!isTikTokUrl(url)) return res.status(400).json({ error: 'Paste a TikTok video URL', code: 'invalid-url' });
+  if (req.body?.confirmed !== true) return res.status(428).json({ error: 'Confirm that you have the rights to use this audio', code: 'consent-required' });
+  const binary = findYtDlp();
+  if (!binary) return res.status(503).json({ error: 'The bundled TikTok extractor is missing. Reinstall LumaCut or set LUMACUT_YTDLP.', code: 'yt-dlp-missing' });
+  if (tiktokBusy) return res.status(429).json({ error: 'Another TikTok extraction is running', code: 'busy' });
+  tiktokBusy = true;
+  const tempDir = await fsp.mkdtemp(path.join(mediaDir, 'tiktok-'));
+  try {
+    const outputTemplate = path.join(tempDir, 'source.%(ext)s');
+    const args = [
+      '--no-playlist', '--no-warnings', '--no-progress', '--no-mtime',
+      '--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0',
+      '--restrict-filenames', '--max-filesize', '80M', '--force-overwrites',
+      '--print-json', '-o', outputTemplate, url
+    ];
+    const { stdout } = await execFileP(binary, args, { timeout: 180000, maxBuffer: 1024 * 1024 * 8 });
+    let metadata = null;
+    for (const line of String(stdout).split('\n')) {
+      if (!line.trim().startsWith('{')) continue;
+      try { metadata = JSON.parse(line); } catch {}
+    }
+    if (metadata?._type === 'playlist') throw new Error('Playlists are not supported; paste a single TikTok video URL');
+    const files = await fsp.readdir(tempDir);
+    const audioFile = files.find((name) => /\.(mp3|m4a|aac|wav|opus)$/i.test(name));
+    if (!audioFile) throw new Error('The TikTok extractor did not produce an audio file');
+    const sourcePath = path.join(tempDir, audioFile);
+    const info = await probe(sourcePath);
+    if (!info.hasAudio) throw new Error('That TikTok video has no audio track');
+    const title = String(metadata?.track || metadata?.title || 'TikTok audio').trim().slice(0, 100) || 'TikTok audio';
+    const finalName = `tiktok-${Date.now()}-${slug(title)}-${crypto.randomBytes(3).toString('hex')}${path.extname(audioFile).toLowerCase()}`;
+    const finalPath = path.join(mediaDir, finalName);
+    await fsp.rename(sourcePath, finalPath);
+    const uploader = String(metadata?.uploader || metadata?.creator || 'TikTok creator').slice(0, 100);
+    const asset = {
+      id: randomId('tiktok'),
+      name: title,
+      kind: 'audio',
+      source: 'tiktok',
+      provider: 'TikTok',
+      url: `/media/${finalName}`,
+      thumbnail: null,
+      duration: info.duration,
+      width: 0,
+      height: 0,
+      hasAudio: true,
+      mime: info.mime || 'audio/mpeg',
+      size: (await fsp.stat(finalPath)).size,
+      createdAt: new Date().toISOString(),
+      peaks: [],
+      creator: uploader,
+      creatorUrl: `https://www.tiktok.com/@${encodeURIComponent(uploader.replace(/^@/, ''))}`,
+      sourceUrl: isTikTokUrl(metadata?.webpage_url) ? metadata.webpage_url : url,
+      license: 'User-supplied TikTok audio',
+      licenseUrl: 'https://www.tiktok.com/legal/page/us/terms-of-service/en',
+      tags: String(metadata?.description || metadata?.title || '').slice(0, 500)
+    };
+    try { asset.thumbnail = await makeThumbnail(finalPath, 'audio', asset.id); } catch {}
+    try { asset.peaks = await extractPeaks(finalPath, info.duration); } catch {}
+    assets.push(asset);
+    await saveAssets(assets);
+    void ensureAssetAnalysis(asset).catch(() => {});
+    res.status(201).json({
+      asset,
+      attribution: {
+        text: 'Audio imported from TikTok',
+        creator: uploader,
+        url: asset.sourceUrl,
+        license: asset.license,
+        note: 'Only import audio you own or have permission to use.'
+      }
+    });
+  } catch (error) {
+    res.status(502).json({ error: 'TikTok audio extraction failed', detail: String(error?.stderr || error?.message || error).slice(-1500) });
+  } finally {
+    tiktokBusy = false;
+    await fsp.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
 });
 
 app.get('/api/sounds/search', async (req, res) => {

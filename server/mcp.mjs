@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * LumaCut MCP stdio bridge.
+ * Aava Cut MCP stdio bridge.
  *
  * Configure an MCP client with:
  *   command: node
  *   args: [this file]
- *   env: LUMACUT_AGENT_URL, LUMACUT_AGENT_TOKEN
+ *   env: AAVA_AGENT_URL, AAVA_AGENT_TOKEN (legacy LUMACUT_* accepted)
  *
  * The app owns the live project; this process only talks to its localhost API.
  */
@@ -13,17 +13,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-const baseUrl = (process.env.LUMACUT_AGENT_URL || 'http://127.0.0.1:4317').replace(/\/+$/, '');
-const token = process.env.LUMACUT_AGENT_TOKEN || '';
+const baseUrl = (process.env.AAVA_AGENT_URL || process.env.LUMACUT_AGENT_URL || 'http://127.0.0.1:4317').replace(/\/+$/, '');
+const token = process.env.AAVA_AGENT_TOKEN || process.env.LUMACUT_AGENT_TOKEN || '';
 
 if (!token) {
-  console.error('[lumacut-mcp] LUMACUT_AGENT_TOKEN is required. Enable Agent Bridge in LumaCut settings and copy the config.');
+  console.error('[aava-mcp] AAVA_AGENT_TOKEN is required. Enable Agent Bridge in Aava Cut settings and copy the config.');
   process.exit(1);
 }
 
 const headers = {
   'content-type': 'application/json',
-  'x-lumacut-agent-token': token
+  'x-aava-agent-token': token
 };
 
 async function call(path, init = {}) {
@@ -36,7 +36,7 @@ async function call(path, init = {}) {
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!response.ok) {
     const message = data?.error || (Array.isArray(data?.errors) ? data.errors.map((error) => error.message).join('; ') : text) || response.statusText;
-    throw new Error(`LumaCut API ${response.status}: ${message}`);
+    throw new Error(`Aava Cut API ${response.status}: ${message}`);
   }
   return data;
 }
@@ -73,10 +73,10 @@ async function imageContent(path) {
 const text = (value) => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 const failure = (error) => ({ isError: true, content: [{ type: 'text', text: String(error?.message || error) }] });
 
-const server = new McpServer({ name: 'lumacut', version: '1.0.0' });
+const server = new McpServer({ name: 'aava', version: '1.0.0' });
 
 server.registerTool('get_project', {
-  title: 'Get LumaCut project',
+  title: 'Get Aava Cut project',
   description: 'Read the live project: tracks, clips, timeline positions, keyframes and settings. Use this before every edit.',
   inputSchema: {}
 }, async () => {
@@ -259,6 +259,6 @@ server.registerTool('get_live_session', {
   } catch (error) { return failure(error); }
 });
 
-console.error(`[lumacut-mcp] connected to ${baseUrl}`);
+console.error(`[aava-mcp] connected to ${baseUrl}`);
 
 await server.connect(new StdioServerTransport());

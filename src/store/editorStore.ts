@@ -177,7 +177,7 @@ function parseStoredProject(): Project | null {
 }
 
 function validateProject(data: unknown): Project {
-  if (!data || typeof data !== 'object') throw new Error('This is not a LumaCut project file.');
+  if (!data || typeof data !== 'object') throw new Error('This is not a Aava Cut project file.');
   const project = data as Project;
   if (!Array.isArray(project.clips) || !Array.isArray(project.tracks)) throw new Error('The project file is missing its timeline.');
   if (!project.width || !project.height) throw new Error('The project file is missing its canvas size.');
@@ -1118,7 +1118,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${project.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'lumacut-project'}.lumacut`;
+    a.download = `${project.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'aava-project'}.aava`;
     a.click();
     URL.revokeObjectURL(url);
     get().addToast('Project file downloaded', 'success');
@@ -1163,7 +1163,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     exportSettings: {
       ...state.exportSettings,
       ...useSettingsStore.getState().exportDefaults,
-      name: (state.project?.name || 'lumacut-export').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'lumacut-export'
+      name: (state.project?.name || 'aava-export').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'aava-export'
     }
   })),
   closeExport: () => set({ exportOpen: false }),

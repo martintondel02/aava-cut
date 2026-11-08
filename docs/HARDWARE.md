@@ -1,6 +1,6 @@
 # AMD Radeon acceleration, codecs & Fedora packaging
 
-LumaCut 1.6 is tuned for AMD Radeon desktops and Fedora Linux. Auto captions use the same Vulkan device through a bundled whisper.cpp runtime; see [AUTOCAPTIONS.md](AUTOCAPTIONS.md). It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
+Aava Cut is tuned for AMD Radeon desktops and Fedora Linux. Auto captions use the same Vulkan device through a bundled whisper.cpp runtime; see [AUTOCAPTIONS.md](AUTOCAPTIONS.md). It does not just look for an encoder name in `ffmpeg -encoders` — it actually probes the GPU with a tiny encode before offering hardware acceleration.
 
 ## How detection works
 
@@ -39,7 +39,7 @@ The picker only enables a codec when the local server reports a working hardware
 
 ## H.265 / HEVC installation
 
-Fedora's official `ffmpeg-free` build often does **not** include `libx265`. If the H.265 card is disabled, install an FFmpeg build that has it and restart LumaCut:
+Fedora's official `ffmpeg-free` build often does **not** include `libx265`. If the H.265 card is disabled, install an FFmpeg build that has it and restart Aava Cut:
 
 ```bash
 # 1. Enable RPM Fusion free (once)
@@ -59,7 +59,7 @@ On Ubuntu, the distribution FFmpeg normally includes `libx265`:
 sudo apt install ffmpeg
 ```
 
-Hardware HEVC is also supported when the driver exposes `hevc_vaapi`; LumaCut probes it with a real encode. Some AMD/Mesa combinations expose AV1 but not H.264/HEVC; in that case use AV1 for hardware or install libx265 for software H.265.
+Hardware HEVC is also supported when the driver exposes `hevc_vaapi`; Aava Cut probes it with a real encode. Some AMD/Mesa combinations expose AV1 but not H.264/HEVC; in that case use AV1 for hardware or install libx265 for software H.265.
 
 H.265 is covered by patent pools in some jurisdictions. Check that your use and distribution comply with the applicable licensing.
 
@@ -80,15 +80,15 @@ Hardware 10-bit was validated with AV1 VAAPI on Radeon; H.265 10-bit requires ei
 | Auto + MP4 | H.264 → HEVC → AV1 | H.264 is offered only when the driver exposes a working VAAPI H.264 encoder. |
 | Auto + WebM | AV1 → VP9 | Falls back to software VP9 if no hardware WebM codec is available. |
 
-On a system like Fedora 45 with an RDNA4 Radeon RX 9070 XT, Mesa may expose **AV1 VAAPI** while H.264/HEVC VAAPI is not available. In that case LumaCut automatically uses AMD AV1 for MP4 and WebM. That is real hardware acceleration; it is not a software fallback.
+On a system like Fedora 45 with an RDNA4 Radeon RX 9070 XT, Mesa may expose **AV1 VAAPI** while H.264/HEVC VAAPI is not available. In that case Aava Cut automatically uses AMD AV1 for MP4 and WebM. That is real hardware acceleration; it is not a software fallback.
 
-AV1 is efficient but older phones, browsers and TVs may not decode it. If you need maximum compatibility, turn **AMD GPU acceleration** off in the Export dialog (or Settings → Export) and LumaCut will use software H.264.
+AV1 is efficient but older phones, browsers and TVs may not decode it. If you need maximum compatibility, turn **AMD GPU acceleration** off in the Export dialog (or Settings → Export) and Aava Cut will use software H.264.
 
 If a hardware attempt fails mid-export, auto mode retries the same file with the software encoder. The result includes `hardware: true/false` and the actual `encoder`/`codec`, which the UI uses to label the finished export.
 
 ## Prerequisites on Fedora
 
-Fedora's official tree ships FFmpeg as **`ffmpeg-free`**; RPM Fusion ships it as **`ffmpeg`**. Both provide `/usr/bin/ffmpeg`, which is what the LumaCut RPM requires.
+Fedora's official tree ships FFmpeg as **`ffmpeg-free`**; RPM Fusion ships it as **`ffmpeg`**. Both provide `/usr/bin/ffmpeg`, which is what the Aava Cut RPM requires.
 
 ```bash
 # Fedora official
@@ -107,14 +107,14 @@ sudo dnf install mesa-dri-drivers
 ## Install the RPM
 
 ```bash
-sudo dnf install ./LumaCut-1.15.0-x86_64.rpm
+sudo dnf install ./Aava Cut-1.15.0-x86_64.rpm
 ```
 
 The RPM installs:
 
-- `/opt/LumaCut/lumacut`
-- `/usr/share/applications/lumacut.desktop`
-- `/usr/share/icons/hicolor/512x512/apps/lumacut.png`
+- `/opt/Aava Cut/aava-cut`
+- `/usr/share/applications/aava-cut.desktop`
+- `/usr/share/icons/hicolor/512x512/apps/aava-cut.png`
 
 The package requires `/usr/bin/ffmpeg`, so either `ffmpeg-free` or RPM Fusion's `ffmpeg` satisfies it. No Node.js runtime is required.
 
@@ -128,7 +128,7 @@ npm run build
 npx electron-builder --linux rpm --publish never
 ```
 
-The resulting package is written to `release/LumaCut-1.15.0-x86_64.rpm`.
+The resulting package is written to `release/Aava Cut-1.15.0-x86_64.rpm`.
 
 ## Disabling acceleration
 
@@ -136,4 +136,4 @@ The resulting package is written to `release/LumaCut-1.15.0-x86_64.rpm`.
 - **Default:** Settings → Export → AMD GPU acceleration.
 - **Command line / server:** the export endpoint accepts `acceleration=off` alongside the normal form fields.
 
-If no AMD GPU or no working VAAPI encoder is detected, LumaCut stays fully functional with software encoding.
+If no AMD GPU or no working VAAPI encoder is detected, Aava Cut stays fully functional with software encoding.

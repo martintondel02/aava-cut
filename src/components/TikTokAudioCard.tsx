@@ -42,7 +42,7 @@ export function TikTokAudioCard() {
         <span className="eyebrow">From a link</span>
       </div>
       <strong>Use the sound from a TikTok video.</strong>
-      <p>Paste a TikTok URL. LumaCut extracts the audio locally with the bundled yt-dlp helper and adds it to your sound library.</p>
+      <p>Paste a TikTok URL. Aava Cut extracts the audio locally with the bundled yt-dlp helper and adds it to your sound library.</p>
       <div className="tiktok-url-row">
         <Music2 size={14} />
         <input

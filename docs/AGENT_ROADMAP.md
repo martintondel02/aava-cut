@@ -1,6 +1,6 @@
 # Agent Roadmap
 
-LumaCut's long-term differentiator is not a bundled chatbot. It is an **agent-operable
+Aava Cut's long-term differentiator is not a bundled chatbot. It is an **agent-operable
 editor**: a local, structured video document that Claude Code, Codex, DeepSeek Harness,
 OpenCode, or a future in-app prompt can inspect and edit through safe tools.
 
@@ -47,7 +47,7 @@ is expressed as a **validated command batch**, not as direct mutation of the pro
 - [x] Agent activity broadcast and visible editor response
 - [ ] Approval policy for direct destructive commands
 
-The command core uses the same JSON shape as the editor (`Project v2`). LumaCut 1.9
+The command core uses the same JSON shape as the editor (`Project v2`). Aava Cut 2.0
 wires the open editor to the session with revision-safe sync, so an MCP agent can edit
 the live timeline. The interactive store still has its own mutation code; moving it onto
 the shared command module is a cleanup milestone.
@@ -64,7 +64,7 @@ the shared command module is a cleanup milestone.
 
 ### Milestone 3 — MCP bridge (stdio shipped in 1.9)
 
-- [x] `lumacut-mcp` stdio server
+- [x] `aava-mcp` stdio server
 - [x] Tools wrap the live session API
 - [x] Asset thumbnail image content for visual inspection
 - [x] Timeline frames and one-call contact sheets
@@ -125,7 +125,7 @@ The server binds only to localhost. These endpoints are available now:
 | `DELETE` | `/api/agent/sessions/:id` | Drop a session |
 
 All session, command and proposal endpoints require the header
-`x-lumacut-agent-token`. The token is generated in **Settings → Agent bridge** and is
+`x-aava-agent-token`. The token is generated in **Settings → Agent bridge** and is
 shown only in the MCP config card.
 
 Commands:
@@ -188,12 +188,12 @@ curl -s http://127.0.0.1:4317/api/agent/sessions/agent_abc/commands \
 ```json
 {
   "mcpServers": {
-    "lumacut": {
+    "aava": {
       "command": "node",
-      "args": ["/opt/LumaCut/resources/app/server/mcp.mjs"],
+      "args": ["/opt/Aava Cut/resources/app/server/mcp.mjs"],
       "env": {
-        "LUMACUT_AGENT_URL": "http://127.0.0.1:4320",
-        "LUMACUT_AGENT_TOKEN": "lc_…"
+        "AAVA_AGENT_URL": "http://127.0.0.1:4320",
+        "AAVA_AGENT_TOKEN": "lc_…"
       }
     }
   }

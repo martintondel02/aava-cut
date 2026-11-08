@@ -1,6 +1,6 @@
 # Local auto captions
 
-LumaCut 1.4 adds local speech-to-text powered by [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Audio never leaves the machine.
+Aava Cut includes local speech-to-text powered by [whisper.cpp](https://github.com/ggml-org/whisper.cpp). Audio never leaves the machine.
 
 ## What it does
 
@@ -17,9 +17,9 @@ The default model is **Whisper large-v3-turbo q5_0**: multilingual, 547 MiB, and
 
 | Component | Notes |
 | --- | --- |
-| FFmpeg / ffprobe | Already required by LumaCut. Used to build the 16 kHz speech mix. |
+| FFmpeg / ffprobe | Already required by Aava Cut. Used to build the 16 kHz speech mix. |
 | Vulkan loader | Included on normal Fedora/Ubuntu desktops. Used for AMD GPU inference. |
-| whisper.cpp runtime | Bundled in LumaCut 1.4 packages under `resources/whisper`. |
+| whisper.cpp runtime | Bundled in Aava Cut packages under `resources/whisper`. |
 | Model | Downloaded on first use, or imported manually. |
 | RAM / VRAM | The measured model delta is ~0.9 GB. 8 GB VRAM is comfortable; smaller cards can use the `small` model. |
 
@@ -33,9 +33,9 @@ The packaged runtime uses the official whisper.cpp 1.9.5 Vulkan build. It runs o
 4. The first run downloads the selected model from Hugging Face (547 MiB for large-v3-turbo, 466 MiB for small) and verifies its checksum.
 5. Review the transcript, edit any cue, then choose **Apply**.
 
-Models are stored in the LumaCut data directory:
+Models are stored in the Aava Cut data directory:
 
-- Packaged: `~/Videos/LumaCut/data/models`
+- Packaged: `~/Videos/Aava/data/models`
 - Source checkout: `data/models`
 
 The download is the only network request in this feature. Audio is processed locally and temporary mixes are deleted after the job.
@@ -68,7 +68,7 @@ The review dialog lists each cue with start/end time and model confidence. Low-c
 
 - No cloud speech API, account or telemetry.
 - Only the model download uses the network.
-- Temporary audio mixes live inside the LumaCut data directory and are deleted when the job finishes.
+- Temporary audio mixes live inside the Aava Cut data directory and are deleted when the job finishes.
 - Caption text stays in the local project/autosave.
 
 ## Limitations
@@ -83,7 +83,7 @@ The review dialog lists each cue with start/end time and model confidence. Low-c
 
 **“The whisper.cpp runtime is not installed”** — run the packaged build, or place a matching runtime at `vendor/whisper/vulkan/whisper-cli` with its libraries in `vendor/whisper/vulkan/lib` when running from source.
 
-**“No speech was detected”** — LumaCut deliberately refuses to invent captions for silence or music. Check that the selected source contains a voice track and is not muted.
+**“No speech was detected”** — Aava Cut deliberately refuses to invent captions for silence or music. Check that the selected source contains a voice track and is not muted.
 
 **Model download fails** — check network access to `huggingface.co`; the partial file is removed and the job can be retried. A manually downloaded GGML model can be placed in the models folder.
 
@@ -93,4 +93,4 @@ The review dialog lists each cue with start/end time and model confidence. Low-c
 
 - Whisper models and whisper.cpp: OpenAI / ggml authors, MIT.
 - Silero VAD: MIT.
-- LumaCut integration: MIT.
+- Aava Cut integration: MIT.

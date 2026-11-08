@@ -1,6 +1,6 @@
 # Render & Session Roadmap
 
-> **Status:** planning document for the work after LumaCut 1.10.
+> **Status:** planning document for the work after Aava Cut 2.0.
 >
 > **Goal:** an agent can create a complete edit, verify it visually, render a real
 > composited file, and recover the session after a restart — without the editor
@@ -10,7 +10,7 @@
 
 ## Where we are
 
-LumaCut 1.10 already gives the agent:
+Aava Cut 2.0 already gives the agent:
 
 - a live, token-bound session;
 - validated commands, diffs, dry runs and proposals;

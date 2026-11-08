@@ -96,7 +96,7 @@ export function PixabayBrowser() {
         <div className="pixabay-brand-mark"><Globe2 size={22} /></div>
         <span className="pixabay-badge">Pixabay</span>
         <strong>Free stock media, one search away.</strong>
-        <p>Add your free Pixabay API key in Settings to search photos and videos without leaving LumaCut.</p>
+        <p>Add your free Pixabay API key in Settings to search photos and videos without leaving Aava Cut.</p>
         <div className="pixabay-connect-actions">
           <button type="button" className="btn btn-primary btn-small" onClick={openSettings}>Open Settings</button>
           <a href="https://pixabay.com/api/docs/" target="_blank" rel="noreferrer">Get a free key <ExternalLink size={12} /></a>

@@ -121,7 +121,7 @@ export function ExportDialog() {
     if (!info) return 'This codec is not reported by the local server.';
     if (!info.formats.includes(settings.format)) return `Choose ${info.formats.map((item) => item.toUpperCase()).join(' or ')} for ${info.label}.`;
     if (!info.software && !info.hardware) return info.codec === 'hevc'
-      ? 'H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart LumaCut.'
+      ? 'H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart Aava Cut.'
       : `No working ${info.label} encoder was detected.`;
     return `${info.label} is available for ${info.formats.map((item) => item.toUpperCase()).join(' / ')}.`;
   };
@@ -304,7 +304,7 @@ export function ExportDialog() {
       if (cancelledRef.current) { exportingRef.current = false; return; }
       if (!blob.size) throw new Error('The recorder returned an empty file.');
       const form = new FormData();
-      form.append('video', blob, 'lumacut-capture.webm');
+      form.append('video', blob, 'aava-capture.webm');
       form.append('format', settings.format);
       form.append('quality', settings.quality);
       form.append('acceleration', settings.hardwareAcceleration ? 'auto' : 'off');
@@ -448,7 +448,7 @@ export function ExportDialog() {
               </div>
               <div className="export-tip">
                 <Sparkles size={15} />
-                <p>Rendering happens in real time on this machine. For long timelines, keep LumaCut visible and your computer awake.</p>
+                <p>Rendering happens in real time on this machine. For long timelines, keep Aava Cut visible and your computer awake.</p>
               </div>
             </div>
 
@@ -519,7 +519,7 @@ export function ExportDialog() {
                 {capabilities && !codecAvailable('hevc') && (
                   <div className="export-codec-hint">
                     <Info size={11} />
-                    <span>H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart LumaCut.</span>
+                    <span>H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart Aava Cut.</span>
                     <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer">Guide</a>
                   </div>
                 )}
@@ -630,7 +630,7 @@ function uploadWithProgress(form: FormData, onProgress: (percent: number) => voi
       if (event.lengthComputable) onProgress(Math.min(100, (event.loaded / event.total) * 100));
     };
     xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status, headers: { 'Content-Type': 'application/json' } }));
-    xhr.onerror = () => reject(new Error('Could not reach the export service. Is the LumaCut server running?'));
+    xhr.onerror = () => reject(new Error('Could not reach the export service. Is the Aava Cut server running?'));
     xhr.ontimeout = () => reject(new Error('The export service timed out.'));
     xhr.send(form);
   });

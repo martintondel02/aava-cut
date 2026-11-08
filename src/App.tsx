@@ -51,7 +51,7 @@ export default function App() {
   useEffect(() => {
     if (hydrated && assetsError && !errorNotified.current) {
       errorNotified.current = true;
-      addToast('Media server offline — the demo library is loaded from cache. Export needs the LumaCut server.', 'error');
+      addToast('Media server offline — the demo library is loaded from cache. Export needs the Aava Cut server.', 'error');
     }
   }, [hydrated, assetsError, addToast]);
 
@@ -271,11 +271,11 @@ export default function App() {
         <div className="boot-glow" />
         <LogoMark size={54} />
         <div className="boot-copy">
-          <h1>LumaCut</h1>
+          <h1>Aava Cut</h1>
           <p>Loading your edit</p>
         </div>
         <div className="boot-loader"><span /></div>
-        <span className="boot-detail">Local-first video editing for Linux</span>
+        <span className="boot-detail">Every craft. One current.</span>
       </div>
     );
   }

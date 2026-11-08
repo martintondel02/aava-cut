@@ -1,12 +1,17 @@
 <p align="center">
-  <img src="docs/banner.png" alt="LumaCut — Cut. Color. Caption. Create." width="100%">
+  <img src="docs/banner.png" alt="Aava Cut — Every craft. One current." width="100%">
 </p>
 
-<h1 align="center">LumaCut</h1>
+<h1 align="center">Aava Cut</h1>
 
 <p align="center">
-  <strong>A local-first, CapCut-style video editor for Linux.</strong><br>
+  <strong>A local-first video editor for Linux. The first product from Aava.</strong><br>
   Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ, AMD Radeon hardware encoding and 10-bit HDR delivery — tuned for Fedora, packaged for Linux. **Now with a live, seeing MCP agent bridge.**
+</p>
+
+<p align="center">
+  <a href="docs/BRAND.md"><strong>Read the Aava brand guide →</strong></a><br>
+  <sub>Aava is the public product house for creative, office and developer software. Aava Cut is its first release.</sub>
 </p>
 
 <p align="center">
@@ -48,9 +53,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`LumaCut-1.15.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`LumaCut-1.15.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`LumaCut-1.15.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`Aava-Cut-2.0.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`Aava-Cut-2.0.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`Aava-Cut-2.0.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -62,7 +67,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./LumaCut-1.15.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.0.0-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -71,19 +76,19 @@ If you do not already have FFmpeg and the Vulkan loader:
 sudo dnf install ffmpeg-free vulkan-loader
 ```
 
-Launch **LumaCut** from the GNOME/KDE overview or run:
+Launch **Aava Cut** from the GNOME/KDE overview or run:
 
 ```bash
-/opt/LumaCut/lumacut
+"/opt/Aava Cut/aava-cut"
 ```
 
-The RPM creates a desktop entry but does **not** add a `lumacut` command to your `PATH`.
+The RPM creates a desktop entry but does **not** add a `aava-cut` command to your `PATH`.
 
 If `dnf` rejects the unsigned local package, verify the checksum first and then install with `--nogpgcheck`:
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./LumaCut-1.15.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./Aava-Cut-2.0.0-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -92,13 +97,13 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./LumaCut-1.15.0-amd64.deb
+sudo apt install ./Aava-Cut-2.0.0-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
 
 ```bash
-/opt/LumaCut/lumacut
+"/opt/Aava Cut/aava-cut"
 ```
 
 ### Arch Linux
@@ -110,14 +115,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x LumaCut-1.15.0-x86_64.AppImage
-./LumaCut-1.15.0-x86_64.AppImage
+chmod +x Aava-Cut-2.0.0-x86_64.AppImage
+./Aava-Cut-2.0.0-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./LumaCut-1.15.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.0.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -151,14 +156,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x LumaCut-1.15.0-x86_64.AppImage
-./LumaCut-1.15.0-x86_64.AppImage
+chmod +x Aava-Cut-2.0.0-x86_64.AppImage
+./Aava-Cut-2.0.0-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./LumaCut-1.15.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.0.0-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -171,52 +176,52 @@ sha256sum -c SHA256SUMS
 
 ### First launch
 
-- Project data, media and exports live in `~/Videos/LumaCut`.
+- Project data, media and exports live in `~/Videos/Aava`.
 - Auto captions download the selected Whisper model on first use (547 MiB for large-v3-turbo). The model is checksum-verified.
 - The RPM creates a menu entry. The AppImage and source builds do not integrate automatically.
 - `main` is protected; releases are built from tagged commits by GitHub Actions.
 
 ---
 
-## Why LumaCut?
+## Why Aava Cut?
 
-Most editors make you choose between a polished timeline and owning your footage. LumaCut is built for the other path:
+Most editors make you choose between a polished timeline and owning your footage. Aava Cut is built for the other path:
 
 - **Local-first by design.** Your media, waveforms, projects and exports live in folders on your Linux machine. No account, no upload, no telemetry.
 - **A real timeline.** Multi-track clips, trim handles, snapping, keyframe rails, direct manipulation and complete track management.
 - **Finished-film tools.** Local AI auto captions, typography, transitions, effects, color grades, spring keyframes, audio mixing and 4K exports.
 - **Yours to shape.** Light/dark themes, four accent colors, 80–140% interface scaling, compact density and reduced motion.
-- **Tuned for AMD.** LumaCut probes the actual VAAPI encoders on your Radeon, uses AV1/H.264/HEVC hardware encoding when available, and falls back cleanly to CPU. The Fedora RPM is a first-class target.
+- **Tuned for AMD.** Aava Cut probes the actual VAAPI encoders on your Radeon, uses AV1/H.264/HEVC hardware encoding when available, and falls back cleanly to CPU. The Fedora RPM is a first-class target.
 - **Hackable.** React + TypeScript on the front end, a small Express/FFmpeg media server, and an Electron shell. Read it, run it, change it.
 
-> LumaCut is an independent, original project inspired by modern mobile/desktop editors. It is not affiliated with CapCut or ByteDance.
+> Aava Cut is an independent, original project inspired by modern mobile/desktop editors. It is not affiliated with CapCut or ByteDance.
 
 ---
 
 ## Bring your own agent
 
-LumaCut 1.10 ships a **live, seeing MCP bridge**. Connect Claude Code, Codex, DeepSeek Harness, OpenCode or any MCP-capable client to the editor you already have open — the agent gets validated timeline tools, not shell access.
+Aava Cut ships a **live, seeing MCP bridge**. Connect Claude Code, Codex, DeepSeek Harness, OpenCode or any MCP-capable client to the editor you already have open — the agent gets validated timeline tools, not shell access.
 
 <p align="center">
-  <img src="docs/screenshots/agent-bridge.png" alt="LumaCut Agent Bridge settings with live MCP status, token and copy-ready client config" width="100%">
+  <img src="docs/screenshots/agent-bridge.png" alt="Aava Cut Agent Bridge settings with live MCP status, token and copy-ready client config" width="100%">
 </p>
 
 ### Connect in four steps
 
 1. Open **Settings → Agent bridge**.
-2. Enable the bridge. LumaCut generates a local session token and starts a live project session.
+2. Enable the bridge. Aava Cut generates a local session token and starts a live project session.
 3. Copy the ready-made **MCP client config**.
 4. Paste it into your harness config, then prompt normally.
 
 ```json
 {
   "mcpServers": {
-    "lumacut": {
+    "aava": {
       "command": "node",
-      "args": ["/opt/LumaCut/resources/app/server/mcp.mjs"],
+      "args": ["/opt/Aava Cut/resources/app/server/mcp.mjs"],
       "env": {
-        "LUMACUT_AGENT_URL": "http://127.0.0.1:4320",
-        "LUMACUT_AGENT_TOKEN": "lc_…"
+        "AAVA_AGENT_URL": "http://127.0.0.1:4320",
+        "AAVA_AGENT_TOKEN": "av_…"
       }
     }
   }
@@ -258,15 +263,15 @@ Search and import free photos and videos from **Pixabay** without leaving the ed
 2. Open **Settings → Pixabay** and paste it.
 3. Open **Media → Pixabay**, search, preview, and hit **Use**.
 
-Imported media is downloaded into your local LumaCut library — no hotlinking. Every result and imported asset keeps its **Pixabay** badge, creator link and **Pixabay Content License** attribution. Searches are cached for 24 hours.
+Imported media is downloaded into your local Aava Cut library — no hotlinking. Every result and imported asset keeps its **Pixabay** badge, creator link and **Pixabay Content License** attribution. Searches are cached for 24 hours.
 
-**Music & sound effects:** Pixabay's public API currently covers photos and videos. LumaCut's Sound panel links to Pixabay's music and SFX libraries; download the track there and import the file locally.
+**Music & sound effects:** Pixabay's public API currently covers photos and videos. Aava Cut's Sound panel links to Pixabay's music and SFX libraries; download the track there and import the file locally.
 
 ---
 
 ## Free sound effects
 
-LumaCut connects to the **Lots of Sounds** free sample API for CC0 sound effects — no key, no account.
+Aava Cut connects to the **Lots of Sounds** free sample API for CC0 sound effects — no key, no account.
 
 1. Open **Audio → Sound effects**.
 2. Search for a door knock, notification, whoosh, riser or room tone.
@@ -280,7 +285,7 @@ Attribution stays visible with every result: **Sound effects from Lots of Sounds
 
 ## TikTok audio from a link
 
-LumaCut 1.14 includes an experimental **TikTok → audio** import:
+Aava Cut includes an experimental **TikTok → audio** import:
 
 1. Open **Audio**.
 2. Paste a TikTok video URL into **From a link**.
@@ -306,7 +311,7 @@ Deleting a clip from the timeline is **non-destructive**: the source file stays 
   - **Clear exports** — removes finished render files.
 - Every destructive action asks for confirmation.
 
-Project data lives in `~/Videos/LumaCut/data`, media in `~/Videos/LumaCut/media`, generated frames in `media/frames`, and exports in `~/Videos/LumaCut/exports`.
+Project data lives in `~/Videos/Aava/data`, media in `~/Videos/Aava/media`, generated frames in `media/frames`, and exports in `~/Videos/Aava/exports`.
 
 ---
 
@@ -395,7 +400,7 @@ Project data lives in `~/Videos/LumaCut/data`, media in `~/Videos/LumaCut/media`
 | | |
 | --- | --- |
 | **Autosave** | Instant local project persistence with undo/redo history |
-| **Portable projects** | Download and reopen `.lumacut` files |
+| **Portable projects** | Download and reopen `.aava` files; legacy `.lumacut` files still load |
 | **Auto captions** | Local Whisper large-v3-turbo on AMD Vulkan · CPU fallback · full mix or selected clip |
 | **AMD acceleration** | Auto-detects AMD Radeon VAAPI · AV1, H.264 or HEVC · live encoder label · CPU fallback |
 | **Codec picker** | Explicit Auto / H.264 / H.265 / AV1 with live availability and install guidance |
@@ -409,7 +414,7 @@ Project data lives in `~/Videos/LumaCut/data`, media in `~/Videos/LumaCut/media`
 
 ### Local auto captions
 
-LumaCut 1.6 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
+Aava Cut can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
 
 - **Default model:** Whisper large-v3-turbo q5_0, 547 MiB, multilingual, comfortable on an 8 GB GPU.
 - **Smaller model:** Whisper small, 466 MiB, for lower-end GPUs and CPUs.
@@ -436,14 +441,14 @@ Read the full architecture and protocol in **[docs/AGENT_ROADMAP.md](docs/AGENT_
 
 ## AMD Radeon acceleration
 
-LumaCut 1.15.0 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+Aava Cut is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
 - **Safe fallback:** if a hardware encode fails mid-export, auto mode retries the exact same file with the CPU encoder.
 - **Visible state:** the Export dialog and Settings → About show the detected GPU, the selected encoder, and whether a hardware encode succeeded.
 
-On some Fedora + Mesa combinations — including RDNA4 cards — **AV1 VAAPI** is exposed while H.264/HEVC VAAPI is not. That is handled automatically: LumaCut exports AV1 with real GPU acceleration. If you need maximum player compatibility, pick **H.264** in the codec picker and turn **AMD GPU acceleration** off, or install RPM Fusion FFmpeg for software H.265.
+On some Fedora + Mesa combinations — including RDNA4 cards — **AV1 VAAPI** is exposed while H.264/HEVC VAAPI is not. That is handled automatically: Aava Cut exports AV1 with real GPU acceleration. If you need maximum player compatibility, pick **H.264** in the codec picker and turn **AMD GPU acceleration** off, or install RPM Fusion FFmpeg for software H.265.
 
 ### H.265 / HEVC installation
 
@@ -460,26 +465,26 @@ sudo dnf install ffmpeg
 ffmpeg -hide_banner -encoders | grep libx265
 ```
 
-Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's FFmpeg normally includes `libx265` already.
+Restart Aava Cut after installing; the server probes codecs at startup. Ubuntu's FFmpeg normally includes `libx265` already.
 
 ### 10-bit and HDR10
 
 - **10-bit** is available for H.265 and AV1; H.264 stays 8-bit.
 - **HDR10** is available for MP4 + 10-bit + H.265/AV1.
-- LumaCut color-manages the SDR canvas to **PQ / BT.2020** at a 100-nit reference. It tags HDR10 correctly, but it **does not recover HDR highlights from an SDR timeline**; native HDR source grading is future work.
+- Aava Cut color-manages the SDR canvas to **PQ / BT.2020** at a 100-nit reference. It tags HDR10 correctly, but it **does not recover HDR highlights from an SDR timeline**; native HDR source grading is future work.
 - Hardware 10-bit uses `p010` VAAPI upload. Software 10-bit uses `yuv420p10le`.
 
 **Fedora install:**
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.15.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.0.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
 
 <p align="center">
-  <img src="docs/screenshots/hardware.png" alt="LumaCut about screen showing AMD VAAPI AV1 acceleration on Fedora" width="82%">
+  <img src="docs/screenshots/hardware.png" alt="Aava Cut about screen showing AMD VAAPI AV1 acceleration on Fedora" width="82%">
 </p>
 
 Full setup, encoder matrix, troubleshooting and local RPM build instructions live in **[docs/HARDWARE.md](docs/HARDWARE.md)**.
@@ -488,7 +493,7 @@ Full setup, encoder matrix, troubleshooting and local RPM build instructions liv
 
 ## Quick start
 
-### Run LumaCut from source
+### Run Aava Cut from source
 
 Requirements:
 
@@ -521,7 +526,7 @@ npm run desktop        # build + open the Electron window
 npm run desktop:start  # launch an existing build
 ```
 
-The desktop app runs the media server inside Electron, so it does not need a separate Node process. Source runs keep media in the repository. Packaged runs store media, exports and cached metadata under `~/Videos/LumaCut/` (or Electron's user-data directory as a fallback).
+The desktop app runs the media server inside Electron, so it does not need a separate Node process. Source runs keep media in the repository. Packaged runs store media, exports and cached metadata under `~/Videos/Aava/` (or Electron's user-data directory as a fallback).
 
 ### Build Linux packages
 
@@ -562,7 +567,7 @@ npx electron-builder --linux rpm --publish never
 | `Ctrl/⌘ + C` / `V` | Copy / paste clip |
 | `Delete` | Delete selected clip or selected keyframe |
 | `Ctrl/⌘ + S` | Save project to disk |
-| `Ctrl/⌘ + O` | Open a `.lumacut` file |
+| `Ctrl/⌘ + O` | Open an `.aava` file |
 | `Ctrl/⌘ + N` | New project |
 | `Ctrl/⌘ + E` | Open export |
 | `Ctrl/⌘ + ,` | Open settings |
@@ -651,9 +656,9 @@ The visualizer taps the analyser and never modifies the signal. Master and track
 | `media/` | Imported source files and generated thumbnails (source runs) |
 | `exports/` | Finished MP4 / WebM renders (source runs) |
 | `data/assets.json` | Media library index and waveform peaks (source runs) |
-| `~/Videos/LumaCut/` | Media, exports and data for packaged desktop builds |
+| `~/Videos/Aava/` | Media, exports and data for packaged desktop builds |
 | Browser local storage | Instant project autosave |
-| `*.lumacut` | Portable project downloads |
+| `*.aava` | Portable project downloads |
 
 All processing happens on your machine. Media never leaves the local server, which binds to `127.0.0.1`.
 
@@ -751,7 +756,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for auto-caption setup and 
 ## Notes & limits
 
 - **Export is real-time.** A 30-second cut takes roughly 30 seconds to capture; hardware encoding shortens the encode step, not the capture step. Keep the window in the foreground.
-- **Hardware encoders vary by driver.** Fedora/Mesa may expose AV1, H.264, HEVC or only some of them. LumaCut picks what actually works and labels the result. It never silently pretends a software encode is hardware.
+- **Hardware encoders vary by driver.** Fedora/Mesa may expose AV1, H.264, HEVC or only some of them. Aava Cut picks what actually works and labels the result. It never silently pretends a software encode is hardware.
 - **Auto captions are local and review-first.** Whisper can mishear music, overlapping speech or names; edit cues before applying them. Speaker labels are not yet included.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
@@ -759,7 +764,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for auto-caption setup and 
 - **HDR10 is converted from the SDR canvas.** It sets PQ/BT.2020 and 10-bit output but cannot restore highlights that were never in the SDR timeline.
 - **H.265 software encoding needs libx265.** Fedora's stock `ffmpeg-free` may not include it; install RPM Fusion FFmpeg or use AV1 hardware encoding.
 - Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`. H.265 requires `libx265` in that FFmpeg build.
-- LumaCut targets a wide desktop window (1180 px minimum).
+- Aava Cut targets a wide desktop window (1180 px minimum).
 - The app is built for local desktop use; there is no cloud sync or collaboration layer.
 
 ---
@@ -773,12 +778,12 @@ Issues, pull requests and thoughtful design feedback are welcome.
 - Use the issue templates for bugs and feature requests.
 - Keep changes local-first: no accounts, no telemetry, no mandatory network calls.
 
-If LumaCut helps you make something, star the repo — it makes the next rework easier to justify.
+If Aava Cut helps you make something, star the repo — it makes the next rework easier to justify.
 
 ---
 
 ## License
 
-MIT © LumaCut contributors. See [LICENSE](LICENSE).
+MIT © Aava Cut contributors. See [LICENSE](LICENSE).
 
 Bundled fonts: Montserrat and Open Sans under the SIL Open Font License; Liberation Serif under the SIL Open Font License. User-imported media stays local and is not redistributed with the project.

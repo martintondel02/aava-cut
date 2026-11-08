@@ -1173,7 +1173,7 @@ function ClipContextMenu({
       <button type="button" onClick={onSplit}><Scissors size={14} /> Split at playhead <kbd>B</kbd></button>
       <button type="button" onClick={onDuplicate}><CopyPlus size={14} /> Duplicate <kbd>⌘D</kbd></button>
       <button type="button" onClick={onCopy}><Copy size={14} /> Copy <kbd>⌘C</kbd></button>
-      {canExtractAudio && <button type="button" onClick={onExtractAudio}><Music2 size={14} /> Extract audio</button>}
+      {canExtractAudio && <button type="button" onClick={onExtractAudio}><Music2 size={14} /> Extract audio & mute clip</button>}
       <button type="button" onClick={onDelete} className="danger"><Trash2Icon /> Delete <kbd>Del</kbd></button>
       <div className="popover-separator" />
       <button type="button" onClick={onTransition}><Layers size={14} /> Change transition</button>

@@ -274,6 +274,13 @@ test('extracts audio from a video clip to the bottom audio track', async ({ page
   await page.locator('.context-menu button', { hasText: 'Extract audio' }).click();
   await expect(page.locator('.timeline-clip.clip-audio')).toHaveCount(1);
   await expect(page.locator('.track-header')).toHaveCount(5);
+  await page.waitForTimeout(700);
+  const levels = await page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return project.clips.map((clip: { kind: string; volume: number }) => ({ kind: clip.kind, volume: clip.volume }));
+  });
+  expect(levels.find((clip: { kind: string }) => clip.kind === 'video')?.volume).toBe(0);
+  expect(levels.find((clip: { kind: string }) => clip.kind === 'audio')?.volume).toBeGreaterThan(0);
 });
 
 test('Ctrl+A selects all clips and leaves document text alone', async ({ page }) => {
@@ -315,7 +322,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.6.0');
+  expect(capabilities.version).toBe('1.6.1');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');

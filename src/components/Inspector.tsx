@@ -489,7 +489,7 @@ export function Inspector() {
               <button type="button" onClick={() => addKeyframe(clip.id, 'volume')}><Diamond size={10} /> Volume keyframe</button>
               <button type="button" onClick={() => addClipFade(clip.id, 'audio')}>Fade in & out</button>
               {clip.kind === 'video' && clip.assetId && assets.find((asset) => asset.id === clip.assetId)?.hasAudio !== false && (
-                <button type="button" onClick={() => extractAudio(clip.id)}><Music2 size={10} /> Extract audio</button>
+                <button type="button" onClick={() => extractAudio(clip.id)}><Music2 size={10} /> Extract audio & mute clip</button>
               )}
             </div>
           </Section>

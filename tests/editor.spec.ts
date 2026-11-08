@@ -22,14 +22,16 @@ test.beforeAll(async () => {
     multipart: { files: { name: 'lumacut-test-fixture.mp4', mimeType: 'video/mp4', buffer: fs.readFileSync(videoFixture) } }
   });
   expect(video.ok()).toBeTruthy();
-  const videoBody = await video.json() as { assets: Array<{ id: string }> };
+  const videoBody = await video.json() as { assets: Array<{ id: string }>; errors?: Array<{ error: string }> };
+  if (!videoBody.assets[0]) throw new Error(`Video fixture upload failed: ${JSON.stringify(videoBody.errors || videoBody)}`);
   videoAssetId = videoBody.assets[0].id;
 
   const audio = await api.post('/api/assets', {
     multipart: { files: { name: 'lumacut-test-audio.wav', mimeType: 'audio/wav', buffer: fs.readFileSync(audioFixture) } }
   });
   expect(audio.ok()).toBeTruthy();
-  const audioBody = await audio.json() as { assets: Array<{ id: string }> };
+  const audioBody = await audio.json() as { assets: Array<{ id: string }>; errors?: Array<{ error: string }> };
+  if (!audioBody.assets[0]) throw new Error(`Audio fixture upload failed: ${JSON.stringify(audioBody.errors || audioBody)}`);
   audioAssetId = audioBody.assets[0].id;
 });
 

@@ -2401,3 +2401,52 @@ body { zoom: var(--ui-scale, 1); }
   .agent-bridge-status { grid-column: 2; justify-self: start; }
   .agent-bridge-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Agent activity ---------- */
+.agent-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 7px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(114, 245, 209, .22);
+  background: rgba(114, 245, 209, .05);
+  color: var(--faint);
+  font-size: max(9px, calc(7px * var(--type-scale, 1.35)));
+  font-weight: 700;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  transition: border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.agent-live-pill > i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.agent-live-pill > svg { color: var(--accent); }
+.agent-live-pill.is-working {
+  color: var(--accent);
+  border-color: rgba(114, 245, 209, .55);
+  background: rgba(114, 245, 209, .1);
+  box-shadow: 0 0 18px rgba(114, 245, 209, .08);
+}
+.agent-live-pill.is-working > i { animation: agent-pulse 1s ease-in-out infinite; }
+.timeline-clip.is-agent-touched {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  animation: agent-touch 1.4s ease-in-out 2;
+}
+@keyframes agent-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.65); }
+}
+@keyframes agent-touch {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(114, 245, 209, .2); }
+  50% { box-shadow: inset 0 0 0 2px rgba(114, 245, 209, .85), 0 0 18px rgba(114, 245, 209, .28); }
+}
+@media (max-width: 1280px) {
+  .agent-live-pill span:last-child { display: none; }
+}

@@ -61,6 +61,7 @@ interface EditorState {
   leftPanelOpen: boolean;
   inspectorOpen: boolean;
   timelineHeight: number;
+  agentRuntime: { connected: boolean; active: boolean; message: string; changedIds: string[] };
 
   bootstrap: () => Promise<void>;
   refreshAssets: () => Promise<void>;
@@ -72,6 +73,7 @@ interface EditorState {
   setLeftPanelOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
   setTimelineHeight: (height: number) => void;
+  setAgentRuntime: (patch: Partial<EditorState['agentRuntime']>) => void;
   setZoom: (zoom: number) => void;
   setSnapping: (snapping: boolean) => void;
   setShowSafeArea: (show: boolean) => void;
@@ -325,6 +327,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   leftPanelOpen: true,
   inspectorOpen: true,
   timelineHeight: 324,
+  agentRuntime: { connected: false, active: false, message: '', changedIds: [] },
 
   bootstrap: async () => {
     let assets: MediaAsset[] = [];
@@ -424,6 +427,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setLeftPanelOpen: (open) => set({ leftPanelOpen: open }),
   setInspectorOpen: (open) => set({ inspectorOpen: open }),
   setTimelineHeight: (height) => set({ timelineHeight: clamp(height, 220, 560) }),
+  setAgentRuntime: (patch) => set((state) => ({ agentRuntime: { ...state.agentRuntime, ...patch } })),
   setZoom: (zoom) => set({ zoom: clamp(zoom, 12, 220) }),
   setSnapping: (snapping) => set({ snapping }),
   setShowSafeArea: (show) => set({ showSafeArea: show }),

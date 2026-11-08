@@ -44,6 +44,7 @@ is expressed as a **validated command batch**, not as direct mutation of the pro
 - [ ] Move the interactive store onto the same command module
 - [ ] Frame-accurate/rational time units
 - [x] Local session token and editor opt-in
+- [x] Agent activity broadcast and visible editor response
 - [ ] Approval policy for direct destructive commands
 
 The command core uses the same JSON shape as the editor (`Project v2`). LumaCut 1.9
@@ -51,20 +52,24 @@ wires the open editor to the session with revision-safe sync, so an MCP agent ca
 the live timeline. The interactive store still has its own mutation code; moving it onto
 the shared command module is a cleanup milestone.
 
-### Milestone 2 — Headless renderer
+### Milestone 2 — Headless renderer (started in 1.10)
 
-- Server-side FFmpeg timeline renderer for deterministic previews and exports
-- Low-resolution proxy renders for fast agent iteration
-- Frame/contact-sheet extraction endpoint
-- Scene-boundary and silence detection
-- Keep the canvas monitor as an interactive preview, not the final renderer
-- Replace the current real-time export capture path over time
+- [x] Source frame endpoint
+- [x] Timeline frame endpoint for the top visible video/image layer
+- [x] Contact-sheet endpoint
+- [x] Asset analysis: scene cuts, silences, loudness, black/static spans, screen content box
+- [x] Low-resolution proxy render endpoint
+- [ ] Full composited timeline export with transforms, text, transitions, effects and audio
+- [ ] Replace the current real-time export capture path
 
 ### Milestone 3 — MCP bridge (stdio shipped in 1.9)
 
 - [x] `lumacut-mcp` stdio server
 - [x] Tools wrap the live session API
 - [x] Asset thumbnail image content for visual inspection
+- [x] Timeline frames and one-call contact sheets
+- [x] Source asset analysis and crop-aware frame rendering
+- [x] Proxy MP4 rendering for verification
 - [x] Config snippets for Claude Code, Codex, DeepSeek Harness and OpenCode
 - [x] Local token, project-scoped access, no arbitrary shell tools
 - [ ] Optional Streamable HTTP endpoint
@@ -76,6 +81,9 @@ Planned tools:
 | Tool | Purpose |
 | --- | --- |
 | `get_project` | Read the current project, tracks and clips |
+| `get_frame` / `get_contact_sheet` | See the timeline as images |
+| `get_asset_analysis` | Scene, silence, loudness and content-box analysis |
+| `render_proxy` | Low-res MP4 verification render |
 | `list_assets` / `get_asset` | Query the media library and metadata |
 | `get_transcript` | Read timed words and caption cues |
 | `get_contact_sheet` | Return thumbnails for visual inspection |
@@ -103,6 +111,12 @@ The server binds only to localhost. These endpoints are available now:
 | `POST` | `/api/agent/sessions` | Create a token-bound session with a project snapshot |
 | `GET` | `/api/agent/current` | Resolve the newest session for a token |
 | `POST` | `/api/agent/sessions/:id/sync` | Revision-safe sync from the open editor |
+| `POST` | `/api/agent/sessions/:id/activity` | Broadcast agent working / idle status |
+| `GET` | `/api/agent/sessions/:id/frame` | Render a timeline frame |
+| `GET` | `/api/agent/sessions/:id/sheet` | Render a contact sheet |
+| `POST` | `/api/agent/sessions/:id/proxy` | Render a low-res verification MP4 |
+| `GET` | `/api/assets/:id/frame` | Render a source frame |
+| `GET` | `/api/assets/:id/analysis` | Cached asset analysis |
 | `GET` | `/api/agent/sessions/:id` | Read the current project and proposals |
 | `POST` | `/api/agent/sessions/:id/commands` | Validate/apply a command batch; `dryRun: true` previews |
 | `POST` | `/api/agent/sessions/:id/proposals` | Store a previewable proposal |
@@ -186,7 +200,7 @@ curl -s http://127.0.0.1:4317/api/agent/sessions/agent_abc/commands \
 }
 ```
 
-The helper requires Node.js 20+. The editor itself does not.
+The helper requires Node.js 20+. The editor itself does not. Frames and proxies are server-side; full composited export is still the next renderer milestone.
 
 ## What comes next
 

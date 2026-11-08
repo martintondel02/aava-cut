@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.10.0 — 2026-11-08
+
+### Added — agent vision and verification
+
+- **Source and timeline frames**
+  - `GET /api/assets/:id/frame?at=&w=`
+  - `GET /api/agent/sessions/:id/frame?at=&w=`
+  - MCP tools `get_frame`, `get_contact_sheet`
+- **Contact sheets** in one call: `GET /api/agent/sessions/:id/sheet?from=&to=&step=&w=`
+- **Asset analysis** precomputed on import and available via `GET /api/assets/:id/analysis`:
+  - scene cuts, silences, loudness, black spans, static spans, screen-recording content box
+- **Preview proxy renderer** for the top visible video layer:
+  - `POST /api/agent/sessions/:id/proxy`
+  - MCP tool `render_proxy`
+- **`clip.crop`** command with source-pixel rectangles; applied in preview, export and rendered frames
+- **Machine-readable command schemas** in `/api/agent/capabilities` (types, units, ranges, defaults, examples)
+- **Lean asset listing** with `GET /api/assets?lean=1`
+
+### Changed — agent feedback fixes
+
+- Added visible **Agent connected / Agent working** pill and pulsing clip highlights while commands are applied
+- Agent tools broadcast activity through the live session; the editor reflects it immediately
+- `clip.trim` validates `trimIn + duration × speed` against asset duration
+- `clip.add` defaults to the full asset duration instead of silently capping at 12s
+- `clip.split` and `clip.add` accept stable client-supplied IDs
+- Batch commands return **all** validation errors with indices
+- `clip.split` accepts `timelineAt`, `clip.trim` accepts `sourceIn`
+- Source range and crop bounds are validated
+
+### Verification
+
+- 25/25 Playwright tests pass
+- Added coverage for crop, frames, contact sheets, analysis, proxy render and agent activity
+- Typecheck, production build, AppImage, DEB and RPM pass
+
 ## 1.9.0 — 2026-11-08
 
 ### Added

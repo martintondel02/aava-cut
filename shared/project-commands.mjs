@@ -16,13 +16,150 @@ const CLIP_PATCH_KEYS = new Set([
 const TRACK_PATCH_KEYS = new Set(['name', 'muted', 'solo', 'gain', 'locked', 'hidden']);
 
 export const AGENT_COMMANDS = [
-  { type: 'clip.move', description: 'Move a clip to an absolute start time and optional track.' },
-  { type: 'clip.trim', description: 'Set a clip start, duration and/or source trim-in.' },
-  { type: 'clip.split', description: 'Split a clip at an absolute timeline time.' },
-  { type: 'clip.delete', description: 'Delete clips; ripple closes gaps on the same track.' },
-  { type: 'clip.set', description: 'Set safe clip properties such as volume, opacity or fades.' },
-  { type: 'clip.add', description: 'Add a media-library asset to a compatible track.' },
-  { type: 'track.set', description: 'Mute, solo, lock or set the gain of a track.' }
+  {
+    type: 'clip.move',
+    description: 'Move a clip to an absolute timeline start and optionally to another compatible track.',
+    params: {
+      type: 'object', required: ['clipId', 'start'], additionalProperties: false,
+      properties: {
+        clipId: { type: 'string', description: 'Clip ID from get_project' },
+        start: { type: 'number', min: 0, unit: 'timeline-seconds', description: 'New absolute clip start' },
+        trackId: { type: 'string', description: 'Optional destination track ID; defaults to the current track' }
+      }
+    },
+    example: { type: 'clip.move', clipId: 'clip_x', start: 4.5 }
+  },
+  {
+    type: 'clip.trim',
+    description: 'Change a clip timeline start, duration and/or source in-point. The source range is validated against the asset duration.',
+    params: {
+      type: 'object', required: ['clipId'], additionalProperties: false,
+      properties: {
+        clipId: { type: 'string' },
+        start: { type: 'number', min: 0, unit: 'timeline-seconds', description: 'New absolute clip start; omit to keep' },
+        duration: { type: 'number', min: 0.1, unit: 'seconds', description: 'Timeline duration; omit to keep' },
+        trimIn: { type: 'number', min: 0, unit: 'source-seconds', description: 'New source in-point; omit to keep' },
+        sourceIn: { type: 'number', min: 0, unit: 'source-seconds', description: 'Alias for trimIn' }
+      }
+    },
+    example: { type: 'clip.trim', clipId: 'clip_x', trimIn: 8.8, duration: 20.4 }
+  },
+  {
+    type: 'clip.split',
+    description: 'Split a clip at an absolute timeline time and return the new right-hand clip ID in the diff.',
+    params: {
+      type: 'object', required: ['clipId'], additionalProperties: false,
+      properties: {
+        clipId: { type: 'string' },
+        at: { type: 'number', min: 0, unit: 'timeline-seconds', description: 'Absolute split time' },
+        timelineAt: { type: 'number', min: 0, unit: 'timeline-seconds', description: 'Alias for at' },
+        newClipId: { type: 'string', description: 'Optional stable ID for the right-hand clip' }
+      }
+    },
+    example: { type: 'clip.split', clipId: 'clip_x', at: 12, newClipId: 'clip_intro_b' }
+  },
+  {
+    type: 'clip.delete',
+    description: 'Delete one or more clips. Ripple defaults to true and closes the gap on the same track.',
+    params: {
+      type: 'object', required: ['clipIds'], additionalProperties: false,
+      properties: {
+        clipIds: { type: 'array', minItems: 1, items: { type: 'string' } },
+        ripple: { type: 'boolean', default: true, description: 'Move later clips on the same track left by the deleted span' }
+      }
+    },
+    example: { type: 'clip.delete', clipIds: ['clip_x'], ripple: true }
+  },
+  {
+    type: 'clip.set',
+    description: 'Set safe animatable properties. volume is linear gain 0–10; opacity is 0–1; filterIntensity is 0–100.',
+    params: {
+      type: 'object', required: ['clipId', 'patch'], additionalProperties: false,
+      properties: {
+        clipId: { type: 'string' },
+        patch: {
+          type: 'object', additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            volume: { type: 'number', min: 0, max: 10, description: 'Linear gain (1 = 100%)' },
+            opacity: { type: 'number', min: 0, max: 1 },
+            audioFadeIn: { type: 'number', min: 0, unit: 'seconds' },
+            audioFadeOut: { type: 'number', min: 0, unit: 'seconds' },
+            speed: { type: 'number', min: 0.25, max: 4 },
+            x: { type: 'number', description: 'Offset as a fraction of canvas width' },
+            y: { type: 'number', description: 'Offset as a fraction of canvas height; negative moves up' },
+            scale: { type: 'number', min: 0.01, description: 'Multiplies the cover fit' },
+            rotation: { type: 'number', unit: 'degrees' },
+            filter: { type: 'string' },
+            filterIntensity: { type: 'number', min: 0, max: 100 },
+            locked: { type: 'boolean' }
+          }
+        }
+      }
+    },
+    example: { type: 'clip.set', clipId: 'clip_x', patch: { volume: 0.8, scale: 1.0811 } }
+  },
+  {
+    type: 'clip.add',
+    description: 'Add a media-library asset to a compatible track. The default duration is the full asset duration (5s for images), not a hidden 12s cap.',
+    params: {
+      type: 'object', required: ['assetId'], additionalProperties: false,
+      properties: {
+        assetId: { type: 'string', description: 'Asset ID from list_assets' },
+        id: { type: 'string', description: 'Optional stable clip ID' },
+        start: { type: 'number', min: 0, default: 0, unit: 'timeline-seconds' },
+        duration: { type: 'number', min: 0.1, unit: 'seconds', description: 'Defaults to the full asset duration; images default to 5s' },
+        trackId: { type: 'string', description: 'Optional compatible track; omitted chooses the first free track' },
+        trimIn: { type: 'number', min: 0, default: 0, unit: 'source-seconds' },
+        volume: { type: 'number', min: 0, max: 10, default: 0.65, description: 'Audio clips default to 0.75' }
+      }
+    },
+    example: { type: 'clip.add', assetId: 'asset_x', start: 12, duration: 4.2, trackId: 'track-main' }
+  },
+  {
+    type: 'clip.crop',
+    description: 'Crop to a source-pixel rectangle. Use this for screen recordings; the crop is composed with the existing cover fit and transform. Set source to null to remove the crop.',
+    params: {
+      type: 'object', required: ['clipId'], additionalProperties: false,
+      properties: {
+        clipId: { type: 'string' },
+        source: {
+          oneOf: [{ type: 'null' }, {
+            type: 'object', required: ['x', 'y', 'width', 'height'], additionalProperties: false,
+            properties: {
+              x: { type: 'number', min: 0, unit: 'source-pixels' },
+              y: { type: 'number', min: 0, unit: 'source-pixels' },
+              width: { type: 'number', min: 1, unit: 'source-pixels' },
+              height: { type: 'number', min: 1, unit: 'source-pixels' }
+            }
+          }]
+        }
+      }
+    },
+    example: { type: 'clip.crop', clipId: 'clip_x', source: { x: 536, y: 108, width: 2368, height: 1332 } }
+  },
+  {
+    type: 'track.set',
+    description: 'Mute, solo, lock, hide, rename or set the gain of a track.',
+    params: {
+      type: 'object', required: ['trackId', 'patch'], additionalProperties: false,
+      properties: {
+        trackId: { type: 'string' },
+        patch: {
+          type: 'object', additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            muted: { type: 'boolean' },
+            solo: { type: 'boolean' },
+            gain: { type: 'number', min: 0, max: 10 },
+            locked: { type: 'boolean' },
+            hidden: { type: 'boolean' }
+          }
+        }
+      }
+    },
+    example: { type: 'track.set', trackId: 'track-audio', patch: { gain: 1.2 } }
+  }
 ];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -85,7 +222,7 @@ function getAsset(assets, assetId) {
 
 function makeMediaClip(asset, trackId, start, overrides = {}) {
   const isAudio = asset.kind === 'audio';
-  const natural = isAudio ? Math.min(asset.duration || 5, 12) : asset.kind === 'image' ? 5 : Math.min(asset.duration || 5, 12);
+  const natural = asset.kind === 'image' ? 5 : (asset.duration || 5);
   return {
     id: `clip_${crypto.randomUUID()}`,
     trackId,
@@ -130,12 +267,16 @@ function applyClipMove(project, command) {
   clip.start = start;
 }
 
-function applyClipTrim(project, command) {
+function applyClipTrim(project, command, assets) {
   const clip = findClip(project, command.clipId);
   const start = command.start === undefined ? clip.start : requireStart(command.start);
   const duration = command.duration === undefined ? clip.duration : requireDuration(command.duration);
-  const trimIn = command.trimIn === undefined ? clip.trimIn : Math.max(0, Number(command.trimIn));
+  const trimIn = command.trimIn === undefined && command.sourceIn === undefined ? clip.trimIn : Math.max(0, Number(command.trimIn ?? command.sourceIn));
   if (!isNumber(trimIn)) fail('trimIn must be a non-negative number.');
+  const asset = clip.assetId ? assets.find((item) => item.id === clip.assetId) : null;
+  if (asset?.duration && trimIn + duration * Math.max(0.25, clip.speed) > asset.duration + 0.02) {
+    fail(`Source range exceeds asset duration (${asset.duration.toFixed(2)}s). trimIn ${trimIn.toFixed(2)} + ${duration.toFixed(2)}s at ${clip.speed}x.`);
+  }
   if (overlaps(project, clip.trackId, start, duration, clip.id)) fail(`Clip "${clip.name}" would overlap another clip.`);
   clip.start = start;
   clip.duration = duration;
@@ -145,13 +286,15 @@ function applyClipTrim(project, command) {
 
 function applyClipSplit(project, command) {
   const clip = findClip(project, command.clipId);
-  if (!isNumber(command.at)) fail('at must be a timeline second.');
-  const local = round(command.at - clip.start);
+  const at = command.at ?? command.timelineAt;
+  if (!isNumber(at)) fail('at must be a timeline second.');
+  const local = round(at - clip.start);
   if (local <= 0.1 || local >= clip.duration - 0.1) fail('Split time must be inside the clip.');
   const keyframes = clip.keyframes || [];
   const right = clone(clip);
-  right.id = `clip_${crypto.randomUUID()}`;
-  right.start = round(command.at);
+  right.id = command.newClipId || `clip_${crypto.randomUUID()}`;
+  if (project.clips.some((item) => item.id === right.id)) fail(`Clip ID "${right.id}" already exists.`);
+  right.start = round(at);
   right.duration = round(clip.duration - local);
   right.trimIn = round(clip.trimIn + local * clip.speed);
   right.keyframes = keyframes.filter((frame) => frame.time > local).map((frame) => ({ ...frame, id: `kf_${crypto.randomUUID()}`, time: round(frame.time - local) }));
@@ -211,15 +354,33 @@ function applyClipAdd(project, command, assets) {
   if (!track) fail(`No track accepts a ${asset.kind} clip.`);
   if (!trackAccepts(track, asset.kind)) fail(`Track "${track.name}" does not accept ${asset.kind}.`);
   const duration = command.duration === undefined
-    ? (asset.kind === 'image' ? 5 : Math.min(asset.duration || 5, 12))
+    ? (asset.kind === 'image' ? 5 : (asset.duration || 5))
     : requireDuration(command.duration);
+  const trimIn = command.trimIn === undefined ? 0 : Math.max(0, Number(command.trimIn));
+  if (asset.duration && trimIn + duration > asset.duration + 0.02) fail(`Source range exceeds asset duration (${asset.duration.toFixed(2)}s).`);
   if (overlaps(project, track.id, start, duration)) fail('The new clip would overlap another clip.');
   const clip = makeMediaClip(asset, track.id, start, {
     duration,
-    trimIn: command.trimIn === undefined ? 0 : Math.max(0, Number(command.trimIn)),
+    trimIn,
+    ...(command.id ? { id: command.id } : {}),
     ...(command.volume === undefined ? {} : { volume: Math.max(0, Math.min(10, Number(command.volume))) })
   });
+  if (project.clips.some((item) => item.id === clip.id)) fail(`Clip ID "${clip.id}" already exists.`);
   project.clips.push(clip);
+}
+
+function applyClipCrop(project, command, assets) {
+  const clip = findClip(project, command.clipId);
+  if (command.source === null) { delete clip.crop; return; }
+  const asset = clip.assetId ? assets.find((item) => item.id === clip.assetId) : null;
+  if (!asset || !asset.width || !asset.height) fail('Crop requires a visual asset with dimensions.');
+  const source = command.source;
+  if (!source || !isNumber(source.x) || !isNumber(source.y) || !isNumber(source.width) || !isNumber(source.height)) fail('source must contain x, y, width and height in source pixels.');
+  if (source.x < 0 || source.y < 0 || source.width < 1 || source.height < 1) fail('Crop source must be positive.');
+  if (source.x + source.width > asset.width + 0.01 || source.y + source.height > asset.height + 0.01) {
+    fail(`Crop exceeds asset bounds (${asset.width}x${asset.height}).`);
+  }
+  clip.crop = { x: round(source.x), y: round(source.y), width: round(source.width), height: round(source.height) };
 }
 
 function applyTrackSet(project, command) {
@@ -237,11 +398,12 @@ function applyOne(project, command, assets) {
   if (!command || typeof command.type !== 'string') fail('Each command needs a type.');
   switch (command.type) {
     case 'clip.move': applyClipMove(project, command); break;
-    case 'clip.trim': applyClipTrim(project, command); break;
+    case 'clip.trim': applyClipTrim(project, command, assets); break;
     case 'clip.split': applyClipSplit(project, command); break;
     case 'clip.delete': applyClipDelete(project, command); break;
     case 'clip.set': applyClipSet(project, command); break;
     case 'clip.add': applyClipAdd(project, command, assets); break;
+    case 'clip.crop': applyClipCrop(project, command, assets); break;
     case 'track.set': applyTrackSet(project, command); break;
     default: fail(`Unknown command "${command.type}".`);
   }
@@ -280,13 +442,15 @@ export function applyCommands(project, commands, { assets = [] } = {}) {
   const original = clone(validateProject(project));
   if (!Array.isArray(commands)) return { ok: false, project: original, diff: null, errors: [{ index: -1, message: 'commands must be an array.' }] };
   const draft = clone(original);
+  const errors = [];
   for (let index = 0; index < commands.length; index += 1) {
     try {
       applyOne(draft, commands[index], assets);
     } catch (error) {
-      return { ok: false, project: original, diff: null, errors: [{ index, type: commands[index]?.type || null, message: String(error?.message || error) }] };
+      errors.push({ index, type: commands[index]?.type || null, message: String(error?.message || error) });
     }
   }
+  if (errors.length) return { ok: false, project: original, diff: null, errors };
   draft.updatedAt = new Date().toISOString();
   return { ok: true, project: draft, diff: diffProjects(original, draft), errors: [] };
 }

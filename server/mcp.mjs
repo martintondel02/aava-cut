@@ -45,6 +45,31 @@ async function current() {
   return call('/api/agent/current');
 }
 
+async function setActivity(active, label) {
+  const session = await current();
+  return call(`/api/agent/sessions/${session.id}/activity`, {
+    method: 'POST',
+    body: JSON.stringify({ active, label })
+  });
+}
+
+async function withActivity(label, run) {
+  await setActivity(true, label).catch(() => {});
+  try {
+    return await run();
+  } finally {
+    await setActivity(false, '').catch(() => {});
+  }
+}
+
+async function imageContent(path) {
+  const response = await fetch(`${baseUrl}${path}`, { headers });
+  if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+  const mimeType = response.headers.get('content-type') || 'image/jpeg';
+  const data = Buffer.from(await response.arrayBuffer()).toString('base64');
+  return { content: [{ type: 'image', data, mimeType }] };
+}
+
 const text = (value) => ({ content: [{ type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 const failure = (error) => ({ isError: true, content: [{ type: 'text', text: String(error?.message || error) }] });
 
@@ -72,14 +97,60 @@ server.registerTool('get_thumbnail', {
   inputSchema: { assetId: z.string().min(1).describe('Asset ID from list_assets') }
 }, async ({ assetId }) => {
   try {
-    const assets = await call('/api/assets');
+    const assets = await call('/api/assets?lean=1');
     const asset = Array.isArray(assets) ? assets.find((item) => item.id === assetId) : null;
     if (!asset?.thumbnail) throw new Error(`No thumbnail for asset ${assetId}`);
-    const response = await fetch(`${baseUrl}${asset.thumbnail}`);
-    if (!response.ok) throw new Error(`Thumbnail request failed: ${response.status}`);
-    const mimeType = response.headers.get('content-type') || 'image/jpeg';
-    const data = Buffer.from(await response.arrayBuffer()).toString('base64');
-    return { content: [{ type: 'image', data, mimeType }] };
+    return imageContent(asset.thumbnail);
+  } catch (error) { return failure(error); }
+});
+
+server.registerTool('get_asset_analysis', {
+  title: 'Get asset analysis',
+  description: 'Return cached scene cuts, silences, loudness, black/static spans and detected screen-recording content box for an asset.',
+  inputSchema: {
+    assetId: z.string().min(1).describe('Asset ID from list_assets'),
+    refresh: z.boolean().optional().describe('Recompute the analysis')
+  }
+}, async ({ assetId, refresh }) => {
+  try { return text(await call(`/api/assets/${assetId}/analysis${refresh ? '?refresh=1' : ''}`)); } catch (error) { return failure(error); }
+});
+
+server.registerTool('get_frame', {
+  title: 'Get timeline frame',
+  description: 'Render the top visible video/image layer at a timeline second and return it as an image. Crop is applied; text, stickers, transitions and multi-layer compositing are not yet rendered.',
+  inputSchema: {
+    at: z.number().min(0).describe('Timeline position in seconds'),
+    width: z.number().min(160).max(1920).optional().describe('Output width in pixels; default 960')
+  }
+}, async ({ at, width }) => {
+  try {
+    return await withActivity('Rendering a timeline frame', async () => {
+      const session = await current();
+      return imageContent(`/api/agent/sessions/${session.id}/frame?at=${encodeURIComponent(at)}&w=${encodeURIComponent(width || 960)}`);
+    });
+  } catch (error) { return failure(error); }
+});
+
+server.registerTool('get_contact_sheet', {
+  title: 'Get timeline contact sheet',
+  description: 'Render a tiled JPEG of timeline frames. Use this once to understand pacing and content instead of many frame calls.',
+  inputSchema: {
+    from: z.number().min(0).optional().describe('Start timeline seconds; default 0'),
+    to: z.number().min(0).optional().describe('End timeline seconds; default project duration'),
+    step: z.number().min(0.2).optional().describe('Seconds between frames; default divides the range into about 12 frames'),
+    width: z.number().min(160).max(1280).optional().describe('Per-frame width; default 480')
+  }
+}, async ({ from, to, step, width }) => {
+  try {
+    return await withActivity('Building a contact sheet', async () => {
+      const session = await current();
+      const params = new URLSearchParams();
+      if (from !== undefined) params.set('from', String(from));
+      if (to !== undefined) params.set('to', String(to));
+      if (step !== undefined) params.set('step', String(step));
+      if (width !== undefined) params.set('w', String(width));
+      return imageContent(`/api/agent/sessions/${session.id}/sheet?${params.toString()}`);
+    });
   } catch (error) { return failure(error); }
 });
 
@@ -100,12 +171,36 @@ server.registerTool('apply_commands', {
   }
 }, async ({ commands, dryRun }) => {
   try {
-    const session = await current();
-    const data = await call(`/api/agent/sessions/${session.id}/commands`, {
-      method: 'POST',
-      body: JSON.stringify({ commands, dryRun: dryRun === true })
+    return await withActivity(dryRun ? 'Previewing timeline changes' : 'Editing the timeline', async () => {
+      const session = await current();
+      const data = await call(`/api/agent/sessions/${session.id}/commands`, {
+        method: 'POST',
+        body: JSON.stringify({ commands, dryRun: dryRun === true })
+      });
+      return text(data);
     });
-    return text(data);
+  } catch (error) { return failure(error); }
+});
+
+server.registerTool('render_proxy', {
+  title: 'Render a timeline proxy',
+  description: 'Render a low-resolution MP4 preview of the top visible video/image layer. Good for verification; text, stickers, transitions, effects and audio are not composited.',
+  inputSchema: {
+    from: z.number().min(0).optional().describe('Start timeline seconds; default 0'),
+    to: z.number().min(0).optional().describe('End timeline seconds; default project duration'),
+    width: z.number().min(160).max(1280).optional().describe('Output width; default 480'),
+    fps: z.number().min(1).max(6).optional().describe('Proxy frame rate; default 2')
+  }
+}, async ({ from, to, width, fps }) => {
+  try {
+    return await withActivity('Rendering a preview proxy', async () => {
+      const session = await current();
+      const data = await call(`/api/agent/sessions/${session.id}/proxy`, {
+        method: 'POST',
+        body: JSON.stringify({ from, to, width, fps })
+      });
+      return text({ ...data, absoluteUrl: `${baseUrl}${data.url}` });
+    });
   } catch (error) { return failure(error); }
 });
 
@@ -118,12 +213,14 @@ server.registerTool('create_proposal', {
   }
 }, async ({ commands, rationale }) => {
   try {
-    const session = await current();
-    const data = await call(`/api/agent/sessions/${session.id}/proposals`, {
-      method: 'POST',
-      body: JSON.stringify({ commands, rationale })
+    return await withActivity('Preparing an edit proposal', async () => {
+      const session = await current();
+      const data = await call(`/api/agent/sessions/${session.id}/proposals`, {
+        method: 'POST',
+        body: JSON.stringify({ commands, rationale })
+      });
+      return text(data);
     });
-    return text(data);
   } catch (error) { return failure(error); }
 });
 
@@ -133,8 +230,10 @@ server.registerTool('apply_proposal', {
   inputSchema: { proposalId: z.string().min(1).describe('Proposal ID returned by create_proposal') }
 }, async ({ proposalId }) => {
   try {
-    const session = await current();
-    return text(await call(`/api/agent/sessions/${session.id}/proposals/${proposalId}/apply`, { method: 'POST' }));
+    return await withActivity('Applying the edit proposal', async () => {
+      const session = await current();
+      return text(await call(`/api/agent/sessions/${session.id}/proposals/${proposalId}/apply`, { method: 'POST' }));
+    });
   } catch (error) { return failure(error); }
 });
 

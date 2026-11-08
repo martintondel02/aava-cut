@@ -461,9 +461,17 @@ export class CanvasRenderer {
       ctx.fillRect(-width / 2 * scale, -height / 2 * scale, width * scale, height * scale);
       return;
     }
-    const cover = Math.max(width / asset.width, height / asset.height);
-    let drawWidth = asset.width * cover * scale;
-    let drawHeight = asset.height * cover * scale;
+    const crop = clip.crop
+      ? {
+          x: Math.max(0, Math.min(asset.width - 1, clip.crop.x)),
+          y: Math.max(0, Math.min(asset.height - 1, clip.crop.y)),
+          width: Math.max(1, Math.min(asset.width - clip.crop.x, clip.crop.width)),
+          height: Math.max(1, Math.min(asset.height - clip.crop.y, clip.crop.height))
+        }
+      : { x: 0, y: 0, width: asset.width, height: asset.height };
+    const cover = Math.max(width / crop.width, height / crop.height);
+    let drawWidth = crop.width * cover * scale;
+    let drawHeight = crop.height * cover * scale;
     let extraX = 0;
     if (clip.kenBurns && asset.kind === 'image') {
       const progress = clamp(local / Math.max(0.1, clip.duration), 0, 1);
@@ -486,7 +494,7 @@ export class CanvasRenderer {
     const filter = filterFor(clip.filter, filterIntensity, extraBlur, adjust);
     if (filter !== 'none') ctx.filter = filter;
     try {
-      ctx.drawImage(source, -drawWidth / 2 + extraX, -drawHeight / 2, drawWidth, drawHeight);
+      ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, -drawWidth / 2 + extraX, -drawHeight / 2, drawWidth, drawHeight);
     } catch {
       // Video frame may be momentarily unavailable while seeking.
     }

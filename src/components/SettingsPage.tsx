@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  ArrowUpRight, Bot, Check, CircleHelp, Copy, Cpu, Download, ExternalLink, Gauge, Github, Info, KeyRound, LayoutPanelTop, Moon, Monitor,
+  ArrowUpRight, Bot, Check, CircleHelp, Copy, Cpu, Download, ExternalLink, Gauge, Github, Globe2, Info, KeyRound, LayoutPanelTop, Moon, Monitor,
   Palette, Play, RotateCcw, Settings2, ShieldCheck, Sparkles, Sun, Terminal, TimerReset, Volume2, X
 } from 'lucide-react';
 import { useSettingsStore, type Accent, type ThemeMode } from '../store/settingsStore';
 import { useEditorStore, STORAGE_KEY } from '../store/editorStore';
 import { Segmented, ToggleRow } from './ui';
 
-type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'agent' | 'export' | 'storage' | 'about';
+type SettingsSection = 'appearance' | 'playback' | 'timeline' | 'pixabay' | 'agent' | 'export' | 'storage' | 'about';
 
 const SECTIONS: Array<{ id: SettingsSection; label: string; icon: typeof Palette }> = [
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'playback', label: 'Playback', icon: Play },
   { id: 'timeline', label: 'Timeline', icon: LayoutPanelTop },
+  { id: 'pixabay', label: 'Pixabay', icon: Globe2 },
   { id: 'agent', label: 'Agent bridge', icon: Bot },
   { id: 'export', label: 'Export', icon: Download },
   { id: 'storage', label: 'Storage', icon: TimerReset },
@@ -242,6 +243,42 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
               </SettingsSection>
             )}
 
+            {section === 'pixabay' && (
+              <SettingsSection title="Pixabay" eyebrow="Stock media" description="Search free photos and videos from Pixabay without leaving the edit. Results are cached for 24 hours and every result keeps its creator and license attribution.">
+                <div className="settings-group pixabay-settings-card">
+                  <div className="settings-group-head">
+                    <div>
+                      <span className="settings-label">Pixabay API key</span>
+                      <span className="settings-help">Stored only in this browser's local settings. It is sent to the local LumaCut server to call Pixabay.</span>
+                    </div>
+                    <span className={`pixabay-key-status ${settings.pixabayApiKey ? 'is-set' : ''}`}>{settings.pixabayApiKey ? 'Key saved' : 'Not connected'}</span>
+                  </div>
+                  <label className="settings-input-wrap">
+                    <KeyRound size={14} />
+                    <input
+                      type="password"
+                      value={settings.pixabayApiKey}
+                      onChange={(event) => settings.update({ pixabayApiKey: event.target.value.trim() })}
+                      placeholder="Paste your Pixabay API key"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </label>
+                  <div className="pixabay-settings-actions">
+                    <a href="https://pixabay.com/api/docs/" target="_blank" rel="noreferrer">Get a free Pixabay API key <ExternalLink size={12} /></a>
+                    <span><ShieldCheck size={12} /> Photos & videos from Pixabay</span>
+                  </div>
+                </div>
+                <div className="pixabay-settings-note">
+                  <Globe2 size={16} />
+                  <div>
+                    <strong>Music and sound effects</strong>
+                    <p>Pixabay's public API currently exposes photos and videos. Use the Pixabay links in the Sound panel to browse music and SFX, then import the downloaded audio file.</p>
+                  </div>
+                </div>
+              </SettingsSection>
+            )}
+
             {section === 'agent' && (
               <SettingsSection title="Agent bridge" eyebrow="Bring your own agent" description="Connect Claude Code, Codex, DeepSeek Harness or OpenCode to the live timeline through a local MCP server. The agent gets validated editing tools, not shell access.">
                 <AgentBridgeCard settings={settings} serverOnline={serverOnline} agentInfo={agentInfo} addToast={addToast} />
@@ -319,11 +356,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.11.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.12.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.11.0</span></h2>
+                    <h2>LumaCut <span>1.12.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -331,7 +368,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.11 timeline zoom, full imports and caption animations</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.12 Pixabay stock media and release notes</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>

@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.11.0');
+  expect(capabilities.version).toBe('1.12.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -731,4 +731,58 @@ test('applies caption-specific animations to all cues and new cues', async ({ pa
     return project.clips?.find((clip: { caption?: boolean }) => clip.caption)?.text?.animation;
   });
   expect(bounce).toBe('bounce');
+});
+test('Pixabay panel shows attribution and requires an API key', async ({ page, request }) => {
+  const noKey = await request.get('/api/pixabay/search?type=video&q=ocean');
+  expect(noKey.status()).toBe(400);
+  expect((await noKey.json()).code).toBe('missing-key');
+  const badImport = await request.post('/api/pixabay/import', {
+    headers: { 'x-pixabay-key': 'test-key' },
+    data: { type: 'video', downloadUrl: 'https://example.com/not-pixabay.mp4' }
+  });
+  expect(badImport.status()).toBe(400);
+
+  await page.goto('/');
+  await page.locator('.media-source-tabs button', { hasText: 'Pixabay' }).click();
+  await expect(page.locator('.pixabay-connect')).toContainText('Free stock media');
+  await expect(page.locator('.pixabay-connect')).toContainText('Pixabay Content License');
+});
+
+test('Pixabay search renders clean attributed results', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('lumacut.settings.v1', JSON.stringify({ pixabayApiKey: 'test-pixabay-key' }));
+  });
+  await page.route('**/api/pixabay/search**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        provider: 'Pixabay',
+        total: 1,
+        totalHits: 1,
+        page: 1,
+        perPage: 12,
+        hits: [{
+          provider: 'Pixabay', id: '123', type: 'video', kind: 'video', title: 'Ocean Waves',
+          tags: 'ocean, waves', thumbnail: '', downloadUrl: 'https://cdn.pixabay.com/video/123.mp4',
+          pageURL: 'https://pixabay.com/videos/id-123/', width: 1920, height: 1080, duration: 12,
+          size: 123456, creator: 'Pixabay Creator', creatorUrl: 'https://pixabay.com/users/creator-1/',
+          license: 'Pixabay Content License', licenseUrl: 'https://pixabay.com/service/license-summary/'
+        }],
+        attribution: {
+          text: 'Photos and videos from Pixabay', url: 'https://pixabay.com/',
+          license: 'Pixabay Content License', licenseUrl: 'https://pixabay.com/service/license-summary/'
+        }
+      })
+    });
+  });
+  await page.goto('/');
+  await page.locator('.media-source-tabs button', { hasText: 'Pixabay' }).click();
+  await page.locator('.pixabay-search input').fill('ocean');
+  await page.locator('.pixabay-search button').click();
+  await expect(page.locator('.pixabay-card')).toHaveCount(1);
+  await expect(page.locator('.pixabay-card')).toContainText('Ocean Waves');
+  await expect(page.locator('.pixabay-card-badge')).toHaveText('Pixabay');
+  await expect(page.locator('.pixabay-card-copy a')).toContainText('Pixabay Creator on Pixabay');
+  await expect(page.locator('.pixabay-footer')).toContainText('Pixabay Content License');
 });

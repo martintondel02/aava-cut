@@ -118,6 +118,77 @@ async function ensureWaveform(asset) {
 }
 
 const analysisJobs = new Map();
+const pixabayCache = new Map();
+const PIXABAY_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function pixabayKey(req) {
+  return String(req.get('x-pixabay-key') || process.env.PIXABAY_API_KEY || '').trim();
+}
+
+function pixabayCacheKey(key, pathname, params) {
+  const query = [...params.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => `${name}=${value}`).join('&');
+  return crypto.createHash('sha256').update(`${key}|${pathname}|${query}`).digest('hex');
+}
+
+function pixabayAllowed(url, type = 'media') {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    if (parsed.hostname === 'cdn.pixabay.com') return true;
+    if (parsed.hostname === 'pixabay.com' && parsed.pathname.startsWith('/get/')) return true;
+    if (type === 'page') return parsed.hostname === 'pixabay.com';
+    return false;
+  } catch { return false; }
+}
+
+function normalizePixabayHit(hit, type) {
+  if (type === 'video') {
+    const videos = hit.videos || {};
+    const rendition = videos.large?.url ? videos.large : videos.medium?.url ? videos.medium : videos.small?.url ? videos.small : videos.tiny;
+    if (!rendition?.url) return null;
+    return {
+      provider: 'Pixabay',
+      id: String(hit.id),
+      type: 'video',
+      kind: 'video',
+      title: (hit.tags || 'Pixabay video').split(',')[0].trim(),
+      tags: hit.tags || '',
+      thumbnail: rendition.thumbnail || videos.small?.thumbnail || videos.tiny?.thumbnail || '',
+      downloadUrl: rendition.url,
+      pageURL: hit.pageURL,
+      width: rendition.width || 0,
+      height: rendition.height || 0,
+      duration: Number(hit.duration) || 0,
+      size: Number(rendition.size) || 0,
+      creator: hit.user || 'Pixabay contributor',
+      creatorUrl: hit.user_id ? `https://pixabay.com/users/${encodeURIComponent(hit.user || 'user')}-${hit.user_id}/` : 'https://pixabay.com/',
+      license: 'Pixabay Content License',
+      licenseUrl: 'https://pixabay.com/service/license-summary/'
+    };
+  }
+  const downloadUrl = hit.largeImageURL || hit.webformatURL || hit.imageURL;
+  if (!downloadUrl) return null;
+  return {
+    provider: 'Pixabay',
+    id: String(hit.id),
+    type: 'image',
+    kind: 'image',
+    title: (hit.tags || 'Pixabay photo').split(',')[0].trim(),
+    tags: hit.tags || '',
+    thumbnail: hit.previewURL || hit.webformatURL || downloadUrl,
+    downloadUrl,
+    pageURL: hit.pageURL,
+    width: hit.imageWidth || hit.webformatWidth || hit.previewWidth || 0,
+    height: hit.imageHeight || hit.webformatHeight || hit.previewHeight || 0,
+    duration: 0,
+    size: hit.imageSize || 0,
+    creator: hit.user || 'Pixabay contributor',
+    creatorUrl: hit.user_id ? `https://pixabay.com/users/${encodeURIComponent(hit.user || 'user')}-${hit.user_id}/` : 'https://pixabay.com/',
+    license: 'Pixabay Content License',
+    licenseUrl: 'https://pixabay.com/service/license-summary/'
+  };
+}
+
 
 function assetFilePath(asset) {
   if (!asset?.url) return null;
@@ -581,7 +652,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.11.0',
+    version: '1.12.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -596,7 +667,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.11.0',
+    version: '1.12.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -816,7 +887,129 @@ app.delete('/api/captions/jobs/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/pixabay/search', async (req, res) => {
+  const key = pixabayKey(req);
+  if (!key) return res.status(400).json({ error: 'Pixabay API key required', code: 'missing-key', docs: 'https://pixabay.com/api/docs/' });
+  const type = req.query.type === 'video' ? 'video' : 'image';
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  const page = Math.max(1, Math.min(100, Number(req.query.page) || 1));
+  const perPage = Math.max(3, Math.min(24, Number(req.query.per_page) || 12));
+  const endpoint = type === 'video' ? 'https://pixabay.com/api/videos/' : 'https://pixabay.com/api/';
+  const params = new URLSearchParams({
+    key,
+    q,
+    lang: 'en',
+    safesearch: 'true',
+    order: req.query.order === 'latest' ? 'latest' : 'popular',
+    page: String(page),
+    per_page: String(perPage)
+  });
+  if (req.query.orientation === 'horizontal' || req.query.orientation === 'vertical') params.set('orientation', req.query.orientation);
+  if (type === 'image' && req.query.category) params.set('category', String(req.query.category));
+  const cacheKey = pixabayCacheKey(key, endpoint, params);
+  const cached = pixabayCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return res.json({ ...cached.data, cached: true });
+  try {
+    const response = await fetch(`${endpoint}?${params.toString()}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+    const bodyText = await response.text();
+    if (!response.ok) {
+      let message = bodyText || response.statusText;
+      try { message = JSON.parse(bodyText)?.error || message; } catch {}
+      return res.status(response.status === 429 ? 429 : response.status === 401 ? 401 : 502).json({ error: message, code: 'pixabay-error' });
+    }
+    const data = JSON.parse(bodyText);
+    const hits = (data.hits || []).map((hit) => normalizePixabayHit(hit, type)).filter(Boolean);
+    const payload = {
+      provider: 'Pixabay',
+      total: Number(data.total) || 0,
+      totalHits: Number(data.totalHits) || 0,
+      page,
+      perPage,
+      hits,
+      attribution: {
+        text: 'Photos and videos from Pixabay',
+        url: 'https://pixabay.com/',
+        license: 'Pixabay Content License',
+        licenseUrl: 'https://pixabay.com/service/license-summary/'
+      },
+      rateLimit: {
+        limit: response.headers.get('x-ratelimit-limit'),
+        remaining: response.headers.get('x-ratelimit-remaining'),
+        reset: response.headers.get('x-ratelimit-reset')
+      }
+    };
+    pixabayCache.set(cacheKey, { data: payload, expiresAt: Date.now() + PIXABAY_CACHE_TTL });
+    res.json(payload);
+  } catch (error) {
+    res.status(502).json({ error: 'Pixabay search failed', detail: String(error?.message || error) });
+  }
+});
+
+app.post('/api/pixabay/import', async (req, res) => {
+  const key = pixabayKey(req);
+  if (!key) return res.status(400).json({ error: 'Pixabay API key required', code: 'missing-key' });
+  const downloadUrl = String(req.body?.downloadUrl || '');
+  const pageURL = String(req.body?.pageURL || '');
+  if (!pixabayAllowed(downloadUrl)) return res.status(400).json({ error: 'Unsupported Pixabay media URL' });
+  if (pageURL && !pixabayAllowed(pageURL, 'page')) return res.status(400).json({ error: 'Unsupported Pixabay page URL' });
+  const type = req.body?.type === 'video' ? 'video' : 'image';
+  const title = String(req.body?.title || 'Pixabay media').trim().slice(0, 100) || 'Pixabay media';
+  const tempFile = path.join(mediaDir, `pixabay-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.part`);
+  try {
+    const response = await fetch(downloadUrl, { headers: { Accept: type === 'video' ? 'video/*' : 'image/*' }, redirect: 'follow', signal: AbortSignal.timeout(120000) });
+    if (!response.ok) throw new Error(`Download failed (${response.status})`);
+    if (!pixabayAllowed(response.url || downloadUrl)) throw new Error('Pixabay media redirected to an unsupported host');
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > 600 * 1024 * 1024) throw new Error('Pixabay file is larger than 600 MB');
+    const contentType = response.headers.get('content-type') || '';
+    const ext = type === 'video' ? '.mp4' : '.jpg';
+    const finalFile = path.join(mediaDir, `pixabay-${Date.now()}-${slug(title)}-${crypto.randomBytes(3).toString('hex')}${ext}`);
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > 600 * 1024 * 1024) throw new Error('Pixabay file is larger than 600 MB');
+    await fsp.writeFile(tempFile, buffer);
+    await fsp.rename(tempFile, finalFile);
+    const info = await probe(finalFile);
+    const kind = type === 'video' ? 'video' : 'image';
+    const id = randomId('pixabay');
+    const asset = {
+      id,
+      name: title,
+      kind,
+      source: 'pixabay',
+      provider: 'Pixabay',
+      url: `/media/${path.basename(finalFile)}`,
+      thumbnail: null,
+      duration: kind === 'image' ? 0 : info.duration,
+      width: info.width,
+      height: info.height,
+      hasAudio: info.hasAudio,
+      mime: info.mime || contentType,
+      size: buffer.length,
+      createdAt: new Date().toISOString(),
+      peaks: [],
+      creator: String(req.body?.creator || 'Pixabay contributor').slice(0, 100),
+      creatorUrl: String(req.body?.creatorUrl || 'https://pixabay.com/').slice(0, 300),
+      sourceUrl: pageURL || 'https://pixabay.com/',
+      license: 'Pixabay Content License',
+      licenseUrl: 'https://pixabay.com/service/license-summary/',
+      tags: String(req.body?.tags || '').slice(0, 500)
+    };
+    try { asset.thumbnail = await makeThumbnail(finalFile, kind, id); } catch {}
+    if (kind === 'audio' || (kind === 'video' && info.hasAudio)) {
+      try { asset.peaks = await extractPeaks(finalFile, info.duration); } catch {}
+    }
+    assets.push(asset);
+    await saveAssets(assets);
+    void ensureAssetAnalysis(asset).catch(() => {});
+    res.status(201).json({ asset, attribution: { text: 'Photo or video from Pixabay', url: asset.sourceUrl, license: asset.license } });
+  } catch (error) {
+    try { await fsp.unlink(tempFile); } catch {}
+    res.status(502).json({ error: 'Pixabay import failed', detail: String(error?.message || error) });
+  }
+});
+
 app.get('/api/assets', (req, res) => {
+
   const sorted = assets.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   if (req.query.lean === '1') {
     return res.json(sorted.map(({ peaks, analysis, ...asset }) => ({ ...asset, analysisReady: Boolean(analysis) })));
@@ -943,7 +1136,7 @@ app.delete('/api/assets/:id', async (req, res) => {
   const index = assets.findIndex((a) => a.id === req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Asset not found' });
   const [asset] = assets.splice(index, 1);
-  if (asset.source === 'upload') {
+  if (asset.source !== 'demo') {
     try { await fsp.unlink(path.join(mediaDir, asset.url.replace(/^\/media\//, ''))); } catch {}
     if (asset.thumbnail) {
       try { await fsp.unlink(path.join(mediaDir, asset.thumbnail.replace(/^\/media\//, ''))); } catch {}

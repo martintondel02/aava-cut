@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.8.0 — 2026-11-08
+
+### Added
+
+- **Agent-ready command core** at `shared/project-commands.mjs`
+  - validated, all-or-nothing commands: move, trim, split, delete/ripple, set, add media, track set
+  - structured clip/track diffs and readable summaries
+- **Experimental local agent API** with in-memory sessions:
+  - read/apply/dry-run command batches
+  - previewable proposals with apply/reject
+  - capability discovery at `GET /api/agent/capabilities`
+- **Agent roadmap** at `docs/AGENT_ROADMAP.md`, including the planned MCP tool surface
+
+### Notes
+
+- The API is localhost-only and not yet wired to the open editor session
+- Authentication, live project sync and MCP packaging are deliberately deferred to the next milestone
+- The headless core is the foundation for external harnesses such as Claude Code, Codex, DeepSeek Harness and OpenCode
+
+### Verification
+
+- 22/22 Playwright tests pass, including command sessions, dry runs, proposals, ripple delete and error handling
+- Typecheck and production build pass
+- AppImage, DEB and RPM build successfully
+
 ## 1.7.0 — 2026-11-08
 
 ### Added

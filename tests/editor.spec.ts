@@ -322,7 +322,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.7.0');
+  expect(capabilities.version).toBe('1.8.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -473,4 +473,75 @@ test('ripple delete closes same-track gaps and can be toggled off', async ({ pag
   await page.keyboard.press('Delete');
   await page.waitForTimeout(700);
   expect(await starts()).toEqual([0, 8]);
+});
+test('agent command API supports commands, proposals and ripple edits', async ({ request }) => {
+  const capabilities = await request.get('/api/agent/capabilities');
+  expect(capabilities.ok()).toBeTruthy();
+  const caps = await capabilities.json();
+  expect(caps.commands.some((command: { type: string }) => command.type === 'clip.delete')).toBe(true);
+
+  const base = {
+    id: 'clip-a', trackId: 'track-main', kind: 'video', name: 'A', assetId: videoAssetId,
+    start: 0, duration: 4, trimIn: 0, speed: 1, volume: 1, opacity: 1, x: 0, y: 0, scale: 1,
+    rotation: 0, blend: 'source-over', filter: 'none', filterIntensity: 65, effects: [],
+    fadeIn: 0, fadeOut: 0, audioFadeIn: 0, audioFadeOut: 0, keyframes: []
+  };
+  const project = {
+    id: 'agent-test', version: 2, name: 'Agent test', width: 1920, height: 1080, fps: 30,
+    background: '#000000', masterEq: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    tracks: [
+      { id: 'track-main', name: 'Main', kind: 'video', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: { low: 0, mid: 0, high: 0 } },
+      { id: 'track-audio', name: 'Audio', kind: 'audio', muted: false, hidden: false, locked: false, solo: false, gain: 1, eq: { low: 0, mid: 0, high: 0 } }
+    ],
+    clips: [base, { ...base, id: 'clip-b', name: 'B', start: 6 }],
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+  const sessionResponse = await request.post('/api/agent/sessions', { data: { project } });
+  expect(sessionResponse.ok()).toBeTruthy();
+  const session = await sessionResponse.json();
+  expect(session.id).toBeTruthy();
+
+  const deleteResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    data: { commands: [{ type: 'clip.delete', clipIds: ['clip-a'], ripple: true }] }
+  });
+  expect(deleteResponse.ok()).toBeTruthy();
+  const deleted = await deleteResponse.json();
+  expect(deleted.project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(2);
+  expect(deleted.diff.clips.removed).toHaveLength(1);
+
+  const splitResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    data: { commands: [{ type: 'clip.split', clipId: 'clip-b', at: 4 }] }
+  });
+  expect(splitResponse.ok()).toBeTruthy();
+  const split = await splitResponse.json();
+  expect(split.project.clips).toHaveLength(2);
+
+  const addResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    data: { commands: [{ type: 'clip.add', assetId: videoAssetId, start: 10, trackId: 'track-main' }] }
+  });
+  expect(addResponse.ok()).toBeTruthy();
+  const added = await addResponse.json();
+  expect(added.project.clips).toHaveLength(3);
+
+  const dryRun = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    data: { dryRun: true, commands: [{ type: 'clip.move', clipId: 'clip-b', start: 8 }] }
+  });
+  expect(dryRun.ok()).toBeTruthy();
+  expect((await dryRun.json()).project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(8);
+  const unchanged = await (await request.get(`/api/agent/sessions/${session.id}`)).json();
+  expect(unchanged.project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(2);
+
+  const proposalResponse = await request.post(`/api/agent/sessions/${session.id}/proposals`, {
+    data: { rationale: 'Move the second shot earlier', commands: [{ type: 'clip.move', clipId: 'clip-b', start: 8 }] }
+  });
+  expect(proposalResponse.ok()).toBeTruthy();
+  const proposal = await proposalResponse.json();
+  const applyResponse = await request.post(`/api/agent/sessions/${session.id}/proposals/${proposal.id}/apply`);
+  expect(applyResponse.ok()).toBeTruthy();
+  const applied = await applyResponse.json();
+  expect(applied.project.clips.find((clip: { id: string }) => clip.id === 'clip-b').start).toBe(8);
+
+  const bad = await request.post(`/api/agent/sessions/${session.id}/commands`, { data: { commands: [{ type: 'nope' }] } });
+  expect(bad.status()).toBe(400);
+  await request.delete(`/api/agent/sessions/${session.id}`);
 });

@@ -322,7 +322,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.6.2');
+  expect(capabilities.version).toBe('1.7.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -451,4 +451,26 @@ test('visualizer lives in the Sound panel and gain reaches 1000%', async ({ page
   await volume.focus();
   await volume.press('End');
   expect(await volume.inputValue()).toBe('1000');
+});
+test('ripple delete closes same-track gaps and can be toggled off', async ({ page }) => {
+  await page.goto('/');
+  await addThreeClips(page);
+  const starts = () => page.evaluate(() => {
+    const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
+    return (project.clips || []).map((clip: { start: number }) => clip.start).sort((a: number, b: number) => a - b);
+  });
+
+  await page.locator('.timeline-clip').nth(1).click();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(700);
+  expect(await starts()).toEqual([0, 4]);
+
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
+  await page.locator('.timeline-tool[title^="Ripple delete"]').click();
+  await expect(page.locator('.timeline-tool[title^="Ripple delete"]')).not.toHaveClass(/is-active/);
+  await page.locator('.timeline-clip').nth(1).click();
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(700);
+  expect(await starts()).toEqual([0, 8]);
 });

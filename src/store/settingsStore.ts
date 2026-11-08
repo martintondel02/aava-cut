@@ -29,6 +29,7 @@ export interface SettingsValues {
   loopPlayback: boolean;
   showWaveforms: boolean;
   followPlayhead: boolean;
+  rippleDelete: boolean;
   autoExpandKeyframes: boolean;
   autoKeyframe: boolean;
   exportDefaults: ExportDefaults;
@@ -54,6 +55,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   loopPlayback: false,
   showWaveforms: true,
   followPlayhead: true,
+  rippleDelete: true,
   autoExpandKeyframes: true,
   autoKeyframe: false,
   exportDefaults: { resolution: '1080p', fps: 30, format: 'mp4', quality: 'standard', hardwareAcceleration: true, codec: 'auto', bitDepth: 8, hdr: false }
@@ -98,6 +100,7 @@ function valuesOf(state: SettingsState): SettingsValues {
     loopPlayback: state.loopPlayback,
     showWaveforms: state.showWaveforms,
     followPlayhead: state.followPlayhead,
+    rippleDelete: state.rippleDelete,
     autoExpandKeyframes: state.autoExpandKeyframes,
     autoKeyframe: state.autoKeyframe,
     exportDefaults: state.exportDefaults

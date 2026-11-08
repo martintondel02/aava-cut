@@ -2450,3 +2450,30 @@ body { zoom: var(--ui-scale, 1); }
 @media (max-width: 1280px) {
   .agent-live-pill span:last-child { display: none; }
 }
+
+.caption-animation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.caption-animation-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 4px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255,255,255,.025);
+  color: var(--muted);
+  font-size: calc(8.5px * var(--type-scale, 1.35));
+}
+.caption-animation-grid button:hover { border-color: var(--line-strong); color: var(--text); }
+.caption-animation-grid button.is-active { border-color: rgba(114,245,209,.38); background: rgba(114,245,209,.07); color: var(--accent); }
+.caption-animation-glyph { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: calc(12px * var(--type-scale, 1.35)); line-height: 1; }
+.glyph-pop, .glyph-bounce { animation: caption-glyph-pop 1.6s ease-in-out infinite; }
+.glyph-typewriter { letter-spacing: 0.08em; }
+@keyframes caption-glyph-pop {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: .7; }
+}

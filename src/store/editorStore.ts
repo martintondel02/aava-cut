@@ -290,7 +290,7 @@ function captionStyle(): Partial<TextStyle> {
     radius: 10,
     align: 'center',
     maxWidth: 0.72,
-    animation: 'none'
+    animation: useSettingsStore.getState().captionAnimation
   };
 }
 
@@ -554,7 +554,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const asset = state.assets.find((item) => item.id === assetId);
     if (!asset || !state.project) return;
     const preferredTrack = trackId || trackForKind(state.project, asset.kind);
-    const naturalDuration = asset.kind === 'image' ? 5 : Math.min(asset.duration || 5, 12);
+    const naturalDuration = asset.kind === 'image' ? 5 : (asset.duration || 5);
     const desiredStart = at ?? state.playhead;
     const clip = createMediaClip(asset, preferredTrack, desiredStart);
     get().mutateProject((project) => {

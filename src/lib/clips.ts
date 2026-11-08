@@ -64,7 +64,7 @@ export function clipDefaults(overrides: Partial<Clip>): Clip {
 
 export function createMediaClip(asset: MediaAsset, trackId: string, start: number, overrides: Partial<Clip> = {}): Clip {
   const isAudio = asset.kind === 'audio';
-  const natural = isAudio ? asset.duration || 5 : asset.kind === 'image' ? 5 : Math.min(asset.duration || 5, 12);
+  const natural = asset.kind === 'image' ? 5 : (asset.duration || 5);
   return clipDefaults({
     kind: asset.kind,
     trackId,

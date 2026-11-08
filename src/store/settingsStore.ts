@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { TextStyle } from '../types';
 
 export type ThemeMode = 'system' | 'dark' | 'light';
 export type Accent = 'mint' | 'blue' | 'amber' | 'rose';
@@ -30,6 +31,7 @@ export interface SettingsValues {
   showWaveforms: boolean;
   followPlayhead: boolean;
   rippleDelete: boolean;
+  captionAnimation: TextStyle['animation'];
   agentBridgeEnabled: boolean;
   agentBridgeToken: string;
   autoExpandKeyframes: boolean;
@@ -58,6 +60,7 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   showWaveforms: true,
   followPlayhead: true,
   rippleDelete: true,
+  captionAnimation: 'pop',
   agentBridgeEnabled: false,
   agentBridgeToken: '',
   autoExpandKeyframes: true,
@@ -105,6 +108,7 @@ function valuesOf(state: SettingsState): SettingsValues {
     showWaveforms: state.showWaveforms,
     followPlayhead: state.followPlayhead,
     rippleDelete: state.rippleDelete,
+    captionAnimation: state.captionAnimation,
     agentBridgeEnabled: state.agentBridgeEnabled,
     agentBridgeToken: state.agentBridgeToken,
     autoExpandKeyframes: state.autoExpandKeyframes,

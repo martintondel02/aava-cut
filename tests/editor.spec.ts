@@ -322,7 +322,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.6.1');
+  expect(capabilities.version).toBe('1.6.2');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -382,7 +382,7 @@ test('serves local caption capabilities and exposes the auto caption card', asyn
   await expect(page.locator('.auto-captions-start')).toBeVisible();
 });
 
-test('keeps canvas labels legible and media hint on one line', async ({ page }) => {
+test('keeps canvas labels legible and media hint balanced', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   const aspectGrid = page.locator('.aspect-grid');
@@ -394,13 +394,14 @@ test('keeps canvas labels legible and media hint on one line', async ({ page }) 
 
   const hint = page.locator('.panel-actions-hint');
   await expect(hint).toBeVisible();
+  await expect(hint.locator('span')).toHaveCount(2);
   const hintMetrics = await hint.evaluate((node) => ({
     scrollWidth: node.scrollWidth,
-    clientWidth: node.clientWidth,
-    whiteSpace: getComputedStyle(node).whiteSpace
+    clientWidth: node.clientWidth
   }));
-  expect(hintMetrics.whiteSpace).toBe('nowrap');
   expect(hintMetrics.scrollWidth).toBeLessThanOrEqual(hintMetrics.clientWidth + 1);
+  expect(await page.locator('.media-name').first().evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(13);
+  expect(await page.locator('.track-name').first().evaluate((node) => parseFloat(getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(13);
 });
 test('context menu and playhead stay aligned at 120% UI scale', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('lumacut.settings.v1', JSON.stringify({ scale: 120 })));

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.6.2 — 2026-11-08
+
+### Changed
+
+- Increased all UI text up to 12 px by **35%**, with a 9.5 px floor for the tiniest decorative labels
+- Widened the asset panel and Inspector to 340 px and the icon rail to 82 px so the larger labels fit
+- Kept the media format hint as two balanced lines instead of a clipped `PNG`
+- Capped rail labels to 10.5 px so long names such as Templates do not clip or wrap
+
+### Verification
+
+- 20/20 Playwright tests pass, including minimum readable media/track label sizes and the 120% scale alignment test
+- Checked at 1200 px and 1679 px with no page overflow
+
 ## 1.6.1 — 2026-11-08
 
 ### Fixed

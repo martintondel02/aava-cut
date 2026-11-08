@@ -193,6 +193,10 @@ Most editors make you choose between a polished timeline and owning your footage
 
 LumaCut 1.9 ships a **live MCP bridge**. Connect Claude Code, Codex, DeepSeek Harness, OpenCode or any MCP-capable client to the editor you already have open — the agent gets validated timeline tools, not shell access.
 
+<p align="center">
+  <img src="docs/screenshots/agent-bridge.png" alt="LumaCut Agent Bridge settings with live MCP status, token and copy-ready client config" width="100%">
+</p>
+
 ### Connect in four steps
 
 1. Open **Settings → Agent bridge**.

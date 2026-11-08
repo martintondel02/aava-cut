@@ -224,6 +224,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
               <SettingsSection title="Timeline" eyebrow="Editor behavior" description="Tune the timeline for the way you cut.">
                 <ToggleRow label="Show audio waveforms" hint="Draw waveform peaks inside audio and video clips." checked={settings.showWaveforms} onChange={(checked) => settings.update({ showWaveforms: checked })} />
                 <ToggleRow label="Follow playhead" hint="Scroll the timeline during playback to keep the playhead in view." checked={settings.followPlayhead} onChange={(checked) => settings.update({ followPlayhead: checked })} />
+                <ToggleRow label="Ripple delete" hint="Move later clips on the same track left to close the gap when deleting." checked={settings.rippleDelete} onChange={(checked) => settings.update({ rippleDelete: checked })} />
                 <ToggleRow label="Auto-expand keyframe lanes" hint="Open animated channels when a keyframed clip is selected." checked={settings.autoExpandKeyframes} onChange={(checked) => settings.update({ autoExpandKeyframes: checked })} />
                 <ToggleRow label="Auto-key by default" hint="Create a keyframe when an animatable property changes at the playhead." checked={settings.autoKeyframe} onChange={(checked) => settings.update({ autoKeyframe: checked })} />
                 <div className="settings-group">
@@ -306,11 +307,11 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
             )}
 
             {section === 'about' && (
-              <SettingsSection title="About LumaCut" eyebrow="Version 1.6.2" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
+              <SettingsSection title="About LumaCut" eyebrow="Version 1.7.0" description="A local-first video editor for Linux, tuned for AMD Radeon, Fedora and 10-bit delivery.">
                 <div className="about-hero">
                   <div className="about-mark">L</div>
                   <div>
-                    <h2>LumaCut <span>1.6.2</span></h2>
+                    <h2>LumaCut <span>1.7.0</span></h2>
                     <p>Cut. Color. Caption. Create.</p>
                     <div className="about-badges"><span>MIT</span><span>Linux</span><span>AMD Radeon</span><span>Fedora RPM</span><span>10-bit HDR</span><span>Local-first</span></div>
                   </div>
@@ -318,7 +319,7 @@ function SettingsSheet({ onClose }: { onClose: () => void }) {
                 <div className="about-links">
                   <a href="https://github.com/martintondel02/lumacut" target="_blank" rel="noreferrer"><Github size={16} /><span><strong>GitHub repository</strong><em>Source, issues and releases</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/REWORK_PLAN.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>1.1 rework plan</strong><em>Themes, keyframes, EQ, packaging</em></span><ExternalLink size={13} /></a>
-                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.6.2 larger readable typography and release notes</em></span><ExternalLink size={13} /></a>
+                  <a href="https://github.com/martintondel02/lumacut/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer"><Gauge size={16} /><span><strong>Changelog</strong><em>1.7 ripple delete and release notes</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer"><Cpu size={16} /><span><strong>Hardware & codecs</strong><em>H.265 install, AMD VAAPI, HDR10 and 10-bit</em></span><ExternalLink size={13} /></a>
                   <a href="https://github.com/martintondel02/lumacut/releases/latest" target="_blank" rel="noreferrer"><Sparkles size={16} /><span><strong>Download latest</strong><em>AppImage · DEB · RPM</em></span><ExternalLink size={13} /></a>
                 </div>

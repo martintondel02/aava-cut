@@ -944,8 +944,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       get().addToast('Those clips are on a locked track', 'info');
       return;
     }
+    const ripple = useSettingsStore.getState().rippleDelete;
     get().mutateProject((project) => {
+      const removed = project.clips.filter((clip) => removable.includes(clip.id));
+      const ranges = new Map<string, Array<{ start: number; end: number }>>();
+      for (const clip of removed) {
+        const list = ranges.get(clip.trackId) || [];
+        list.push({ start: clip.start, end: clip.start + clip.duration });
+        ranges.set(clip.trackId, list);
+      }
       project.clips = project.clips.filter((clip) => !removable.includes(clip.id));
+      if (!ripple) return;
+      for (const [trackId, list] of ranges) {
+        for (const range of list.sort((a, b) => b.start - a.start)) {
+          const shift = range.end - range.start;
+          for (const clip of project.clips) {
+            if (clip.trackId === trackId && clip.start >= range.end - 0.001) {
+              clip.start = Math.max(0, Number((clip.start - shift).toFixed(4)));
+            }
+          }
+        }
+      }
     });
     set((current) => ({ selectedClipIds: [], selectedKeyframe: current.selectedKeyframe && removable.includes(current.selectedKeyframe.clipId) ? null : current.selectedKeyframe }));
   },

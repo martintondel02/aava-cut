@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0 — 2026-11-08
+
+### Added
+
+- **Ripple delete** toggle in the timeline toolbar and Settings → Timeline
+- When enabled, deleting clips closes the gap by moving later clips on the same track left
+- Multi-clip deletions are handled with interval-aware shifts and remain undoable
+- Ripple delete is on by default and can be switched off for gap-preserving deletes
+
+### Verification
+
+- 21/21 Playwright tests pass, including on/off ripple behavior
+- Typecheck and production build pass
+- AppImage, DEB and RPM build successfully
+
 ## 1.6.2 — 2026-11-08
 
 ### Changed

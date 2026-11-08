@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AudioLines, ChevronDown, Copy, CopyPlus, Diamond, Eye, EyeOff, Film, GripVertical, Layers, Lock, Magnet, Maximize2, Minus,
-  MoreHorizontal, Music2, Plus, Scissors, Trash2, Type, Unlock, Volume2, VolumeX, X, ZoomIn, ZoomOut
+  MoreHorizontal, MoveLeft, Music2, Plus, Scissors, Trash2, Type, Unlock, Volume2, VolumeX, X, ZoomIn, ZoomOut
 } from 'lucide-react';
 import type { Clip, Keyframe, MediaAsset, Project, Track, TrackKind } from '../types';
 import { useEditorStore } from '../store/editorStore';
@@ -76,6 +76,8 @@ export function Timeline() {
   const setZoom = useEditorStore((state) => state.setZoom);
   const setTimelineHeight = useEditorStore((state) => state.setTimelineHeight);
   const followPlayhead = useSettingsStore((state) => state.followPlayhead);
+  const rippleDelete = useSettingsStore((state) => state.rippleDelete);
+  const updateSettings = useSettingsStore((state) => state.update);
   const setSnapping = useEditorStore((state) => state.setSnapping);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const setPlaying = useEditorStore((state) => state.setPlaying);
@@ -439,6 +441,9 @@ export function Timeline() {
         )}
 
         <div className="timeline-tool-group timeline-tool-right">
+          <button type="button" className={`timeline-tool ${rippleDelete ? 'is-active' : ''}`} onClick={() => updateSettings({ rippleDelete: !rippleDelete })} title="Ripple delete: close gaps on the same track">
+            <MoveLeft size={14} /> <span>Ripple</span>
+          </button>
           <button type="button" className={`timeline-tool icon-only ${snapping ? 'is-active' : ''}`} onClick={() => setSnapping(!snapping)} title="Toggle snapping">
             <Magnet size={15} />
           </button>

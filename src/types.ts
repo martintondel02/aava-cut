@@ -312,3 +312,62 @@ export const STICKER_SHAPES: { id: Clip['shape']; label: string }[] = [
 export const AUDIO_TRACK_COLORS = ['#3ac7a0', '#5f8dff', '#c77dff', '#ffb54d'];
 
 export const CANVAS_DESIGN_HEIGHT = 1080;
+
+export interface CaptionCue {
+  start: number;
+  end: number;
+  text: string;
+  confidence: number;
+}
+
+export type CaptionJobStatus = 'queued' | 'preparing' | 'downloading' | 'transcribing' | 'parsing' | 'done' | 'error' | 'cancelled';
+
+export interface CaptionJob {
+  id: string;
+  status: CaptionJobStatus;
+  progress: number;
+  message: string;
+  error: string | null;
+  result: {
+    cues: CaptionCue[];
+    language: string;
+    model: string;
+    modelLabel: string;
+    device: string;
+    duration: number;
+  } | null;
+  model: string;
+  language: string;
+  source: 'mix' | 'clip';
+  device: 'auto' | 'cpu';
+  createdAt: string;
+}
+
+export interface CaptionModelInfo {
+  id: string;
+  label: string;
+  quality: 'accurate' | 'fast';
+  description: string;
+  fileName: string;
+  size: number;
+  installed: boolean;
+}
+
+export interface CaptionCapabilities {
+  version: string;
+  runtime: {
+    available: boolean;
+    vulkan: boolean;
+    cpu: boolean;
+    version: string | null;
+    path: string | null;
+  };
+  device: {
+    detected: boolean;
+    label: string | null;
+    preferred: string;
+  };
+  models: CaptionModelInfo[];
+  vadInstalled: boolean;
+  activeJobId: string | null;
+}

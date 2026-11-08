@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.4.0 — 2026-11-08
+
+The local auto-caption release.
+
+### Added
+
+- **Auto captions** in Caption Studio, powered by a bundled whisper.cpp 1.9.5 Vulkan runtime
+- **AMD GPU transcribe** on Radeon through Vulkan, with automatic CPU retry and a manual CPU option
+- **Whisper large-v3-turbo q5_0** (547 MiB, multilingual) and **small** (466 MiB) model choices
+- **Silero VAD** and no-speech filtering to avoid hallucinated cues in silence or music
+- **Full timeline mix** or **selected clip** as the audio source
+- **Word-level token timings** mapped back across VAD-reduced audio, grouped into readable cues
+- **Review before apply**: edit text, remove cues, append or replace existing captions
+- **On-demand model download** from Hugging Face with SHA-256 verification, progress and safe cancel
+- **Local-only privacy**: no speech API, account or telemetry; only the model download uses the network
+- Model/runtime capabilities at `GET /api/captions/capabilities`
+- Caption job API with progress, retry, cancellation and result endpoints
+- [docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md) with setup, model, privacy and troubleshooting details
+
+### Changed
+
+- Caption Studio now opens with a local AI card above the manual and script tools
+- Added a caption review dialog and low-confidence highlighting
+- Added session resume for caption jobs when the panel is closed and reopened
+- RPM now depends on `vulkan-loader`; DEB depends on `libvulkan1`
+- Bundled the pinned whisper.cpp Vulkan runtime under `resources/whisper`
+
+### Notes
+
+- The model is not bundled in the packages; the first job downloads it once and verifies its checksum.
+- Measured on an RX 9070 XT: 9 minutes of speech in about 6.5 s, ~925 MiB VRAM delta. The 8 GB target is comfortable.
+- Speaker diarization is not included in 1.4.
+- Whisper timings are token-derived; review is still required for difficult audio.
+
 ## 1.3.0 — 2026-11-08
 
 The codec and 10-bit release.

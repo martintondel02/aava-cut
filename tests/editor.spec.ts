@@ -192,7 +192,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.3.0');
+  expect(capabilities.version).toBe('1.4.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -231,4 +231,23 @@ test('codec picker handles 8-bit H.264 and 10-bit HDR AV1', async ({ page, reque
   await expect(hdr).toBeEnabled();
   await hdr.click();
   await expect(page.locator('.export-summary')).toContainText('AV1 10-bit HDR10');
+});
+
+test('serves local caption capabilities and exposes the auto caption card', async ({ page, request }) => {
+  const response = await request.get('/api/captions/capabilities');
+  expect(response.ok()).toBe(true);
+  const capabilities = await response.json();
+  expect(capabilities.runtime.available).toBe(true);
+  expect(capabilities.runtime.vulkan || capabilities.runtime.cpu).toBe(true);
+  expect(Array.isArray(capabilities.models)).toBe(true);
+  expect(capabilities.models.some((model: { id: string }) => model.id === 'large-v3-turbo-q5_0')).toBe(true);
+  expect(capabilities.models[0]).toHaveProperty('installed');
+
+  const bad = await request.post('/api/captions/jobs', { data: {} });
+  expect(bad.status()).toBe(400);
+
+  await page.goto('/');
+  await page.locator('.rail-tab[title="Captions (8)"]').click();
+  await expect(page.locator('.auto-captions-card')).toBeVisible();
+  await expect(page.locator('.auto-captions-start')).toBeVisible();
 });

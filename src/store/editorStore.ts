@@ -98,7 +98,7 @@ interface EditorState {
   addSticker: (sticker: string) => void;
   addShape: (shape: NonNullable<Clip['shape']>) => void;
   addCaption: (text: string, start?: number, duration?: number) => void;
-  importCaptions: (entries: Array<{ start: number; end: number; text: string }>) => void;
+  importCaptions: (entries: Array<{ start: number; end: number; text: string }>, replace?: boolean) => void;
   updateCaptionStyles: (patch: Partial<TextStyle>) => void;
 
   updateClip: (clipId: string, patch: Partial<Clip>, history?: boolean) => void;
@@ -630,9 +630,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ selectedClipIds: [], activePanel: 'captions' });
   },
 
-  importCaptions: (entries) => {
+  importCaptions: (entries, replace = false) => {
     if (!entries.length) return;
     get().mutateProject((project) => {
+      if (replace) project.clips = project.clips.filter((clip) => !clip.caption);
       const trackId = ensureCaptionTrack(project);
       for (const entry of entries) {
         const duration = Math.max(0.4, entry.end - entry.start);

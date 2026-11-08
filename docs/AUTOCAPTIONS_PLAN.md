@@ -1,8 +1,8 @@
 # LumaCut Auto Captions — Implementation Plan
 
-> **Status: proposed — awaiting approval.**
+> **Status: approved; Phase 0 benchmark passed. Awaiting go-ahead for implementation.**
 >
-> **Decision requested:** approve a local-first auto-caption pipeline built on **whisper.cpp with the Vulkan backend**, defaulting to **Whisper large-v3-turbo q5_0** on AMD Radeon GPUs, with CPU fallback, on-demand checked model downloads, and a mandatory transcript review before captions are applied.
+> **Decision:** local-first auto captions built on **whisper.cpp with the Vulkan backend**, defaulting to **Whisper large-v3-turbo q5_0** on AMD Radeon GPUs, with CPU fallback, on-demand checked model downloads, and a mandatory transcript review before captions are applied.
 
 ## 1. Recommendation in one paragraph
 
@@ -253,3 +253,52 @@ Alternative choices to settle at approval:
 2. **Default quality:** accurate large-v3-turbo q5_0 (recommended) vs faster small/medium.
 3. **Scope:** full timeline mix + selected clip (recommended) vs selected clip only for v1.
 4. **Speaker labels:** defer (recommended) vs add a separate English-only tinydiarize mode.
+
+
+---
+
+## 13. Phase 0 benchmark results
+
+**Completed 2026-11-08 on the reference machine.**
+
+### Environment
+
+- Fedora Linux 45, KDE
+- AMD Radeon RX 9070 XT 16 GB (RADV GFX1201), Vulkan backend
+- AMD Ryzen 7 9800X3D, 8 CPU threads used for the fallback run
+- `ghcr.io/ggml-org/whisper.cpp:main-vulkan`
+- Model: `large-v3-turbo-q5_0` (547 MiB)
+- VAD: Silero `v6.2.0` (865 KiB)
+- Beam size 5, language auto/en, `-ojf` token timestamps, VAD enabled
+
+### Results
+
+| Audio | Device | Wall time | Effective speed | Notes |
+| --- | --- | ---: | ---: | --- |
+| 11 s JFK speech | AMD Vulkan | 0.85 s | ~13× realtime | Includes container startup; inference itself 0.71 s |
+| 2 min repeated JFK speech | AMD Vulkan | 2.32 s | ~52× realtime | Full JSON with token timestamps |
+| 9 min 10 s repeated JFK speech | AMD Vulkan | **6.50 s** | **~84× realtime** | 925 MiB peak VRAM delta |
+| 33 s JFK speech | CPU (8 threads) | 5.60 s | ~6× realtime | CPU fallback is usable |
+| 12 s digital silence | CPU | — | — | **0 caption segments**, no hallucinated cue |
+
+- Vulkan device was actually used: `using Vulkan0 backend`, Radeon RX 9070 XT (RADV GFX1201).
+- Model GPU allocation reported: **573.40 MB**.
+- Peak total VRAM during the 10-minute run: **~3.55 GB** (baseline desktop ~2.59 GB; delta **~925 MiB**).
+- `--output-json-full` includes segment and token `offsets`; word-level timestamps are available for karaoke/highlighting.
+- The JFK transcript matched the known reference text at 11 s and across the repeated 10-minute file.
+- No speech on silence; this is the important guard against the classic Whisper hallucination failure mode.
+
+### Gate decision
+
+Phase 0 **passes**. The default remains:
+
+- `large-v3-turbo-q5_0` on AMD Vulkan.
+- 8 GB consumer GPU target is comfortable; the benchmark used ~0.9 GB beyond desktop VRAM.
+- CPU fallback is viable at roughly 6× realtime on a fast desktop CPU.
+- Model download remains on-demand; bundling it is still optional.
+
+### Caveats
+
+- The benchmark uses clean, repeated English speech, not a multilingual/multi-speaker/music mix. The implementation phase must still test accented speech, music beds and Norwegian/English mixed material.
+- Container startup was included in wall time, so in-app results should be similar or faster once the binary is local.
+- 8 GB was not directly tested on an 8 GB card; the measured ~0.9 GB delta plus desktop/editor headroom makes it a safe target, but a lower-VRAM validation is still desirable.

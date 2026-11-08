@@ -33,7 +33,7 @@ The timeline UX and editing release.
 - **Extract audio** from a video clip into the bottom audio track via the clip context menu
 - Larger, higher-contrast UI typography across panels, inspector, timeline, menus, captions and settings
 - Fixed UI-scale coordinate handling for context menus, playhead scrubbing, clip dragging, keyframe dragging and track detection
-- Blank first-run project; bundled demo media, demo film and demo audio library removed
+- Blank first-run project; bundled sample media and sample audio library removed
 
 ### Changed
 
@@ -176,7 +176,6 @@ Initial public release of LumaCut.
 - Canvas preview with transforms, filters, effects, transitions and keyframes
 - Typography presets, stickers, shapes and shape layers
 - Caption Studio with SRT import/export and script-to-captions
-- Original demo film "Chase the Light" generated locally with FFmpeg
 - Audio playback, fades, track mute and microphone voiceover recording
 - H.264 MP4 and VP9 WebM export at 720p/1080p/4K and 24/30/60 fps
 - Local autosave, undo/redo, `.lumacut` project files and export history

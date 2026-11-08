@@ -27,7 +27,6 @@
   <a href="#install">Install</a> ·
   <a href="#features">Features</a> ·
   <a href="#local-auto-captions">Auto captions</a> ·
-  <a href="#screenshots">Screenshots</a> ·
   <a href="#amd-radeon-acceleration">AMD acceleration</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#keyboard-shortcuts">Shortcuts</a> ·
@@ -276,36 +275,6 @@ Most editors make you choose between a polished timeline and owning your footage
 | **Schema migration** | Opening a 1.0 project upgrades effects, keyframes, tracks and audio fields in place |
 
 ---
-
-## Screenshots
-
-<p align="center">
-  </p>
-
-<p align="center">
-  <img src="docs/screenshots/light-mode.png" alt="LumaCut in light mode with effects and keyframes" width="49%">
-  <img src="docs/screenshots/settings.png" alt="LumaCut settings with theme, accent and interface scale controls" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/keyframes.png" alt="Timeline keyframe lanes and spring easing controls" width="49%">
-  <img src="docs/screenshots/audio-eq.png" alt="Master EQ, live analyser and per-track tone controls" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/autocaptions.png" alt="LumaCut local auto captions card with AMD Vulkan and Whisper model selection" width="49%">
-  <img src="docs/screenshots/autocaptions-review.png" alt="Auto caption transcript review with confidence and editable cues" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/text.png" alt="Text presets and typography tools" width="49%">
-  <img src="docs/screenshots/captions.png" alt="Caption Studio with styling presets" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/export.png" alt="LumaCut export dialog with AMD GPU acceleration, resolution, frame rate and quality options" width="100%">
-</p>
-
 
 ### Local auto captions
 
@@ -584,7 +553,7 @@ The test suite covers the blank first-run project, canvas painting, split/undo, 
 - [x] Fixed UI-scale coordinate bugs for the playhead, track hit-testing and context menus
 - [x] Larger, higher-contrast text across the editor
 - [x] Space and Ctrl/⌘+A keyboard conflict fixes
-- [x] Removed bundled demo media and demo project; blank first-run project
+- [x] Blank first-run project with no bundled sample media
 
 **1.4 “Local Auto Captions” is shipped.**
 

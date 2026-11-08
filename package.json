@@ -1,6 +1,6 @@
 {
   "name": "lumacut",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "description": "LumaCut \u2014 a local-first, CapCut-style video editor for Linux with H.264/H.265/AV1, 10-bit HDR10 and AMD Radeon acceleration, tuned for Fedora",
   "type": "module",
@@ -77,14 +77,22 @@
     },
     "deb": {
       "depends": [
-        "ffmpeg"
+        "ffmpeg",
+        "libvulkan1"
       ]
     },
     "rpm": {
       "depends": [
-        "/usr/bin/ffmpeg"
+        "/usr/bin/ffmpeg",
+        "vulkan-loader"
       ]
-    }
+    },
+    "extraResources": [
+      {
+        "from": "vendor/whisper",
+        "to": "whisper"
+      }
+    ]
   },
   "author": {
     "name": "Martin T\u00f8ndel",

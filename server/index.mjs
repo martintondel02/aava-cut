@@ -6,6 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { createCaptionService } from './captions.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -314,7 +315,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.3.0',
+    version: '1.4.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -329,11 +330,41 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.3.0',
+    version: '1.4.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
   });
+});
+
+const captionService = createCaptionService({
+  root, dataRoot: dataDir, mediaDir, publicDir,
+  getAssets: () => assets,
+  hardware
+});
+
+app.get('/api/captions/capabilities', (req, res) => {
+  res.json(captionService.capabilities());
+});
+
+app.post('/api/captions/jobs', (req, res) => {
+  try {
+    res.status(202).json(captionService.startJob(req.body));
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ error: String(error?.message || error) });
+  }
+});
+
+app.get('/api/captions/jobs/:id', (req, res) => {
+  const job = captionService.getJob(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Caption job not found' });
+  res.json(job);
+});
+
+app.delete('/api/captions/jobs/:id', (req, res) => {
+  const cancelled = captionService.cancelJob(req.params.id);
+  if (!cancelled) return res.status(404).json({ error: 'Caption job not found' });
+  res.json({ ok: true });
 });
 
 app.get('/api/assets', (req, res) => {

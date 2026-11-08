@@ -26,6 +26,7 @@
 <p align="center">
   <a href="#download">Download</a> ·
   <a href="#features">Features</a> ·
+  <a href="#local-auto-captions">Auto captions</a> ·
   <a href="#screenshots">Screenshots</a> ·
   <a href="#amd-radeon-acceleration">AMD acceleration</a> ·
   <a href="#quick-start">Quick start</a> ·
@@ -42,11 +43,11 @@
 
 | Package | Best for | Install |
 | --- | --- | --- |
-| **`LumaCut-1.3.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
-| **`LumaCut-1.3.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
-| **`LumaCut-1.3.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+| **`LumaCut-1.4.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
+| **`LumaCut-1.4.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
+| **`LumaCut-1.4.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
 
-All builds include the editor and its local media server. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export:
+All builds include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export. Auto captions also need the system **Vulkan loader**; the RPM declares `vulkan-loader`, the DEB declares `libvulkan1`, and normal Fedora/Ubuntu desktops already have it. The first caption job downloads a model once.
 
 ```bash
 # Fedora — official repos provide the same binary as ffmpeg-free
@@ -69,7 +70,7 @@ Most editors make you choose between a polished timeline and owning your footage
 
 - **Local-first by design.** Your media, waveforms, projects and exports live in folders on your Linux machine. No account, no upload, no telemetry.
 - **A real timeline.** Multi-track clips, trim handles, snapping, keyframe rails, direct manipulation and complete track management.
-- **Finished-film tools.** Captions, typography, transitions, effects, color grades, spring keyframes, audio mixing and 4K exports.
+- **Finished-film tools.** Local AI auto captions, typography, transitions, effects, color grades, spring keyframes, audio mixing and 4K exports.
 - **Yours to shape.** Light/dark themes, four accent colors, 80–140% interface scaling, compact density and reduced motion.
 - **Tuned for AMD.** LumaCut probes the actual VAAPI encoders on your Radeon, uses AV1/H.264/HEVC hardware encoding when available, and falls back cleanly to CPU. The Fedora RPM is a first-class target.
 - **Hackable.** React + TypeScript on the front end, a small Express/FFmpeg media server, and an Electron shell. Read it, run it, change it.
@@ -130,6 +131,7 @@ Most editors make you choose between a polished timeline and owning your footage
 | **Typography** | Six presets + bundled Montserrat, Open Sans and Luma Serif |
 | **Text controls** | Font, size, weight, colour, stroke, shadow, box, alignment, spacing |
 | **Animations** | Fade, slide, zoom, spin and typewriter entrances/exits |
+| **Auto captions** | Local whisper.cpp transcription with VAD, word timings, language detection and review-before-apply |
 | **Captions** | Single cues, script-to-timed-captions, SRT import/export, caption styling |
 | **Stickers & shapes** | Emoji layers and vector shapes with transforms and keyframes |
 | **Color** | Ten cinematic grades, intensity, manual brightness/contrast/saturation/temperature/hue |
@@ -154,6 +156,7 @@ Most editors make you choose between a polished timeline and owning your footage
 | --- | --- |
 | **Autosave** | Instant local project persistence with undo/redo history |
 | **Portable projects** | Download and reopen `.lumacut` files |
+| **Auto captions** | Local Whisper large-v3-turbo on AMD Vulkan · CPU fallback · full mix or selected clip |
 | **AMD acceleration** | Auto-detects AMD Radeon VAAPI · AV1, H.264 or HEVC · live encoder label · CPU fallback |
 | **Codec picker** | Explicit Auto / H.264 / H.265 / AV1 with live availability and install guidance |
 | **10-bit & HDR10** | 10-bit H.265/AV1 in MP4 or WebM; HDR10 PQ/BT.2020 for MP4 10-bit |
@@ -167,7 +170,7 @@ Most editors make you choose between a polished timeline and owning your footage
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="LumaCut 1.3 dark editor with keyframe lanes and the live audio visualizer" width="100%">
+  <img src="docs/screenshot.png" alt="LumaCut 1.4 dark editor with keyframe lanes, local auto captions and the live audio visualizer" width="100%">
 </p>
 
 <p align="center">
@@ -181,6 +184,11 @@ Most editors make you choose between a polished timeline and owning your footage
 </p>
 
 <p align="center">
+  <img src="docs/screenshots/autocaptions.png" alt="LumaCut local auto captions card with AMD Vulkan and Whisper model selection" width="49%">
+  <img src="docs/screenshots/autocaptions-review.png" alt="Auto caption transcript review with confidence and editable cues" width="49%">
+</p>
+
+<p align="center">
   <img src="docs/screenshots/text.png" alt="Text presets and typography tools" width="49%">
   <img src="docs/screenshots/captions.png" alt="Caption Studio with styling presets" width="49%">
 </p>
@@ -189,11 +197,25 @@ Most editors make you choose between a polished timeline and owning your footage
   <img src="docs/screenshots/export.png" alt="LumaCut export dialog with AMD GPU acceleration, resolution, frame rate and quality options" width="100%">
 </p>
 
+
+### Local auto captions
+
+LumaCut 1.4 can transcribe the timeline locally with **whisper.cpp on AMD Vulkan** — no cloud speech API. Choose **Full timeline mix** or **Selected clip**, pick a language and accuracy level, then review the transcript before applying it.
+
+- **Default model:** Whisper large-v3-turbo q5_0, 547 MiB, multilingual, comfortable on an 8 GB GPU.
+- **Smaller model:** Whisper small, 466 MiB, for lower-end GPUs and CPUs.
+- **Speech detection:** Silero VAD avoids inventing captions from music or silence.
+- **Review first:** edit cues, inspect confidence, then replace or append to the caption track as one undoable edit.
+- **Private by default:** audio stays local. The only network request is the one-time, checksum-verified model download.
+- **Benchmark:** 9 minutes of speech transcribed in ~6.5 s on an RX 9070 XT, with a ~925 MiB VRAM delta.
+
+See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for requirements, model management, performance and troubleshooting.
+
 ---
 
 ## AMD Radeon acceleration
 
-LumaCut 1.3 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.4 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -230,7 +252,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.3.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.4.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
@@ -444,11 +466,20 @@ For the tests, install the Playwright browser once:
 npx playwright install chromium
 ```
 
-The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration, AMD capabilities and the codec/HDR picker.
+The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration, AMD capabilities, the codec/HDR picker and the auto-caption capability surface.
 
 ---
 
 ## Roadmap
+
+**1.4 “Local Auto Captions” is shipped.**
+
+- [x] Local whisper.cpp transcription on AMD Vulkan with CPU fallback
+- [x] Full-timeline or selected-clip audio source
+- [x] Silero VAD, language detection and word-level token timings
+- [x] Review, edit, append/replace and undoable caption application
+- [x] On-demand checksum-verified model download and model manager UI
+- [x] Bundled runtime, model/license documentation and offline path
 
 **1.3 “Codecs & 10-bit” is shipped.**
 
@@ -484,11 +515,10 @@ Next up:
 - Keyframe marquee and multi-select retiming
 - “Move clips to a new track” when deleting a populated track
 - Lane visibility filters and per-channel collapse
-- Automatic speech-to-text captions
 - Native HDR source handling and a WebGL/float rendering pipeline
 - Intel and NVIDIA acceleration paths
 
-See **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
+See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for auto-caption setup and model details, **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
 
 ---
 
@@ -496,10 +526,10 @@ See **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWOR
 
 - **Export is real-time.** A 30-second cut takes roughly 30 seconds to capture; hardware encoding shortens the encode step, not the capture step. Keep the window in the foreground.
 - **Hardware encoders vary by driver.** Fedora/Mesa may expose AV1, H.264, HEVC or only some of them. LumaCut picks what actually works and labels the result. It never silently pretends a software encode is hardware.
-- **Captions are manual or SRT-driven.** Speech-to-text is intentionally not faked.
+- **Auto captions are local and review-first.** Whisper can mishear music, overlapping speech or names; edit cues before applying them. Speaker labels are not yet included.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
-- The audio visualizer is **monitor-only** in 1.3. It is intentionally not baked into the exported video.
+- The audio visualizer is **monitor-only** in 1.4. It is intentionally not baked into the exported video.
 - **HDR10 is converted from the SDR canvas.** It sets PQ/BT.2020 and 10-bit output but cannot restore highlights that were never in the SDR timeline.
 - **H.265 software encoding needs libx265.** Fedora's stock `ffmpeg-free` may not include it; install RPM Fusion FFmpeg or use AV1 hardware encoding.
 - Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`. H.265 requires `libx265` in that FFmpeg build.

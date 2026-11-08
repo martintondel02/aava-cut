@@ -1,6 +1,6 @@
 # LumaCut Auto Captions — Implementation Plan
 
-> **Status: approved; Phase 0 benchmark passed. Awaiting go-ahead for implementation.**
+> **Status: implemented in LumaCut 1.4.0.**
 >
 > **Decision:** local-first auto captions built on **whisper.cpp with the Vulkan backend**, defaulting to **Whisper large-v3-turbo q5_0** on AMD Radeon GPUs, with CPU fallback, on-demand checked model downloads, and a mandatory transcript review before captions are applied.
 
@@ -53,11 +53,11 @@ The default target is an **8 GB GPU**; 16 GB leaves headroom for 4K playback and
 
 ### Model management
 
-- Models live under the user data root (`~/Videos/LumaCut/models` packaged, `data/models` from source), never in git or the app package.
+- Models live under the user data root (`~/Videos/LumaCut/data/models` packaged, `data/models` from source), never in git or the app package.
 - A curated `models.json` manifest lists URL, size, SHA-256, language coverage and license.
-- Download on first use with progress, resume support and checksum verification. Cancel is safe.
+- Download on first use with progress, safe cancel and checksum verification.
 - Manual import of a GGML model file for offline machines.
-- Model manager in **Settings → Captions** with download/remove/status.
+- Model selection and download/status in the **Caption Studio** auto-caption card.
 - The only network access in the feature is the explicit model/VAD download.
 
 ## 4. Audio path
@@ -127,19 +127,19 @@ Visible stages with percentage and cancel:
 A review panel shows:
 
 - Cue text, start/end time, confidence.
-- Click a cue to seek; edit text/timing; merge/split.
+- Edit cue text or remove cues before applying.
 - Low-confidence cues highlighted.
 - “No speech detected” state instead of invented captions.
 - **Apply captions** creates/updates cues on a caption track.
 - Replace vs append choice; undoable.
 - Existing caption styling is reused.
 
-### Settings → Captions
+### Caption Studio model card
 
-- Model status/size/device (AMD Vulkan or CPU).
-- Download/remove models, import a local GGML model.
-- Default language and quality.
-- Explain that first use downloads ~550 MB and requires network.
+- Model choice, size and installed/download state.
+- Device status (AMD Vulkan or CPU) and language/quality selection.
+- Explains that first use downloads ~550 MB and requires network.
+- The model file can be placed manually in the models folder for offline use.
 
 ## 7. Implementation structure
 
@@ -153,30 +153,24 @@ A review panel shows:
   - model manifest/downloader with SHA-256
 - Routes:
   - `GET /api/captions/capabilities` — GPU/Vulkan, models, VAD, binary versions
-  - `POST /api/captions` — start job
-  - `GET /api/captions/:id` — status/progress/result
-  - `DELETE /api/captions/:id` — cancel
-  - `GET /api/captions/models` — installed/available models
-  - `POST /api/captions/models/:id/download` — download with progress
+  - `POST /api/captions/jobs` — start job
+  - `GET /api/captions/jobs/:id` — status/progress/result
+  - `DELETE /api/captions/jobs/:id` — cancel
 - No new persistent service; the existing Express server owns jobs.
 
 ### Frontend
 
-- `src/components/captions/AutoCaptionsPanel.tsx`
-- `src/components/captions/TranscriptReview.tsx`
-- `src/store/captionStore.ts` or caption job slice in the editor store
-- Settings → Captions section
-- Reuse the existing caption cue model and track logic.
+- `src/components/captions/AutoCaptions.tsx` with the card, progress and transcript review dialog.
+- Local component state plus `sessionStorage` for resuming a running/completed review after the panel closes.
+- Reuse the existing caption track and `importCaptions` action.
 
 ### Packaging
 
-- CI builds two pinned whisper.cpp binaries:
-  - `whisper-cli-vulkan` (`GGML_VULKAN=1`)
-  - `whisper-cli-cpu` (`GGML_VULKAN=0`)
-- Include them in `resources/captions/` in AppImage, `.deb` and `.rpm`.
-- RPM/DEB dependencies: Vulkan loader (runtime); CPU binary remains a fallback if Vulkan is unavailable.
+- Bundle the pinned whisper.cpp **1.9.5 Vulkan** runtime under `vendor/whisper/`; it is copied to `resources/whisper/` in AppImage, `.deb` and `.rpm`.
+- Use the same binary for CPU fallback with `-ng`; a dedicated CPU-only build can be dropped into `vendor/whisper/cpu/` later without changing the app.
+- RPM depends on `vulkan-loader`; DEB depends on `libvulkan1`.
 - The model is **not** bundled; first-run download is explicit and checksum-verified.
-- Pin the whisper.cpp commit and record its MIT license in the app notices.
+- Record the runtime's MIT license and provenance in `vendor/whisper/`.
 
 ## 8. Reliability plan
 
@@ -226,7 +220,7 @@ On the local RX 9070 XT:
 | 0. Spike | Vulkan build, benchmark, VRAM result, model decision | 0.5–1 day |
 | 1. Backend | audio mix, model manager, job runner, JSON parser, filters | 2–3 days |
 | 2. Frontend | auto-caption panel, progress, review/apply, settings | 1–2 days |
-| 3. Packaging | CI binaries, RPM/DEB/AppImage resources, license notices | 1 day |
+| 3. Packaging | bundle pinned runtime, RPM/DEB/AppImage resources, license notices | 1 day |
 | 4. Test/docs | fixtures, e2e, hardware benchmark, docs | 1 day |
 
 Total: roughly **5–8 focused development days** after approval. This is an estimate, not a commitment; the Phase 0 gate may change the model default.

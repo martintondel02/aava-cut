@@ -3,6 +3,7 @@ import { Captions, Download, FileText, Plus, Sparkles, Trash2, Upload } from 'lu
 import { useEditorStore } from '../../store/editorStore';
 import { buildSrt, parseSrt, scriptToCues } from '../../lib/srt';
 import { downloadBlob, formatTime } from '../../lib/utils';
+import { AutoCaptions } from '../captions/AutoCaptions';
 
 const STYLE_PRESETS = [
   {
@@ -94,6 +95,8 @@ export function CaptionsPanel() {
           <p>Type along the timeline or bring in an SRT. Captions live on their own editable track.</p>
         </div>
       </div>
+
+      <AutoCaptions />
 
       <div className="segmented caption-mode">
         <button type="button" className={mode === 'single' ? 'is-active' : ''} onClick={() => setMode('single')}>Single caption</button>

@@ -693,10 +693,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       });
       audioId = audio.id;
       draft.clips.push(audio);
+      // Extraction moves the sound to the new audio clip. Mute the source
+      // video so the same audio is not heard twice. Volume keyframes would
+      // otherwise override a plain volume change.
+      const source = draft.clips.find((item) => item.id === clip.id);
+      if (source) {
+        source.volume = 0;
+        source.audioFadeIn = 0;
+        source.audioFadeOut = 0;
+        source.keyframes = source.keyframes.filter((frame) => frame.property !== 'volume');
+      }
     });
     if (audioId) {
       set({ selectedClipIds: [audioId], selectedKeyframe: null, activePanel: 'audio' });
-      state.addToast('Audio extracted to a new bottom track', 'success');
+      state.addToast('Audio extracted to the bottom track — source clip muted', 'success');
     }
   },
 

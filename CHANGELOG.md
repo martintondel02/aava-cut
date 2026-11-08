@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.1 — 2026-11-08
+
+### Fixed
+
+- Extracting audio from a video clip now **mutes the source video clip**, including removing any volume keyframes that would otherwise override the mute, so the same audio is not heard twice
+- Updated the Extract audio labels and toast to make the mute behavior explicit
+
 ## 1.6.0 — 2026-11-08
 
 The visualizer and gain release.

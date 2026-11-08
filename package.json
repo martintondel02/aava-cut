@@ -1,6 +1,6 @@
 {
   "name": "aava-cut",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "description": "Aava Cut \u2014 a local-first video editor for Linux with H.264/H.265/AV1, 10-bit HDR10, AMD Radeon acceleration and a live MCP agent bridge.",
   "type": "module",

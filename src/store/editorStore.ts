@@ -1095,6 +1095,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   newProject: () => {
     const state = get();
+    if (state.project?.clips.length && typeof window !== 'undefined') {
+      const confirmed = window.confirm('Start a new project? The current timeline will be replaced. Your media library stays available.');
+      if (!confirmed) return;
+    }
     const project = blankProject(state.assets);
     set({ project, history: [], future: [], selectedClipIds: [], selectedKeyframe: null, playhead: 0, isPlaying: false, activePanel: 'media' });
     scheduleSave(project);
@@ -1133,6 +1137,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         body: JSON.stringify(project)
       });
       if (!response.ok) throw new Error('Server rejected the project');
+      set({ lastSavedAt: new Date().toISOString() });
       get().addToast('Project saved to disk', 'success');
     } catch {
       get().addToast('Could not save to disk — your browser copy is safe', 'error');

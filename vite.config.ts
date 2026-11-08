@@ -16,6 +16,16 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('lucide-react')) return 'vendor-icons';
+          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
+          if (id.includes('zustand') || id.includes('immer')) return 'vendor-state';
+        }
+      }
+    }
   }
 });

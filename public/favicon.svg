@@ -1,7 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
-  <defs><linearGradient id="g" x1="4" y1="4" x2="32" y2="32" gradientUnits="userSpaceOnUse"><stop stop-color="#7BFFDF"/><stop offset=".55" stop-color="#56D9C1"/><stop offset="1" stop-color="#6A8DFF"/></linearGradient></defs>
-  <rect width="36" height="36" rx="10" fill="#0C1418"/>
-  <path d="M10 24.2V11.8h4.05v9.1h7.1v3.3H10Z" fill="url(#g)"/>
-  <path d="M23.6 11.8h3.9v7.4c0 3.4-2.2 5.3-5.3 5.3h-.5v-3.3h.4c1.1 0 1.5-.6 1.5-1.8v-7.6Z" fill="url(#g)" opacity=".75"/>
-  <circle cx="26.6" cy="9.4" r="2.1" fill="#FFCE7A"/>
+  <defs>
+    <linearGradient id="aava" x1="7" y1="7" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7BFFDF"/><stop offset=".55" stop-color="#56D9C1"/><stop offset="1" stop-color="#6A8DFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="36" height="36" rx="10" fill="#071A20"/>
+  <path d="M9 26 18 8l9 18" fill="none" stroke="url(#aava)" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M12.5 20.5h11" fill="none" stroke="url(#aava)" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>
+  <path d="M6 30c4-1.5 8-1.5 12 0s8 1.5 12 0" fill="none" stroke="#72F5D1" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>
+  <circle cx="27" cy="8.5" r="2.1" fill="#F2C66D"/>
 </svg>

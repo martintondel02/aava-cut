@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="#download">Download</a> ·
+  <a href="#install">Install</a> ·
   <a href="#features">Features</a> ·
   <a href="#local-auto-captions">Auto captions</a> ·
   <a href="#screenshots">Screenshots</a> ·
@@ -37,30 +37,139 @@
 
 ---
 
-## Download
+## Install
 
-**[Get the latest Linux release →](https://github.com/martintondel02/lumacut/releases/latest)**
+**[Download the latest release →](https://github.com/martintondel02/lumacut/releases/latest)**
 
-| Package | Best for | Install |
-| --- | --- | --- |
-| **`LumaCut-1.4.1-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
-| **`LumaCut-1.4.1-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
-| **`LumaCut-1.4.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+| Package | Best for |
+| --- | --- |
+| **`LumaCut-1.4.1-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`LumaCut-1.4.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`LumaCut-1.4.1-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
-All builds include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export. Auto captions also need the system **Vulkan loader**; the RPM declares `vulkan-loader`, the DEB declares `libvulkan1`, and normal Fedora/Ubuntu desktops already have it. The first caption job downloads a model once.
+All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
+
+> All builds are **x86_64 only**. The RPM is a Fedora package — do not install it on Arch or Debian.
+
+### Fedora
+
+Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencies are resolved:
 
 ```bash
-# Fedora — official repos provide the same binary as ffmpeg-free
-sudo dnf install ffmpeg-free
-
-# Debian / Ubuntu
-sudo apt install ffmpeg
-
-# Arch
-sudo pacman -S ffmpeg
+cd ~/Downloads
+sudo dnf install ./LumaCut-1.4.1-x86_64.rpm
 ```
 
-> Fedora's official tree ships the binary as `ffmpeg-free`; RPM Fusion ships it as `ffmpeg`. The RPM requires `/usr/bin/ffmpeg`, so either provider works. H.265 software encoding needs an FFmpeg build with `libx265` — see [docs/HARDWARE.md](docs/HARDWARE.md#h265--hevc-installation). Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) and include a `SHA256SUMS` file.
+If you do not already have FFmpeg and the Vulkan loader:
+
+```bash
+sudo dnf install ffmpeg-free vulkan-loader
+```
+
+Launch **LumaCut** from the GNOME/KDE overview or run:
+
+```bash
+/opt/LumaCut/lumacut
+```
+
+The RPM creates a desktop entry but does **not** add a `lumacut` command to your `PATH`.
+
+If `dnf` rejects the unsigned local package, verify the checksum first and then install with `--nogpgcheck`:
+
+```bash
+sha256sum -c SHA256SUMS
+sudo dnf install --nogpgcheck ./LumaCut-1.4.1-x86_64.rpm
+```
+
+For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
+
+### Debian / Ubuntu
+
+```bash
+cd ~/Downloads
+sudo apt install ./LumaCut-1.4.1-amd64.deb
+```
+
+`apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
+
+```bash
+/opt/LumaCut/lumacut
+```
+
+### Arch Linux
+
+Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from source.
+
+**AppImage (recommended for Arch):**
+
+```bash
+sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
+
+chmod +x LumaCut-1.4.1-x86_64.AppImage
+./LumaCut-1.4.1-x86_64.AppImage
+```
+
+`fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
+
+```bash
+./LumaCut-1.4.1-x86_64.AppImage --appimage-extract-and-run
+```
+
+**Build from source:**
+
+```bash
+sudo pacman -S --needed git nodejs npm ffmpeg vulkan-icd-loader vulkan-radeon
+
+git clone https://github.com/martintondel02/lumacut.git
+cd lumacut
+npm ci
+npm run desktop
+```
+
+`npm run desktop` builds the frontend and launches the Electron app. It does not create a system-wide desktop entry. See [Quick start](#quick-start) for the full development setup.
+
+### Other Linux distributions
+
+Use the AppImage. Install the AppImage FUSE runtime if your distribution does not ship it:
+
+```bash
+# Debian / Ubuntu
+sudo apt install libfuse2
+
+# Fedora
+sudo dnf install fuse-libs
+
+# Arch
+sudo pacman -S fuse2
+```
+
+Then:
+
+```bash
+chmod +x LumaCut-1.4.1-x86_64.AppImage
+./LumaCut-1.4.1-x86_64.AppImage
+```
+
+If the AppImage will not start, use:
+
+```bash
+./LumaCut-1.4.1-x86_64.AppImage --appimage-extract-and-run
+```
+
+### Verify the download
+
+Release assets include a `SHA256SUMS` file:
+
+```bash
+sha256sum -c SHA256SUMS
+```
+
+### First launch
+
+- Project data, media and exports live in `~/Videos/LumaCut`.
+- Auto captions download the selected Whisper model on first use (547 MiB for large-v3-turbo). The model is checksum-verified.
+- The RPM creates a menu entry. The AppImage and source builds do not integrate automatically.
+- `main` is protected; releases are built from tagged commits by GitHub Actions.
 
 ---
 

@@ -37,6 +37,7 @@ export default function App() {
   const setActivePanel = useEditorStore((state) => state.setActivePanel);
   const addToast = useEditorStore((state) => state.addToast);
   const [importDrag, setImportDrag] = useState(false);
+  const [panelWidths, setPanelWidths] = useState({ left: settings.leftPanelWidth, right: settings.rightPanelWidth });
   const dragDepth = useRef(0);
   const booted = useRef(false);
   const errorNotified = useRef(false);
@@ -233,6 +234,37 @@ export default function App() {
     window.addEventListener('pointerup', up);
   };
 
+  useEffect(() => {
+    setPanelWidths({ left: settings.leftPanelWidth, right: settings.rightPanelWidth });
+  }, [settings.leftPanelWidth, settings.rightPanelWidth]);
+
+  const startPanelResize = (side: 'left' | 'right', event: ReactPointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = side === 'left' ? panelWidths.left : panelWidths.right;
+    const scale = Math.max(0.5, settings.scale / 100);
+    let latest = startWidth;
+    const move = (moveEvent: PointerEvent) => {
+      const delta = (moveEvent.clientX - startX) / scale;
+      latest = side === 'left'
+        ? Math.round(Math.min(640, Math.max(260, startWidth + delta)))
+        : Math.round(Math.min(640, Math.max(280, startWidth - delta)));
+      setPanelWidths((current) => ({ ...current, [side]: latest }));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      document.body.classList.remove('is-resizing-x');
+      settings.update(side === 'left' ? { leftPanelWidth: latest } : { rightPanelWidth: latest });
+    };
+    document.body.classList.add('is-resizing-x');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  };
+
   if (!hydrated || !project) {
     return (
       <div className="boot-screen">
@@ -253,11 +285,27 @@ export default function App() {
       <TopBar />
       <main className="workspace">
         <IconRail />
-        {leftPanelOpen && <AssetPanel />}
+        {leftPanelOpen && <AssetPanel width={panelWidths.left} />}
+        {leftPanelOpen && (
+          <div
+            className="panel-resizer"
+            data-side="left"
+            title="Drag to resize panel · double-click to reset"
+            onPointerDown={(event) => startPanelResize('left', event)}
+            onDoubleClick={() => settings.update({ leftPanelWidth: 340 })}
+          ><span /></div>
+        )}
         <div className="editor-center">
           <PreviewPanel />
         </div>
-        <Inspector />
+        <div
+          className="panel-resizer"
+          data-side="right"
+          title="Drag to resize panel · double-click to reset"
+          onPointerDown={(event) => startPanelResize('right', event)}
+          onDoubleClick={() => settings.update({ rightPanelWidth: 340 })}
+        ><span /></div>
+        <Inspector width={panelWidths.right} />
       </main>
       <div className="timeline-shell" style={{ height: timelineHeight }}>
         <div className="timeline-resize-handle" onPointerDown={startResize} title="Drag to resize timeline">

@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.13.0 — 2026-11-08
+
+### Added
+
+- **Lots of Sounds** sound-effect browser in the Audio panel
+  - no API key required for the CC0 sample collection
+  - search, preview and **Use** to download locally and add to the timeline
+  - creator/provider attribution and CC0 license links on every result
+  - 1-hour search cache; temporary signed previews
+- **Resizable side panels**
+  - drag the left asset panel and right inspector edges
+  - widths persist in local settings
+  - double-click a resize handle to reset to 340 px
+  - pointer-aware at 80–140% interface scale
+
+### Changed
+
+- Audio panel now has **My audio** and **Sound effects** modes
+- Imported sound effects show their **Lots of Sounds** attribution in the library
+- README, roadmap and feature tables updated for 1.13.0
+
+### Verification
+
+- 32/32 Playwright tests pass
+- Added tests for panel resizing/persistence and attributed sound-effect results
+- Live Lots of Sounds sample search verified against the public API
+- Typecheck, production build, AppImage, DEB and RPM pass
+
 ## 1.12.0 — 2026-11-08
 
 ### Added

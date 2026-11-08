@@ -19,7 +19,7 @@ const ANIMATION_LABELS: Record<string, string> = {
 const BLENDS = ['source-over', 'screen', 'multiply', 'overlay', 'soft-light', 'lighten', 'darken', 'color-dodge'] as const;
 const TEXT_ANIMATIONS = ['none', 'fade', 'slide-up', 'slide-down', 'zoom', 'typewriter', 'pop', 'bounce'] as const;
 
-export function Inspector() {
+export function Inspector({ width }: { width?: number }) {
   const project = useEditorStore((state) => state.project);
   const assets = useEditorStore((state) => state.assets);
   const clip = useEditorStore(selectSelectedClip);
@@ -67,7 +67,7 @@ export function Inspector() {
     const totalClips = project.clips.length;
     const videoClips = project.clips.filter((item) => item.kind === 'video' || item.kind === 'image').length;
     return (
-      <aside className="inspector">
+      <aside className="inspector" style={width ? { flexBasis: width, width } : undefined}>
         <div className="inspector-head">
           <div>
             <span className="eyebrow">Properties</span>
@@ -178,7 +178,7 @@ export function Inspector() {
   };
 
   return (
-    <aside className="inspector">
+    <aside className="inspector" style={width ? { flexBasis: width, width } : undefined}>
       <div className="inspector-head clip-inspector-head">
         <div className="clip-inspector-id">
           <span className={`clip-inspector-icon clip-icon-${clip.kind}`}><Icon size={16} /></span>

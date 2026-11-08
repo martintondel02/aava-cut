@@ -34,7 +34,7 @@ body:
     id: version
     attributes:
       label: LumaCut version / commit
-      placeholder: e.g. 1.7.0 or main@abc123
+      placeholder: e.g. 1.8.0 or main@abc123
     validations:
       required: true
   - type: dropdown

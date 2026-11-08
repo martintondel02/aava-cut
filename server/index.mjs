@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createCaptionService } from './captions.mjs';
+import { applyCommands, AGENT_COMMANDS } from '../shared/project-commands.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
@@ -296,7 +297,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.7.0',
+    version: '1.8.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -311,11 +312,123 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.7.0',
+    version: '1.8.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
   });
+});
+
+const AGENT_SESSION_TTL = 2 * 60 * 60 * 1000;
+const agentSessions = new Map();
+
+function cleanupAgentSessions() {
+  const now = Date.now();
+  for (const [id, session] of agentSessions) {
+    if (session.expiresAt <= now) agentSessions.delete(id);
+  }
+}
+
+function agentSession(req, res) {
+  cleanupAgentSessions();
+  const session = agentSessions.get(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: 'Agent session not found or expired' });
+    return null;
+  }
+  session.expiresAt = Date.now() + AGENT_SESSION_TTL;
+  return session;
+}
+
+app.get('/api/agent/capabilities', (req, res) => {
+  res.json({
+    apiVersion: '1.0.0',
+    sessions: true,
+    proposals: true,
+    commands: AGENT_COMMANDS,
+    transport: 'local HTTP; MCP wrapper planned in the agent roadmap',
+    auth: 'localhost only'
+  });
+});
+
+app.post('/api/agent/sessions', (req, res) => {
+  const project = req.body?.project;
+  if (!project || typeof project !== 'object' || !Array.isArray(project.clips) || !Array.isArray(project.tracks)) {
+    return res.status(400).json({ error: 'A project with clips and tracks is required.' });
+  }
+  cleanupAgentSessions();
+  const id = randomId('agent');
+  const session = {
+    id,
+    project: JSON.parse(JSON.stringify(project)),
+    proposals: new Map(),
+    createdAt: Date.now(),
+    expiresAt: Date.now() + AGENT_SESSION_TTL
+  };
+  agentSessions.set(id, session);
+  res.status(201).json({ id, createdAt: session.createdAt, expiresAt: session.expiresAt, project: session.project, commands: AGENT_COMMANDS });
+});
+
+app.get('/api/agent/sessions/:id', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  res.json({
+    id: session.id,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    project: session.project,
+    proposals: [...session.proposals.values()].map(({ id, rationale, diff, createdAt }) => ({ id, rationale, diff, createdAt }))
+  });
+});
+
+app.delete('/api/agent/sessions/:id', (req, res) => {
+  const deleted = agentSessions.delete(req.params.id);
+  if (!deleted) return res.status(404).json({ error: 'Agent session not found' });
+  res.json({ ok: true });
+});
+
+app.post('/api/agent/sessions/:id/commands', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  const result = applyCommands(session.project, req.body?.commands, { assets });
+  if (!result.ok) return res.status(400).json({ ok: false, errors: result.errors });
+  if (req.body?.dryRun !== true) session.project = result.project;
+  res.json({ ok: true, dryRun: req.body?.dryRun === true, project: result.project, diff: result.diff });
+});
+
+app.post('/api/agent/sessions/:id/proposals', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  const result = applyCommands(session.project, req.body?.commands, { assets });
+  if (!result.ok) return res.status(400).json({ ok: false, errors: result.errors });
+  const proposal = {
+    id: randomId('proposal'),
+    rationale: typeof req.body?.rationale === 'string' ? req.body.rationale.slice(0, 2000) : '',
+    commands: req.body.commands,
+    project: result.project,
+    diff: result.diff,
+    createdAt: Date.now()
+  };
+  session.proposals.set(proposal.id, proposal);
+  res.status(201).json({ id: proposal.id, rationale: proposal.rationale, diff: proposal.diff, project: proposal.project });
+});
+
+app.post('/api/agent/sessions/:id/proposals/:proposalId/apply', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  const proposal = session.proposals.get(req.params.proposalId);
+  if (!proposal) return res.status(404).json({ error: 'Proposal not found' });
+  session.project = JSON.parse(JSON.stringify(proposal.project));
+  session.proposals.delete(proposal.id);
+  res.json({ ok: true, project: session.project, diff: proposal.diff, proposalId: proposal.id });
+});
+
+app.post('/api/agent/sessions/:id/proposals/:proposalId/reject', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  const removed = session.proposals.delete(req.params.proposalId);
+  if (!removed) return res.status(404).json({ error: 'Proposal not found' });
+  res.json({ ok: true, proposalId: req.params.proposalId });
 });
 
 const captionService = createCaptionService({

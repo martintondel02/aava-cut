@@ -1,6 +1,6 @@
 {
   "name": "lumacut",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "private": true,
   "description": "LumaCut \u2014 a local-first, CapCut-style video editor for Linux with H.264/H.265/AV1, 10-bit HDR10 and AMD Radeon acceleration, tuned for Fedora",
   "type": "module",
@@ -58,7 +58,8 @@
       "public/favicon.svg",
       "package.json",
       "README.md",
-      "LICENSE"
+      "LICENSE",
+      "shared/**/*"
     ],
     "linux": {
       "target": [

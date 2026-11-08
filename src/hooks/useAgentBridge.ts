@@ -5,6 +5,15 @@ import type { Project } from '../types';
 
 const POLL_MS = 1200;
 const SYNC_MS = 450;
+const ACTIVITY_MS = 2800;
+
+function changedClipIds(before: Project | null, after: Project): string[] {
+  if (!before) return [];
+  const previous = new Map(before.clips.map((clip) => [clip.id, clip]));
+  const next = new Map(after.clips.map((clip) => [clip.id, clip]));
+  const ids = new Set([...previous.keys(), ...next.keys()]);
+  return [...ids].filter((id) => JSON.stringify(previous.get(id)) !== JSON.stringify(next.get(id)));
+}
 
 function makeToken() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `lc_${crypto.randomUUID().replace(/-/g, '')}`;
@@ -36,6 +45,7 @@ export function useAgentBridge() {
   const token = useSettingsStore((state) => state.agentBridgeToken);
   const updateSettings = useSettingsStore((state) => state.update);
   const addToast = useEditorStore((state) => state.addToast);
+  const setAgentRuntime = useEditorStore((state) => state.setAgentRuntime);
   const sessionRef = useRef<string | null>(null);
   const revisionRef = useRef(0);
   const lastPushedRef = useRef('');
@@ -53,17 +63,28 @@ export function useAgentBridge() {
     let cancelled = false;
     let pollTimer: ReturnType<typeof setTimeout> | undefined;
     let syncTimer: ReturnType<typeof setTimeout> | undefined;
+    let activityTimer: ReturnType<typeof setTimeout> | undefined;
 
     const showError = (message: string) => {
       if (!cancelled) addToast(message, 'error');
     };
 
     const applyRemote = (project: Project, message: string) => {
+      const current = useEditorStore.getState().project;
+      const changedIds = changedClipIds(current, project);
       applyingRemoteRef.current = true;
       useEditorStore.getState().applyExternalProject(project);
       applyingRemoteRef.current = false;
       lastPushedRef.current = JSON.stringify(project);
-      addToast(message, 'info');
+      const label = changedIds.length
+        ? `Agent updated ${changedIds.length} ${changedIds.length === 1 ? 'clip' : 'clips'}`
+        : message;
+      setAgentRuntime({ connected: true, active: true, message: label, changedIds });
+      if (activityTimer) clearTimeout(activityTimer);
+      activityTimer = setTimeout(() => {
+        setAgentRuntime({ active: false, changedIds: [] });
+      }, ACTIVITY_MS);
+      addToast(label, 'info');
     };
 
     const poll = async () => {
@@ -71,7 +92,16 @@ export function useAgentBridge() {
       try {
         const response = await agentCall('/api/agent/current', activeToken);
         if (response.ok) {
-          const data = await response.json() as { id: string; revision: number; project: Project };
+          const data = await response.json() as { id: string; revision: number; project: Project; activity?: { active: boolean; label: string; updatedAt: number } };
+          if (data.activity?.active) {
+            if (activityTimer) clearTimeout(activityTimer);
+            setAgentRuntime({ connected: true, active: true, message: data.activity.label || 'Agent working…' });
+          } else if (useEditorStore.getState().agentRuntime.active) {
+            if (activityTimer) clearTimeout(activityTimer);
+            activityTimer = setTimeout(() => {
+              setAgentRuntime({ active: false, changedIds: [] });
+            }, 900);
+          }
           if (data.id !== sessionRef.current) {
             sessionRef.current = data.id;
             revisionRef.current = data.revision;
@@ -137,6 +167,7 @@ export function useAgentBridge() {
         sessionRef.current = data.id;
         revisionRef.current = data.revision;
         lastPushedRef.current = JSON.stringify(project);
+        setAgentRuntime({ connected: true, active: false, message: 'Agent connected', changedIds: [] });
         addToast('Agent Bridge online — waiting for your harness', 'success');
         void poll();
       } catch {
@@ -157,6 +188,8 @@ export function useAgentBridge() {
       unsubscribe();
       if (pollTimer) clearTimeout(pollTimer);
       if (syncTimer) clearTimeout(syncTimer);
+      if (activityTimer) clearTimeout(activityTimer);
+      setAgentRuntime({ connected: false, active: false, message: '', changedIds: [] });
       const sessionId = sessionRef.current;
       sessionRef.current = null;
       revisionRef.current = 0;
@@ -165,5 +198,5 @@ export function useAgentBridge() {
         void agentCall(`/api/agent/sessions/${sessionId}`, activeToken, { method: 'DELETE' }).catch(() => {});
       }
     };
-  }, [enabled, token, updateSettings, addToast]);
+  }, [enabled, token, updateSettings, addToast, setAgentRuntime]);
 }

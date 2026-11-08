@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ChevronDown, Cloud, Download, FilePlus2, FolderOpen, Keyboard, LayoutTemplate, Redo2, Save,
+  Bot, ChevronDown, Cloud, Download, FilePlus2, FolderOpen, Keyboard, LayoutTemplate, Redo2, Save,
   Settings2, Undo2, Upload
 } from 'lucide-react';
 import { ASPECT_PRESETS } from '../types';
@@ -32,6 +32,7 @@ export function TopBar() {
   const historyLength = useEditorStore((state) => state.history.length);
   const futureLength = useEditorStore((state) => state.future.length);
   const lastSavedAt = useEditorStore((state) => state.lastSavedAt);
+  const agentRuntime = useEditorStore((state) => state.agentRuntime);
   const undo = useEditorStore((state) => state.undo);
   const redo = useEditorStore((state) => state.redo);
   const setProjectName = useEditorStore((state) => state.setProjectName);
@@ -141,6 +142,13 @@ export function TopBar() {
           <Cloud size={12} className="save-cloud" />
           <span>{savedAgo}</span>
           <span className="save-dot" />
+          {agentRuntime.connected && (
+            <span className={`agent-live-pill ${agentRuntime.active ? 'is-working' : ''}`} title={agentRuntime.message || 'Agent Bridge connected'}>
+              <i />
+              <Bot size={11} />
+              <span>{agentRuntime.active ? agentRuntime.message : 'Agent connected'}</span>
+            </span>
+          )}
         </div>
       </div>
 

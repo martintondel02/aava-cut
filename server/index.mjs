@@ -14,13 +14,14 @@ const root = path.resolve(__dirname, '..');
 const dataRoot = process.env.LUMACUT_DATA_DIR ? path.resolve(process.env.LUMACUT_DATA_DIR) : root;
 const mediaDir = path.join(dataRoot, 'media');
 const thumbDir = path.join(mediaDir, 'thumbs');
+const frameDir = path.join(mediaDir, 'frames');
 const exportDir = path.join(dataRoot, 'exports');
 const dataDir = path.join(dataRoot, 'data');
 const publicDir = path.join(root, 'public');
 const distDir = path.join(root, 'dist');
 const assetsFile = path.join(dataDir, 'assets.json');
 
-for (const dir of [mediaDir, thumbDir, exportDir, dataDir]) fs.mkdirSync(dir, { recursive: true });
+for (const dir of [mediaDir, thumbDir, frameDir, exportDir, dataDir]) fs.mkdirSync(dir, { recursive: true });
 
 const app = express();
 const PORT = Number(process.env.PORT || 4317);
@@ -116,7 +117,290 @@ async function ensureWaveform(asset) {
   return asset;
 }
 
+const analysisJobs = new Map();
+
+function assetFilePath(asset) {
+  if (!asset?.url) return null;
+  const filePath = asset.source === 'demo'
+    ? path.join(publicDir, asset.url.replace(/^\//, ''))
+    : path.join(mediaDir, asset.url.replace(/^\/media\//, ''));
+  return fs.existsSync(filePath) ? filePath : null;
+}
+
+function parsePairs(stderr, startKey, endKey) {
+  const spans = [];
+  let start = null;
+  for (const line of String(stderr).split('\n')) {
+    const startMatch = line.match(new RegExp(`${startKey}:\\s*([0-9.]+)`));
+    if (startMatch) start = Number(startMatch[1]);
+    const endMatch = line.match(new RegExp(`${endKey}:\\s*([0-9.]+)`));
+    if (endMatch && start !== null) {
+      const end = Number(endMatch[1]);
+      if (end > start) spans.push([Number(start.toFixed(3)), Number(end.toFixed(3))]);
+      start = null;
+    }
+  }
+  if (start !== null) spans.push([Number(start.toFixed(3)), null]);
+  return spans;
+}
+
+async function computeAssetAnalysis(asset) {
+  const filePath = assetFilePath(asset);
+  if (!filePath) return null;
+  const isVideo = asset.kind === 'video' || (asset.kind === 'image' && asset.width > 0);
+  const sceneCuts = [];
+  const silences = [];
+  const blankSpans = [];
+  const staticSpans = [];
+  let contentBox = null;
+  let loudness;
+
+  if (isVideo && asset.kind === 'video') {
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-vf', "select='gt(scene,0.30)',showinfo", '-an', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      for (const match of stderr.matchAll(/pts_time:([0-9.]+)/g)) {
+        const time = Number(match[1]);
+        if (Number.isFinite(time) && (!sceneCuts.length || time - sceneCuts[sceneCuts.length - 1] > 0.08)) sceneCuts.push(Number(time.toFixed(3)));
+      }
+    } catch {}
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-vf', 'blackdetect=d=0.3:pix_th=0.10', '-an', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      for (const [start, end] of parsePairs(stderr, 'black_start', 'black_end')) if (end !== null) blankSpans.push([start, end]);
+    } catch {}
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-vf', 'freezedetect=n=0.003:d=0.6', '-an', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      for (const [start, end] of parsePairs(stderr, 'freeze_start', 'freeze_end')) if (end !== null) staticSpans.push([start, end]);
+    } catch {}
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-vf', 'cropdetect=24:2:0', '-an', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      const matches = [...stderr.matchAll(/crop=(\d+):(\d+):(\d+):(\d+)/g)];
+      const last = matches[matches.length - 1];
+      if (last) {
+        const width = Number(last[1]);
+        const height = Number(last[2]);
+        const x = Number(last[3]);
+        const y = Number(last[4]);
+        if (width > 0 && height > 0 && (width < asset.width - 2 || height < asset.height - 2 || x > 0 || y > 0)) {
+          contentBox = { x, y, width, height };
+        }
+      }
+    } catch {}
+  }
+
+  if (asset.kind !== 'image') {
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-af', 'silencedetect=noise=-35dB:d=0.6', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      for (const [start, end] of parsePairs(stderr, 'silence_start', 'silence_end')) if (end !== null) silences.push([start, end]);
+    } catch {}
+    try {
+      const { stderr } = await execFileP('ffmpeg', [
+        '-hide_banner', '-loglevel', 'info', '-i', filePath,
+        '-af', 'volumedetect', '-f', 'null', '-'
+      ], { timeout: 90000 });
+      const mean = stderr.match(/mean_volume:\s*(-?[0-9.]+) dB/);
+      const peak = stderr.match(/max_volume:\s*(-?[0-9.]+) dB/);
+      if (mean && peak) loudness = { meanDb: Number(mean[1]), peakDb: Number(peak[1]) };
+    } catch {}
+  }
+
+  return {
+    sceneCuts,
+    silences,
+    loudness,
+    blankSpans,
+    staticSpans,
+    screenRecording: Boolean(contentBox || blankSpans.length || staticSpans.length),
+    contentBox,
+    computedAt: new Date().toISOString()
+  };
+}
+
+async function ensureAssetAnalysis(asset, force = false) {
+  if (!asset) return null;
+  if (asset.analysis && !force) return asset.analysis;
+  if (analysisJobs.has(asset.id)) return analysisJobs.get(asset.id);
+  const job = computeAssetAnalysis(asset).then(async (analysis) => {
+    if (analysis) {
+      asset.analysis = analysis;
+      await saveAssets(assets);
+    }
+    return analysis;
+  }).finally(() => analysisJobs.delete(asset.id));
+  analysisJobs.set(asset.id, job);
+  return job;
+}
+
+function projectVisualClipAt(project, time) {
+  const hidden = new Set((project.tracks || []).filter((track) => track.hidden).map((track) => track.id));
+  const rank = { video: 0, overlay: 1 };
+  return (project.clips || [])
+    .filter((clip) => (clip.kind === 'video' || clip.kind === 'image')
+      && !hidden.has(clip.trackId)
+      && time >= clip.start
+      && time < clip.start + clip.duration)
+    .sort((a, b) => {
+      const trackA = project.tracks?.find((track) => track.id === a.trackId);
+      const trackB = project.tracks?.find((track) => track.id === b.trackId);
+      return (rank[trackA?.kind] ?? 0) - (rank[trackB?.kind] ?? 0);
+    })
+    .pop();
+}
+
+function frameHash(...parts) {
+  return crypto.createHash('sha1').update(parts.join('|')).digest('hex').slice(0, 20);
+}
+
+async function renderAssetFrame(asset, at = 1, width = 960) {
+  const filePath = assetFilePath(asset);
+  if (!filePath) throw new Error('Asset file not found on disk');
+  const outWidth = Math.max(160, Math.min(1920, Math.round(width)));
+  const sourceRatio = asset.width && asset.height ? asset.height / asset.width : 9 / 16;
+  const outHeight = Math.max(90, Math.round((outWidth * sourceRatio) / 2) * 2);
+  const crop = asset.analysis?.contentBox;
+  const filter = crop
+    ? `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${outWidth}:${outHeight}:force_original_aspect_ratio=increase,crop=${outWidth}:${outHeight}`
+    : `scale=${outWidth}:${outHeight}:force_original_aspect_ratio=increase,crop=${outWidth}:${outHeight}`;
+  const hash = frameHash(asset.id, at, outWidth, outHeight, JSON.stringify(crop || null));
+  const dest = path.join(frameDir, `${hash}.jpg`);
+  if (!fs.existsSync(dest)) {
+    const seek = asset.kind === 'image' ? [] : ['-ss', String(Math.max(0, Math.min(asset.duration || 0, at)))];
+    await execFileP('ffmpeg', [
+      '-y', '-hide_banner', '-loglevel', 'error', ...seek, '-i', filePath,
+      '-frames:v', '1', '-vf', filter, '-q:v', '3', dest
+    ], { timeout: 45000 });
+  }
+  return dest;
+}
+
+async function renderTimelineFrame(project, at, width = 960) {
+  const outWidth = Math.max(160, Math.min(1920, Math.round(width)));
+  const outHeight = Math.max(90, Math.round((outWidth * project.height / Math.max(1, project.width)) / 2) * 2);
+  const clip = projectVisualClipAt(project, at);
+  const asset = clip?.assetId ? assets.find((item) => item.id === clip.assetId) : null;
+  const hash = frameHash(project.id, at, outWidth, outHeight, clip?.id || 'blank', JSON.stringify(clip?.crop || null));
+  const dest = path.join(frameDir, `${hash}.jpg`);
+  if (fs.existsSync(dest)) return dest;
+  if (!asset) {
+    await execFileP('ffmpeg', [
+      '-y', '-hide_banner', '-loglevel', 'error',
+      '-f', 'lavfi', '-i', `color=c=black:s=${outWidth}x${outHeight}`,
+      '-frames:v', '1', '-q:v', '3', dest
+    ], { timeout: 45000 });
+    return dest;
+  }
+  const filePath = assetFilePath(asset);
+  if (!filePath) throw new Error('Clip asset file not found on disk');
+  const local = Math.max(0, Math.min(clip.duration, at - clip.start));
+  const sourceTime = Math.max(0, Math.min(asset.duration || 0, clip.trimIn + local * (clip.speed || 1)));
+  const crop = clip.crop && asset.width && asset.height
+    ? {
+        x: Math.max(0, Math.min(asset.width - 1, clip.crop.x)),
+        y: Math.max(0, Math.min(asset.height - 1, clip.crop.y)),
+        width: Math.max(1, Math.min(asset.width - clip.crop.x, clip.crop.width)),
+        height: Math.max(1, Math.min(asset.height - clip.crop.y, clip.crop.height))
+      }
+    : null;
+  const filter = crop
+    ? `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},scale=${outWidth}:${outHeight}:force_original_aspect_ratio=increase,crop=${outWidth}:${outHeight}`
+    : `scale=${outWidth}:${outHeight}:force_original_aspect_ratio=increase,crop=${outWidth}:${outHeight}`;
+  const seek = asset.kind === 'image' ? [] : ['-ss', String(sourceTime)];
+  await execFileP('ffmpeg', [
+    '-y', '-hide_banner', '-loglevel', 'error', ...seek, '-i', filePath,
+    '-frames:v', '1', '-vf', filter, '-q:v', '3', dest
+  ], { timeout: 45000 });
+  return dest;
+}
+
+async function renderContactSheet(project, from, to, step, width = 480) {
+  const start = Math.max(0, Number(from) || 0);
+  const end = Math.min(projectDuration(project), Math.max(start + 0.1, Number(to) || projectDuration(project)));
+  const safeStep = Math.max(0.2, Number(step) || (end - start) / 12);
+  const times = [];
+  for (let time = start; time <= end + 0.001 && times.length < 24; time += safeStep) times.push(Number(time.toFixed(3)));
+  if (!times.length) times.push(start);
+  const dir = await fsp.mkdtemp(path.join(frameDir, 'sheet-'));
+  try {
+    for (let index = 0; index < times.length; index += 1) {
+      const frame = await renderTimelineFrame(project, times[index], width);
+      await fsp.copyFile(frame, path.join(dir, `frame-${String(index).padStart(3, '0')}.jpg`));
+    }
+    const columns = Math.min(4, times.length);
+    const rows = Math.ceil(times.length / columns);
+    const dest = path.join(frameDir, `${frameHash(project.id, start, end, safeStep, width, project.updatedAt)}.jpg`);
+    await execFileP('ffmpeg', [
+      '-y', '-hide_banner', '-loglevel', 'error',
+      '-pattern_type', 'glob', '-i', path.join(dir, 'frame-*.jpg'),
+      '-vf', `tile=${columns}x${rows}:padding=4:margin=4:color=black`,
+      '-frames:v', '1', '-q:v', '3', dest
+    ], { timeout: 90000 });
+    return dest;
+  } finally {
+    await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function renderTimelineProxy(project, { from = 0, to = projectDuration(project), width = 480, fps = 2 } = {}) {
+  const start = Math.max(0, Number(from) || 0);
+  const end = Math.min(projectDuration(project), Math.max(start + 0.1, Number(to) || projectDuration(project)));
+  const safeFps = Math.max(1, Math.min(6, Number(fps) || 2));
+  const safeWidth = Math.max(160, Math.min(1280, Number(width) || 480));
+  const frameCount = Math.min(180, Math.max(1, Math.round((end - start) * safeFps)));
+  const dir = await fsp.mkdtemp(path.join(frameDir, 'proxy-'));
+  const name = `agent-proxy-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.mp4`;
+  const output = path.join(exportDir, name);
+  try {
+    for (let index = 0; index < frameCount; index += 1) {
+      const time = start + index / safeFps;
+      const frame = await renderTimelineFrame(project, time, safeWidth);
+      await fsp.copyFile(frame, path.join(dir, `frame-${String(index).padStart(4, '0')}.jpg`));
+    }
+    await execFileP('ffmpeg', [
+      '-y', '-hide_banner', '-loglevel', 'error',
+      '-framerate', String(safeFps), '-i', path.join(dir, 'frame-%04d.jpg'),
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24', '-pix_fmt', 'yuv420p',
+      '-movflags', '+faststart', output
+    ], { timeout: 5 * 60 * 1000 });
+    const stat = await fsp.stat(output);
+    return {
+      ok: true,
+      url: `/exports/${name}`,
+      filename: name,
+      size: stat.size,
+      width: safeWidth,
+      height: Math.max(90, Math.round((safeWidth * project.height / Math.max(1, project.width)) / 2) * 2),
+      fps: safeFps,
+      from: start,
+      to: end,
+      frames: frameCount,
+      caveat: 'Preview proxy renders the top visible video/image layer with crop. Text, stickers, transitions, effects and audio are not composited. Use the editor export for delivery.'
+    };
+  } finally {
+    await fsp.rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+function projectDuration(project) {
+
+  return Math.max(0.1, ...(project.clips || []).map((clip) => clip.start + clip.duration));
+}
+
 async function loadAssets() {
+
   let stored = [];
   if (fs.existsSync(assetsFile)) {
     try { stored = JSON.parse(fs.readFileSync(assetsFile, 'utf8')); } catch { stored = []; }
@@ -297,7 +581,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
     ffmpeg: true,
-    version: '1.9.0',
+    version: '1.10.0',
     platform: process.platform,
     prod: isProd,
     dataDir,
@@ -312,7 +596,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/capabilities', (req, res) => {
   res.json({
-    version: '1.9.0',
+    version: '1.10.0',
     hardware,
     software: { h264: h264Encoder, hevc: hevcEncoder, av1: av1Encoder, vp9: vp9Encoder },
     codecs
@@ -357,6 +641,10 @@ app.get('/api/agent/capabilities', (req, res) => {
     apiVersion: '1.0.0',
     sessions: true,
     proposals: true,
+    frames: true,
+    contactSheets: true,
+    assetAnalysis: true,
+    proxyRender: true,
     commands: AGENT_COMMANDS,
     transport: 'local HTTP + MCP stdio server',
     auth: 'x-lumacut-agent-token required for sessions',
@@ -380,6 +668,7 @@ app.post('/api/agent/sessions', (req, res) => {
     tokenHash: agentTokenHash(token),
     project: JSON.parse(JSON.stringify(project)),
     revision: 1,
+    activity: { active: false, label: '', updatedAt: Date.now() },
     proposals: new Map(),
     createdAt: Date.now(),
     expiresAt: Date.now() + AGENT_SESSION_TTL
@@ -397,7 +686,7 @@ app.get('/api/agent/current', (req, res) => {
   const session = sessions[0];
   if (!session) return res.status(404).json({ error: 'No live agent session. Enable Agent Bridge in LumaCut.' });
   session.expiresAt = Date.now() + AGENT_SESSION_TTL;
-  res.json({ id: session.id, revision: session.revision, project: session.project, expiresAt: session.expiresAt });
+  res.json({ id: session.id, revision: session.revision, project: session.project, expiresAt: session.expiresAt, activity: session.activity });
 });
 
 app.post('/api/agent/sessions/:id/sync', (req, res) => {
@@ -425,6 +714,7 @@ app.get('/api/agent/sessions/:id', (req, res) => {
     createdAt: session.createdAt,
     expiresAt: session.expiresAt,
     project: session.project,
+    activity: session.activity,
     proposals: [...session.proposals.values()].map(({ id, rationale, diff, createdAt }) => ({ id, rationale, diff, createdAt }))
   });
 });
@@ -434,6 +724,18 @@ app.delete('/api/agent/sessions/:id', (req, res) => {
   if (!session || !requireAgentToken(req, res, session)) return;
   agentSessions.delete(req.params.id);
   res.json({ ok: true });
+});
+
+app.post('/api/agent/sessions/:id/activity', (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  session.activity = {
+    active: req.body?.active === true,
+    label: typeof req.body?.label === 'string' ? req.body.label.slice(0, 120) : '',
+    updatedAt: Date.now()
+  };
+  session.expiresAt = Date.now() + AGENT_SESSION_TTL;
+  res.json({ ok: true, activity: session.activity });
 });
 
 app.post('/api/agent/sessions/:id/commands', (req, res) => {
@@ -515,7 +817,24 @@ app.delete('/api/captions/jobs/:id', (req, res) => {
 });
 
 app.get('/api/assets', (req, res) => {
-  res.json(assets.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+  const sorted = assets.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  if (req.query.lean === '1') {
+    return res.json(sorted.map(({ peaks, analysis, ...asset }) => ({ ...asset, analysisReady: Boolean(analysis) })));
+  }
+  res.json(sorted);
+});
+
+app.get('/api/assets/:id/analysis', async (req, res) => {
+  const asset = assets.find((item) => item.id === req.params.id);
+  if (!asset) return res.status(404).json({ error: 'Asset not found' });
+  try {
+    const force = req.query.refresh === '1';
+    const analysis = await ensureAssetAnalysis(asset, force);
+    if (!analysis) return res.status(422).json({ error: 'Analysis requires a media file on disk' });
+    res.json({ assetId: asset.id, ...analysis });
+  } catch (error) {
+    res.status(500).json({ error: 'Analysis failed', detail: String(error?.message || error) });
+  }
 });
 
 const upload = multer({
@@ -527,6 +846,58 @@ const upload = multer({
     }
   }),
   limits: { fileSize: 2 * 1024 * 1024 * 1024 }
+});
+
+app.post('/api/agent/sessions/:id/proxy', async (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  try {
+    const proxy = await renderTimelineProxy(session.project, {
+      from: req.body?.from,
+      to: req.body?.to,
+      width: req.body?.width,
+      fps: req.body?.fps
+    });
+    res.json(proxy);
+  } catch (error) {
+    res.status(500).json({ error: 'Proxy render failed', detail: String(error?.message || error) });
+  }
+});
+
+app.get('/api/assets/:id/frame', async (req, res) => {
+  const asset = assets.find((item) => item.id === req.params.id);
+  if (!asset) return res.status(404).json({ error: 'Asset not found' });
+  try {
+    const frame = await renderAssetFrame(asset, Number(req.query.at) || 0, Number(req.query.w) || 960);
+    res.type('image/jpeg').sendFile(frame);
+  } catch (error) {
+    res.status(500).json({ error: 'Frame render failed', detail: String(error?.message || error) });
+  }
+});
+
+app.get('/api/agent/sessions/:id/frame', async (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  try {
+    const frame = await renderTimelineFrame(session.project, Math.max(0, Number(req.query.at) || 0), Number(req.query.w) || 960);
+    res.type('image/jpeg').sendFile(frame);
+  } catch (error) {
+    res.status(500).json({ error: 'Frame render failed', detail: String(error?.message || error) });
+  }
+});
+
+app.get('/api/agent/sessions/:id/sheet', async (req, res) => {
+  const session = agentSession(req, res);
+  if (!session) return;
+  try {
+    const from = req.query.from === undefined ? 0 : Number(req.query.from);
+    const to = req.query.to === undefined ? projectDuration(session.project) : Number(req.query.to);
+    const step = req.query.step === undefined ? (to - from) / 12 : Number(req.query.step);
+    const sheet = await renderContactSheet(session.project, from, to, step, Number(req.query.w) || 480);
+    res.type('image/jpeg').sendFile(sheet);
+  } catch (error) {
+    res.status(500).json({ error: 'Contact sheet failed', detail: String(error?.message || error) });
+  }
 });
 
 app.post('/api/assets', upload.array('files', 30), async (req, res) => {
@@ -558,6 +929,7 @@ app.post('/api/assets', upload.array('files', 30), async (req, res) => {
         try { asset.peaks = await extractPeaks(file.path, info.duration); } catch {}
       }
       assets.push(asset);
+      void ensureAssetAnalysis(asset).catch(() => {});
       created.push(asset);
     } catch (error) {
       errors.push({ file: file.originalname, error: String(error?.message || error) });

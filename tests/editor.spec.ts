@@ -324,7 +324,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.9.0');
+  expect(capabilities.version).toBe('1.10.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -483,6 +483,8 @@ test('agent command API supports live sync, commands, proposals and ripple edits
   expect(capabilities.ok()).toBeTruthy();
   const caps = await capabilities.json();
   expect(caps.commands.some((command: { type: string }) => command.type === 'clip.delete')).toBe(true);
+  const cropCommand = caps.commands.find((command: { type: string }) => command.type === 'clip.crop');
+  expect(cropCommand?.params?.properties?.source).toBeTruthy();
 
   const base = {
     id: 'clip-a', trackId: 'track-main', kind: 'video', name: 'A', assetId: videoAssetId,
@@ -538,6 +540,35 @@ test('agent command API supports live sync, commands, proposals and ripple edits
   expect(addResponse.ok()).toBeTruthy();
   const added = await addResponse.json();
   expect(added.project.clips).toHaveLength(3);
+
+  const cropResponse = await request.post(`/api/agent/sessions/${session.id}/commands`, {
+    headers: agentHeaders,
+    data: { commands: [{ type: 'clip.crop', clipId: 'clip-b', source: { x: 0, y: 0, width: 500, height: 300 } }] }
+  });
+  expect(cropResponse.ok()).toBeTruthy();
+
+  const frameResponse = await request.get(`/api/agent/sessions/${session.id}/frame?at=3&w=640`, { headers: agentHeaders });
+  expect(frameResponse.ok()).toBeTruthy();
+  expect(frameResponse.headers()['content-type']).toContain('image/jpeg');
+  expect((await frameResponse.body()).length).toBeGreaterThan(1000);
+
+  const sheetResponse = await request.get(`/api/agent/sessions/${session.id}/sheet?from=2&to=6&step=2&w=320`, { headers: agentHeaders });
+  expect(sheetResponse.ok()).toBeTruthy();
+  expect(sheetResponse.headers()['content-type']).toContain('image/jpeg');
+
+  const proxyResponse = await request.post(`/api/agent/sessions/${session.id}/proxy`, {
+    headers: agentHeaders, data: { from: 2, to: 4, width: 320, fps: 1 }
+  });
+  expect(proxyResponse.ok()).toBeTruthy();
+  const proxy = await proxyResponse.json();
+  expect(proxy.url).toMatch(/^\/exports\/agent-proxy-.*\.mp4$/);
+  expect(proxy.caveat).toContain('top visible');
+  expect((await request.get(proxy.url)).ok()).toBeTruthy();
+
+  const analysisResponse = await request.get(`/api/assets/${videoAssetId}/analysis`);
+  expect(analysisResponse.ok()).toBeTruthy();
+  const analysis = await analysisResponse.json();
+  expect(Array.isArray(analysis.sceneCuts)).toBe(true);
 
   const dryRun = await request.post(`/api/agent/sessions/${session.id}/commands`, {
     headers: agentHeaders,
@@ -603,7 +634,7 @@ test('MCP stdio bridge exposes project and command tools', async ({ request }) =
     await client.connect(transport);
     const tools = await client.listTools();
     const names = tools.tools.map((tool) => tool.name);
-    expect(names).toEqual(expect.arrayContaining(['get_project', 'get_thumbnail', 'apply_commands', 'create_proposal', 'apply_proposal']));
+    expect(names).toEqual(expect.arrayContaining(['get_project', 'get_thumbnail', 'get_asset_analysis', 'get_frame', 'get_contact_sheet', 'render_proxy', 'apply_commands', 'create_proposal', 'apply_proposal']));
     const result = await client.callTool({ name: 'get_project', arguments: {} });
     const content = result.content as Array<{ type: string; text?: string }>;
     expect(content[0]?.type).toBe('text');
@@ -631,6 +662,7 @@ test('live Agent Bridge applies an agent command to the open editor', async ({ p
     data: { commands: [{ type: 'clip.set', clipId, patch: { volume: 0.15 } }] }
   });
   expect(changed.ok()).toBeTruthy();
+  await expect(page.locator('.agent-live-pill')).toContainText('Agent updated');
   await expect.poll(async () => page.evaluate((id) => {
     const project = JSON.parse(localStorage.getItem('lumacut.project.v1') || '{}');
     return project.clips?.find((clip: { id: string }) => clip.id === id)?.volume;

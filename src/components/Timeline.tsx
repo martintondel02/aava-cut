@@ -64,6 +64,7 @@ export function Timeline() {
   const zoom = useEditorStore((state) => state.zoom);
   const snapping = useEditorStore((state) => state.snapping);
   const showWaveforms = useSettingsStore((state) => state.showWaveforms);
+  const agentRuntime = useEditorStore((state) => state.agentRuntime);
   const uiScale = useSettingsStore((state) => state.scale / 100);
   const selectedClipIds = useEditorStore((state) => state.selectedClipIds);
   const selectedKeyframe = useEditorStore((state) => state.selectedKeyframe);
@@ -860,6 +861,7 @@ function ClipBlock({
   const addKeyframeAt = useEditorStore((state) => state.addKeyframeAt);
   const setPlayhead = useEditorStore((state) => state.setPlayhead);
   const showWaveforms = useSettingsStore((state) => state.showWaveforms);
+  const agentRuntime = useEditorStore((state) => state.agentRuntime);
   const uiScale = useSettingsStore((state) => state.scale / 100);
   const playhead = useEditorStore((state) => state.playhead);
   const beginEdit = useEditorStore((state) => state.beginEdit);
@@ -1046,7 +1048,7 @@ function ClipBlock({
   return (
     <div
       data-clip-id={clip.id}
-      className={`timeline-clip clip-${clip.kind} ${selected ? 'is-selected' : ''} ${track.hidden ? 'is-track-hidden' : ''} ${drag ? 'is-dragging' : ''} ${clip.caption ? 'is-caption' : ''}`}
+      className={`timeline-clip clip-${clip.kind} ${selected ? 'is-selected' : ''} ${track.hidden ? 'is-track-hidden' : ''} ${drag ? 'is-dragging' : ''} ${clip.caption ? 'is-caption' : ''} ${agentRuntime.changedIds.includes(clip.id) ? 'is-agent-touched' : ''}`}
       style={{ left: clip.start * zoom, top: top + 4, width, height: height - 8, '--clip-color': color } as React.CSSProperties}
       onPointerDown={(event) => startDrag('move', event)}
       onDoubleClick={(event) => { event.stopPropagation(); if (clip.kind === 'text') setActivePanel('text'); }}

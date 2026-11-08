@@ -26,6 +26,16 @@ export interface MediaAsset {
   size?: number;
   createdAt?: string;
   peaks?: number[];
+  analysis?: {
+    sceneCuts: number[];
+    silences: Array<[number, number]>;
+    loudness?: { meanDb: number; peakDb: number };
+    blankSpans: Array<[number, number]>;
+    staticSpans: Array<[number, number]>;
+    screenRecording: boolean;
+    contentBox?: { x: number; y: number; width: number; height: number } | null;
+    computedAt: string;
+  };
   folder?: string;
 }
 
@@ -77,6 +87,7 @@ export interface Clip {
   y: number;
   scale: number;
   rotation: number;
+  crop?: { x: number; y: number; width: number; height: number };
   flipH?: boolean;
   flipV?: boolean;
   blend: BlendMode;

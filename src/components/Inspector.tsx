@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import {
   AlignCenter, AlignLeft, AlignRight, Aperture, Captions, CircleDot, Clock3, CopyPlus, Diamond, Download,
-  Film, FlipHorizontal2, FlipVertical2, Gauge, Image as ImageIcon, KeyRound, Layers, Monitor, Music2,
+  Check, Film, FlipHorizontal2, FlipVertical2, Gauge, Image as ImageIcon, KeyRound, Layers, Monitor, Music2,
   Palette, RotateCcw, Scissors, Shapes, SlidersHorizontal, Sparkles, Sticker, Trash2, Type, Volume2, X
 } from 'lucide-react';
 import { FONT_OPTIONS, FILTERS, EFFECTS, TRANSITIONS, ASPECT_PRESETS, TEXT_PRESETS } from '../types';
@@ -94,9 +94,14 @@ export function Inspector() {
                   type="button"
                   key={preset.id}
                   className={preset.width === project.width && preset.height === project.height ? 'is-active' : ''}
+                  aria-pressed={preset.width === project.width && preset.height === project.height}
+                  title={`${preset.label} ${preset.id} · ${preset.width} × ${preset.height}`}
                   onClick={() => setAspect(preset.width, preset.height)}
                 >
                   <span className={`ratio-shape ratio-${preset.id.replace(':', '-')}`} />
+                  {preset.width === project.width && preset.height === project.height && (
+                    <span className="aspect-check" aria-hidden="true"><Check size={11} strokeWidth={2.5} /></span>
+                  )}
                   <span className="aspect-name">{preset.label}</span>
                   <span className="aspect-id">{preset.id}</span>
                 </button>

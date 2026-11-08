@@ -43,9 +43,9 @@
 
 | Package | Best for | Install |
 | --- | --- | --- |
-| **`LumaCut-1.4.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
-| **`LumaCut-1.4.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
-| **`LumaCut-1.4.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+| **`LumaCut-1.4.1-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
+| **`LumaCut-1.4.1-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
+| **`LumaCut-1.4.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
 
 All builds include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export. Auto captions also need the system **Vulkan loader**; the RPM declares `vulkan-loader`, the DEB declares `libvulkan1`, and normal Fedora/Ubuntu desktops already have it. The first caption job downloads a model once.
 
@@ -215,7 +215,7 @@ See **[docs/AUTOCAPTIONS.md](docs/AUTOCAPTIONS.md)** for requirements, model man
 
 ## AMD Radeon acceleration
 
-LumaCut 1.4 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.4.1 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
@@ -252,7 +252,7 @@ Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's 
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.4.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.4.1-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.

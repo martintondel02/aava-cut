@@ -192,7 +192,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.4.0');
+  expect(capabilities.version).toBe('1.4.1');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -250,4 +250,28 @@ test('serves local caption capabilities and exposes the auto caption card', asyn
   await page.locator('.rail-tab[title="Captions (8)"]').click();
   await expect(page.locator('.auto-captions-card')).toBeVisible();
   await expect(page.locator('.auto-captions-start')).toBeVisible();
+});
+
+test('keeps canvas labels legible and media hint on one line', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto('/');
+  const aspectGrid = page.locator('.aspect-grid');
+  await expect(aspectGrid).toBeVisible();
+  const idSizes = await aspectGrid.locator('.aspect-id').evaluateAll((nodes) =>
+    nodes.map((node) => parseFloat(getComputedStyle(node).fontSize))
+  );
+  expect(Math.min(...idSizes)).toBeGreaterThanOrEqual(8);
+
+  const mediaTab = page.locator('.rail-tab[title="Media (1)"]');
+  await mediaTab.click();
+  const hint = page.locator('.panel-actions-hint');
+  if (!(await hint.isVisible().catch(() => false))) await mediaTab.click();
+  await expect(hint).toBeVisible();
+  const hintMetrics = await hint.evaluate((node) => ({
+    scrollWidth: node.scrollWidth,
+    clientWidth: node.clientWidth,
+    whiteSpace: getComputedStyle(node).whiteSpace
+  }));
+  expect(hintMetrics.whiteSpace).toBe('nowrap');
+  expect(hintMetrics.scrollWidth).toBeLessThanOrEqual(hintMetrics.clientWidth + 1);
 });

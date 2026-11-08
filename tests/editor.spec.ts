@@ -338,7 +338,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('1.13.0');
+  expect(capabilities.version).toBe('1.14.0');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -845,4 +845,30 @@ test('Lots of Sounds search renders effects with attribution', async ({ page }) 
   await expect(page.locator('.sound-tags')).toContainText('notification');
   await expect(page.locator('.sounds-attribution')).toContainText('Lots of Sounds');
   await expect(page.locator('.sounds-attribution')).toContainText('CC0');
+});
+test('TikTok import refuses non-TikTok links and requires consent', async ({ page, request }) => {
+  const capabilities = await request.get('/api/tiktok/capabilities');
+  expect(capabilities.ok()).toBeTruthy();
+  expect(typeof (await capabilities.json()).available).toBe('boolean');
+
+  const invalid = await request.post('/api/tiktok/import', {
+    data: { url: 'https://example.com/video/1', confirmed: true }
+  });
+  expect(invalid.status()).toBe(400);
+  expect((await invalid.json()).code).toBe('invalid-url');
+
+  const consent = await request.post('/api/tiktok/import', {
+    data: { url: 'https://www.tiktok.com/@creator/video/1234567890', confirmed: false }
+  });
+  expect(consent.status()).toBe(428);
+  expect((await consent.json()).code).toBe('consent-required');
+
+  await page.goto('/');
+  await page.locator('.rail-tab[title="Audio (2)"]').click();
+  await expect(page.locator('.tiktok-audio-card')).toContainText('Use the sound from a TikTok video');
+  const extractButton = page.locator('.tiktok-url-row .btn');
+  await expect(extractButton).toBeDisabled();
+  await page.locator('.tiktok-url-row input').fill('https://www.tiktok.com/@creator/video/1234567890');
+  await page.locator('.tiktok-consent input').check();
+  await expect(extractButton).toBeEnabled();
 });

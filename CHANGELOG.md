@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.14.0 — 2026-11-08
+
+### Added
+
+- **TikTok audio from a link**
+  - paste a TikTok URL in the Audio panel
+  - explicit rights-confirmation checkbox
+  - local extraction through the **bundled yt-dlp** helper
+  - FFmpeg MP3 conversion, local library import and timeline insertion
+  - TikTok provenance, creator and source URL retained
+  - actionable errors for invalid links, missing consent, unsupported content and concurrent jobs
+- **yt-dlp packaging**
+  - checksum-pinned standalone binary downloaded by `npm run fetch:yt-dlp`
+  - bundled under `resources/bin/yt-dlp` via electron-builder `extraResources`
+  - release workflow fetches and verifies it before packaging
+  - source/dev falls back to a system `yt-dlp`
+
+### Security
+
+- only `tiktok.com` and its short-link hosts are accepted
+- yt-dlp is spawned with an argument array, never a shell
+- 180-second timeout, size cap, one extraction at a time
+- temporary directories removed after success or failure
+- consent is required before any network extraction
+
+### Verification
+
+- 33/33 Playwright tests pass
+- New tests cover non-TikTok rejection, consent enforcement, bundled-extractor capability and the Audio-panel UI
+- Typecheck, production build, AppImage, DEB and RPM pass
+- Packaged binary path verified
+
 ## 1.13.0 — 2026-11-08
 
 ### Added

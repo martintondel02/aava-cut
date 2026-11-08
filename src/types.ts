@@ -16,7 +16,7 @@ export interface MediaAsset {
   id: string;
   name: string;
   kind: AssetKind;
-  source: 'demo' | 'upload' | 'pixabay' | 'lots-of-sounds';
+  source: 'demo' | 'upload' | 'pixabay' | 'lots-of-sounds' | 'tiktok';
   url: string;
   thumbnail: string | null;
   duration: number;
@@ -25,7 +25,7 @@ export interface MediaAsset {
   hasAudio?: boolean;
   size?: number;
   createdAt?: string;
-  provider?: 'Pixabay' | 'Lots of Sounds';
+  provider?: 'Pixabay' | 'Lots of Sounds' | 'TikTok';
   creator?: string;
   creatorUrl?: string;
   sourceUrl?: string;

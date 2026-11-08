@@ -1,6 +1,6 @@
 {
   "name": "lumacut",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "private": true,
   "description": "LumaCut \u2014 a local-first, CapCut-style video editor for Linux with H.264/H.265/AV1, 10-bit HDR10 and AMD Radeon acceleration, tuned for Fedora",
   "type": "module",
@@ -16,7 +16,9 @@
     "desktop:dev": "concurrently -k -n server,web,app -c cyan,magenta,yellow \"node server/index.mjs\" \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron . --dev\"",
     "test:e2e": "playwright test",
     "dist:linux": "npm run build && electron-builder --linux AppImage deb rpm --publish never",
-    "dist:dir": "npm run build && electron-builder --linux dir --publish never"
+    "dist:dir": "npm run build && electron-builder --linux dir --publish never",
+    "fetch:yt-dlp": "node scripts/fetch-yt-dlp.mjs",
+    "predist:linux": "npm run fetch:yt-dlp"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -90,8 +92,11 @@
     },
     "extraResources": [
       {
-        "from": "vendor/whisper",
-        "to": "whisper"
+        "from": "vendor/yt-dlp",
+        "to": "bin",
+        "filter": [
+          "yt-dlp"
+        ]
       }
     ]
   },

@@ -2035,3 +2035,37 @@ body { zoom: var(--ui-scale, 1); }
 .export-accel-copy strong { color: var(--text-soft); font-size: 8.5px; font-weight: 600; }
 .export-accel-copy em { color: var(--faint); font-size: 6.8px; font-style: normal; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .switch:disabled { opacity: .38; cursor: not-allowed; }
+
+/* ---------- Export codec / bit depth / HDR ---------- */
+.codec-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.codec-cards button {
+  display: flex; flex-direction: column; gap: 2px; text-align: left;
+  padding: 8px 9px; border-radius: 6px; border: 1px solid var(--line);
+  background: rgba(255,255,255,.02); min-width: 0;
+}
+.codec-cards button:hover:not(:disabled) { border-color: var(--line-strong); }
+.codec-cards button.is-active { border-color: var(--accent-line); background: var(--accent-soft); }
+.codec-cards button:disabled { opacity: .42; cursor: not-allowed; }
+.codec-cards strong { color: var(--text-soft); font-family: 'Montserrat', sans-serif; font-size: 9.5px; }
+.codec-cards button.is-active strong { color: var(--accent); }
+.codec-cards span { color: var(--faint); font-size: 6.6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-codec-hint {
+  display: flex; align-items: flex-start; gap: 5px;
+  padding: 6px 7px; border-radius: 5px;
+  border: 1px solid rgba(255, 199, 107, .18);
+  background: rgba(255, 199, 107, .055);
+  color: var(--faint); font-size: 6.8px; line-height: 1.4;
+}
+.export-codec-hint svg { color: #ffc76b; flex: 0 0 auto; margin-top: 1px; }
+.export-codec-hint a { color: var(--accent); text-decoration: none; flex: 0 0 auto; margin-left: auto; }
+.export-codec-hint a:hover { text-decoration: underline; }
+.export-hdr-control {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 32px; padding: 0 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: rgba(255,255,255,.02);
+}
+.hdr-badge { color: var(--faint); font-size: 6.6px; letter-spacing: .03em; white-space: nowrap; }
+.hdr-badge.is-on { color: #ffc76b; }
+.export-hdr-hint { color: var(--faint); font-size: 6.8px; line-height: 1.45; margin-top: -7px; }
+.segmented button:disabled { opacity: .38; cursor: not-allowed; }
+[data-theme='light'] .codec-cards button, [data-theme='light'] .export-hdr-control { background: var(--panel-soft); }

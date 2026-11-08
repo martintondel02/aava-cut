@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Check, CheckCircle2, Clipboard, Cpu, Download, Film, FolderOpen, Loader2, MonitorPlay, RotateCcw,
+  Check, CheckCircle2, Clipboard, Cpu, Download, Film, FolderOpen, Info, Loader2, MonitorPlay, RotateCcw,
   Sparkles, X, XCircle
 } from 'lucide-react';
 import { useEditorStore } from '../store/editorStore';
 import { formatBytes, formatTime, projectDuration } from '../lib/utils';
 import { canvasRenderer } from '../engine/canvasRenderer';
 import { mediaPool } from '../engine/mediaPool';
-import type { ExportSettings, ServerCapabilities } from '../types';
+import type { CodecCapability, ExportCodec, ExportSettings, ServerCapabilities } from '../types';
 
 const RESOLUTIONS: Record<ExportSettings['resolution'], number> = { '720p': 1280, '1080p': 1920, '4k': 3840 };
 
@@ -100,20 +100,80 @@ export function ExportDialog() {
   if (!open || !project) return null;
 
   const estimatedMb = (duration * (settings.quality === 'high' ? 18 : 9) * 1_000_000) / 8 / 1_000_000;
-  const hwForFormat = capabilities?.hardware.preferredFor[settings.format] || null;
-  const hardwareSelected = Boolean(settings.hardwareAcceleration && hwForFormat);
-  const hardwareCodec = hwForFormat?.codec?.toUpperCase() || '';
+  const codecInfo: CodecCapability | null = settings.codec === 'auto' ? null : capabilities?.codecs?.[settings.codec] || null;
+  const tenBitCapable = (codec: ExportCodec): boolean => {
+    if (codec === 'auto' || codec === 'h264') return false;
+    const info = capabilities?.codecs?.[codec];
+    if (!info || info.maxBitDepth !== 10) return false;
+    return Boolean(info.software || (info.hardware && info.hardware.tenBit));
+  };
+  const codecAvailable = (codec: ExportCodec): boolean => {
+    if (codec === 'auto') return true;
+    const info = capabilities?.codecs?.[codec];
+    if (!info) return false;
+    if (!info.formats.includes(settings.format)) return false;
+    return Boolean(info.software || info.hardware);
+  };
+  const codecReason = (codec: ExportCodec): string => {
+    if (!capabilities) return 'Detecting available encoders…';
+    if (codec === 'auto') return 'Pick the best available encoder.';
+    const info = capabilities.codecs?.[codec];
+    if (!info) return 'This codec is not reported by the local server.';
+    if (!info.formats.includes(settings.format)) return `Choose ${info.formats.map((item) => item.toUpperCase()).join(' or ')} for ${info.label}.`;
+    if (!info.software && !info.hardware) return info.codec === 'hevc'
+      ? 'H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart LumaCut.'
+      : `No working ${info.label} encoder was detected.`;
+    return `${info.label} is available for ${info.formats.map((item) => item.toUpperCase()).join(' / ')}.`;
+  };
+  const hardwareForSelection = (() => {
+    if (!capabilities) return null;
+    if (settings.codec === 'auto') return settings.bitDepth === 8 ? capabilities.hardware.preferredFor[settings.format] || null : null;
+    const hw = codecInfo?.hardware || null;
+    if (!hw) return null;
+    if (settings.bitDepth === 10 && !hw.tenBit) return null;
+    return hw;
+  })();
+  const hardwareSelected = Boolean(settings.hardwareAcceleration && hardwareForSelection);
+  const hdrAvailable = settings.format === 'mp4' && settings.bitDepth === 10 && ['hevc', 'av1'].includes(settings.codec) && Boolean(codecInfo?.hdr);
   const audioCodec = settings.format === 'mp4' ? 'AAC' : 'Opus';
-  const summaryCodec = hardwareSelected
-    ? `${hardwareCodec} / ${audioCodec} · AMD GPU`
-    : settings.format === 'mp4' ? 'H.264 / AAC' : 'VP9 / Opus';
+  const codecName = hardwareSelected
+    ? hardwareForSelection?.label?.replace('AMD VAAPI · ', '') || 'Hardware'
+    : settings.codec === 'auto'
+      ? settings.format === 'mp4' ? 'H.264' : 'VP9'
+      : codecInfo?.label || settings.codec.toUpperCase();
+  const bitLabel = settings.bitDepth === 10 ? '10-bit' : '8-bit';
+  const summaryCodec = `${codecName} ${bitLabel}${settings.hdr ? ' HDR10' : ''} / ${audioCodec}${hardwareSelected ? ' · AMD GPU' : ''}`;
   const accelerationDetail = capabilities
-    ? hwForFormat
-      ? `${capabilities.hardware.gpuNames[0] || 'AMD Radeon'} · falls back to CPU if needed`
-      : capabilities.hardware.detected
-        ? `No AMD VAAPI encoder for ${settings.format.toUpperCase()}; CPU encoding will be used.`
-        : 'No AMD Radeon detected; CPU encoding will be used.'
+    ? hardwareForSelection
+      ? `${capabilities.hardware.gpuNames[0] || 'AMD Radeon'} · ${settings.codec === 'auto' || codecInfo?.software ? 'falls back to CPU if needed' : 'hardware encoder only'}`
+      : settings.codec === 'auto'
+        ? capabilities.hardware.detected
+          ? `No AMD VAAPI encoder for ${settings.format.toUpperCase()}; CPU encoding will be used.`
+          : 'No AMD Radeon detected; CPU encoding will be used.'
+        : codecInfo?.software
+          ? `No AMD hardware for ${codecInfo.label}; using the software ${codecInfo.software} encoder.`
+          : `No AMD hardware encoder for ${codecInfo?.label || settings.codec.toUpperCase()}.`
     : 'Probing AMD VAAPI encoders…';
+
+  const changeCodec = (codec: ExportCodec) => {
+    const info = codec === 'auto' ? null : capabilities?.codecs?.[codec];
+    const supportsTenBit = codec === 'hevc' || codec === 'av1'
+      ? Boolean(info && info.maxBitDepth === 10 && (info.software || info.hardware?.tenBit))
+      : false;
+    const nextBitDepth = supportsTenBit ? settings.bitDepth : 8;
+    setExportSettings({ codec, bitDepth: nextBitDepth, hdr: nextBitDepth === 10 && settings.hdr && Boolean(info?.hdr) });
+  };
+
+  const changeFormat = (format: ExportSettings['format']) => {
+    const nextCodec = format === 'webm' && !['auto', 'av1'].includes(settings.codec) ? 'auto' : settings.codec;
+    const nextBitDepth = nextCodec === 'auto' || nextCodec === 'h264' ? 8 : settings.bitDepth;
+    setExportSettings({ format, codec: nextCodec, bitDepth: nextBitDepth, hdr: format === 'webm' ? false : settings.hdr });
+  };
+
+  const changeBitDepth = (bitDepth: 8 | 10) => {
+    if (bitDepth === 10 && !tenBitCapable(settings.codec)) return;
+    setExportSettings({ bitDepth, hdr: bitDepth === 10 ? settings.hdr : false });
+  };
 
   const reset = () => {
     setExportResult(null);
@@ -231,7 +291,7 @@ export function ExportDialog() {
   };
 
   const finishRecording = async (recorder: MediaRecorder, recorderStopped: Promise<Blob>) => {
-    setExportProgress({ status: 'finalizing', percent: 96, message: hardwareSelected ? `Encoding ${hardwareCodec} on the AMD GPU…` : settings.format === 'mp4' ? 'Encoding H.264 and muxing audio…' : 'Encoding VP9 and muxing audio…' });
+    setExportProgress({ status: 'finalizing', percent: 96, message: `Encoding ${codecName}${settings.bitDepth === 10 ? ' 10-bit' : ''}${settings.hdr ? ' HDR' : ''}${hardwareSelected ? ' on the AMD GPU' : ''}…` });
     mediaPool.pauseAll();
     mediaPool.endCapture();
     try {
@@ -248,6 +308,9 @@ export function ExportDialog() {
       form.append('format', settings.format);
       form.append('quality', settings.quality);
       form.append('acceleration', settings.hardwareAcceleration ? 'auto' : 'off');
+      form.append('codec', settings.codec);
+      form.append('bitDepth', String(settings.bitDepth));
+      form.append('hdr', settings.hdr ? '1' : '0');
       form.append('name', settings.name || project.name);
       form.append('fps', String(settings.fps));
       form.append('duration', String(duration));
@@ -337,7 +400,7 @@ export function ExportDialog() {
                   <div>
                     <span className="status-chip success"><Check size={12} /> Export complete</span>
                     <strong>{result.filename}</strong>
-                    <p>{formatBytes(result.size)} · {settings.format.toUpperCase()} · {dims.width} × {dims.height}{result.hardware ? ` · ${(result.codec || 'GPU').toUpperCase()} AMD` : ''}</p>
+                    <p>{formatBytes(result.size)} · {settings.format.toUpperCase()} · {dims.width} × {dims.height} · {String(result.codec || settings.codec).toUpperCase()}{result.bitDepth === 10 ? ' 10-bit' : ''}{result.hdr ? ' HDR' : ''}{result.hardware ? ' · AMD' : ''}</p>
                   </div>
                   <div className="export-path">
                     <FolderOpen size={14} />
@@ -422,11 +485,82 @@ export function ExportDialog() {
                 <div className="export-option-group">
                   <span className="field-label">Format</span>
                   <div className="segmented">
-                    <button type="button" className={settings.format === 'mp4' ? 'is-active' : ''} onClick={() => setExportSettings({ format: 'mp4' })}>MP4</button>
-                    <button type="button" className={settings.format === 'webm' ? 'is-active' : ''} onClick={() => setExportSettings({ format: 'webm' })}>WebM</button>
+                    <button type="button" className={settings.format === 'mp4' ? 'is-active' : ''} onClick={() => changeFormat('mp4')}>MP4</button>
+                    <button type="button" className={settings.format === 'webm' ? 'is-active' : ''} onClick={() => changeFormat('webm')}>WebM</button>
                   </div>
                 </div>
               </div>
+
+              <div className="export-option-group">
+                <span className="field-label">Codec</span>
+                <div className="codec-cards">
+                  {([
+                    { id: 'auto' as const, label: 'Auto', hint: 'Best available' },
+                    { id: 'h264' as const, label: 'H.264', hint: 'Compatibility' },
+                    { id: 'hevc' as const, label: 'H.265', hint: 'HEVC · 10-bit' },
+                    { id: 'av1' as const, label: 'AV1', hint: 'Modern · 10-bit' }
+                  ]).map((option) => {
+                    const available = codecAvailable(option.id);
+                    return (
+                      <button
+                        type="button"
+                        key={option.id}
+                        className={settings.codec === option.id ? 'is-active' : ''}
+                        disabled={!available}
+                        title={codecReason(option.id)}
+                        onClick={() => changeCodec(option.id)}
+                      >
+                        <strong>{option.label}</strong>
+                        <span>{option.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {capabilities && !codecAvailable('hevc') && (
+                  <div className="export-codec-hint">
+                    <Info size={11} />
+                    <span>H.265 needs FFmpeg with libx265 or a working HEVC VAAPI driver. Fedora: enable RPM Fusion, install ffmpeg, then restart LumaCut.</span>
+                    <a href="https://github.com/martintondel02/lumacut/blob/main/docs/HARDWARE.md" target="_blank" rel="noreferrer">Guide</a>
+                  </div>
+                )}
+              </div>
+
+              <div className="export-option-row">
+                <div className="export-option-group">
+                  <span className="field-label">Bit depth</span>
+                  <div className="segmented">
+                    <button type="button" className={settings.bitDepth === 8 ? 'is-active' : ''} onClick={() => changeBitDepth(8)}>8-bit</button>
+                    <button
+                      type="button"
+                      className={settings.bitDepth === 10 ? 'is-active' : ''}
+                      disabled={!tenBitCapable(settings.codec)}
+                      title={tenBitCapable(settings.codec) ? '10-bit 4:2:0 output' : 'Choose H.265 or AV1 for 10-bit output'}
+                      onClick={() => changeBitDepth(10)}
+                    >10-bit</button>
+                  </div>
+                </div>
+                <div className="export-option-group">
+                  <span className="field-label">HDR10</span>
+                  <div className="export-hdr-control">
+                    <span className={`hdr-badge ${settings.hdr ? 'is-on' : ''}`}>PQ · BT.2020</span>
+                    <button
+                      type="button"
+                      className={`switch ${settings.hdr ? 'is-on' : ''}`}
+                      aria-pressed={settings.hdr}
+                      disabled={!hdrAvailable}
+                      title={hdrAvailable ? 'Convert the SDR canvas to HDR10 PQ / BT.2020' : 'HDR10 requires MP4, 10-bit, and H.265 or AV1'}
+                      onClick={() => setExportSettings({ hdr: !settings.hdr })}
+                    ><span /></button>
+                  </div>
+                </div>
+              </div>
+              <p className="export-hdr-hint">
+                {settings.hdr
+                  ? 'HDR10 color-manages the SDR timeline to PQ / BT.2020 at a 100-nit reference. It does not recover source highlights.'
+                  : settings.bitDepth === 10
+                    ? '10-bit 4:2:0 output. HDR10 adds a PQ / BT.2020 conversion.'
+                    : 'H.264 is 8-bit only. Choose H.265 or AV1 for 10-bit / HDR10.'}
+              </p>
 
               <div className="export-option-group">
                 <span className="field-label">Quality</span>
@@ -440,19 +574,19 @@ export function ExportDialog() {
                 </div>
               </div>
 
-              <div className={`export-accel ${hwForFormat ? 'is-available' : ''}`}>
+              <div className={`export-accel ${hardwareForSelection ? 'is-available' : ''}`}>
                 <span className="export-accel-icon"><Cpu size={15} /></span>
                 <div className="export-accel-copy">
                   <span className="field-label">AMD GPU acceleration</span>
-                  <strong>{hwForFormat ? hwForFormat.label : capabilities ? 'CPU encoding' : 'Detecting…'}</strong>
+                  <strong>{hardwareForSelection ? hardwareForSelection.label : capabilities ? 'Software encoding' : 'Detecting…'}</strong>
                   <em>{accelerationDetail}</em>
                 </div>
                 <button
                   type="button"
                   className={`switch ${hardwareSelected ? 'is-on' : ''}`}
-                  disabled={!hwForFormat}
+                  disabled={!hardwareForSelection}
                   aria-pressed={hardwareSelected}
-                  title={hwForFormat ? 'Toggle AMD hardware encoding' : 'No hardware encoder available'}
+                  title={hardwareForSelection ? 'Toggle AMD hardware encoding' : 'No hardware encoder available for this codec'}
                   onClick={() => setExportSettings({ hardwareAcceleration: !settings.hardwareAcceleration })}
                 ><span /></button>
               </div>

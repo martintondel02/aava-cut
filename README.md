@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A local-first, CapCut-style video editor for Linux.</strong><br>
-  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ and AMD Radeon hardware encoding — tuned for Fedora, packaged for Linux.
+  Multi-track editing, spring-eased keyframes, captions, effects, a 10-band audio EQ, AMD Radeon hardware encoding and 10-bit HDR delivery — tuned for Fedora, packaged for Linux.
 </p>
 
 <p align="center">
@@ -15,6 +15,8 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-72f5d1?style=flat-square" alt="MIT"></a>
   <img src="https://img.shields.io/badge/platform-Linux-72f5d1?style=flat-square&logo=linux&logoColor=white" alt="Linux">
   <img src="https://img.shields.io/badge/AMD-Radeon%20VAAPI-ED1C24?style=flat-square" alt="AMD Radeon">
+  <img src="https://img.shields.io/badge/codecs-H.264%20%C2%B7%20H.265%20%C2%B7%20AV1-62e6c1?style=flat-square" alt="Codecs">
+  <img src="https://img.shields.io/badge/10--bit-HDR10-ffc76b?style=flat-square" alt="10-bit HDR10">
   <img src="https://img.shields.io/badge/Fedora-RPM-51A2DA?style=flat-square&logo=fedora&logoColor=white" alt="Fedora RPM">
   <img src="https://img.shields.io/badge/Electron-45-2B2E3A?style=flat-square&logo=electron&logoColor=9FEAF9" alt="Electron">
   <img src="https://img.shields.io/badge/React-19-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React">
@@ -40,9 +42,9 @@
 
 | Package | Best for | Install |
 | --- | --- | --- |
-| **`LumaCut-1.2.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
-| **`LumaCut-1.2.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
-| **`LumaCut-1.2.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
+| **`LumaCut-1.3.0-x86_64.rpm`** | Fedora, RHEL and compatible systems | `sudo dnf install ./LumaCut-*.rpm` |
+| **`LumaCut-1.3.0-x86_64.AppImage`** | Any Linux distribution | `chmod +x LumaCut-*.AppImage` then run it |
+| **`LumaCut-1.3.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives | `sudo apt install ./LumaCut-*.deb` |
 
 All builds include the editor and its local media server. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** available on `PATH` for media probing and export:
 
@@ -57,7 +59,7 @@ sudo apt install ffmpeg
 sudo pacman -S ffmpeg
 ```
 
-> Fedora's official tree ships the binary as `ffmpeg-free`; RPM Fusion ships it as `ffmpeg`. The RPM requires `/usr/bin/ffmpeg`, so either provider works. Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) and include a `SHA256SUMS` file.
+> Fedora's official tree ships the binary as `ffmpeg-free`; RPM Fusion ships it as `ffmpeg`. The RPM requires `/usr/bin/ffmpeg`, so either provider works. H.265 software encoding needs an FFmpeg build with `libx265` — see [docs/HARDWARE.md](docs/HARDWARE.md#h265--hevc-installation). Releases are built by the tagged GitHub Actions workflow in [`.github/workflows/release.yml`](.github/workflows/release.yml) and include a `SHA256SUMS` file.
 
 ---
 
@@ -153,7 +155,9 @@ Most editors make you choose between a polished timeline and owning your footage
 | **Autosave** | Instant local project persistence with undo/redo history |
 | **Portable projects** | Download and reopen `.lumacut` files |
 | **AMD acceleration** | Auto-detects AMD Radeon VAAPI · AV1, H.264 or HEVC · live encoder label · CPU fallback |
-| **Export** | H.264 or AV1 MP4 / VP9 or AV1 WebM · AAC/Opus · 720p / 1080p / 4K · 24/30/60 fps |
+| **Codec picker** | Explicit Auto / H.264 / H.265 / AV1 with live availability and install guidance |
+| **10-bit & HDR10** | 10-bit H.265/AV1 in MP4 or WebM; HDR10 PQ/BT.2020 for MP4 10-bit |
+| **Export** | H.264 / H.265 / AV1 MP4 · VP9 / AV1 WebM · AAC/Opus · 720p / 1080p / 4K · 24/30/60 fps |
 | **Export workflow** | Real-time canvas capture + server-side FFmpeg hardware/software encoding and trimming |
 | **History** | Recent exports with file paths, sizes and direct download |
 | **Schema migration** | Opening a 1.0 project upgrades effects, keyframes, tracks and audio fields in place |
@@ -163,7 +167,7 @@ Most editors make you choose between a polished timeline and owning your footage
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="LumaCut 1.2 dark editor with keyframe lanes and the live audio visualizer" width="100%">
+  <img src="docs/screenshot.png" alt="LumaCut 1.3 dark editor with keyframe lanes and the live audio visualizer" width="100%">
 </p>
 
 <p align="center">
@@ -189,20 +193,44 @@ Most editors make you choose between a polished timeline and owning your footage
 
 ## AMD Radeon acceleration
 
-LumaCut 1.2 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
+LumaCut 1.3 is built with AMD Radeon systems in mind. The media server does not simply trust `ffmpeg -encoders`; it finds AMD GPUs through sysfs and `lspci`, then probes every available VAAPI encoder with a tiny real encode on each render node.
 
 - **MP4:** H.264 → HEVC → AV1, whichever the driver actually exposes.
 - **WebM:** AV1 → VP9 hardware, with software VP9 as the fallback.
 - **Safe fallback:** if a hardware encode fails mid-export, auto mode retries the exact same file with the CPU encoder.
 - **Visible state:** the Export dialog and Settings → About show the detected GPU, the selected encoder, and whether a hardware encode succeeded.
 
-On some Fedora + Mesa combinations — including RDNA4 cards — **AV1 VAAPI** is exposed while H.264/HEVC VAAPI is not. That is handled automatically: LumaCut exports AV1 with real GPU acceleration. If you need maximum player compatibility, turn **AMD GPU acceleration** off per export or in Settings → Export and you get software H.264.
+On some Fedora + Mesa combinations — including RDNA4 cards — **AV1 VAAPI** is exposed while H.264/HEVC VAAPI is not. That is handled automatically: LumaCut exports AV1 with real GPU acceleration. If you need maximum player compatibility, pick **H.264** in the codec picker and turn **AMD GPU acceleration** off, or install RPM Fusion FFmpeg for software H.265.
+
+### H.265 / HEVC installation
+
+Fedora's `ffmpeg-free` often lacks `libx265`, so the H.265 codec card is disabled until you install an FFmpeg build that has it:
+
+```bash
+sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+
+# If Fedora's ffmpeg-free is installed:
+sudo dnf swap ffmpeg-free ffmpeg --allowerasing
+# Otherwise:
+sudo dnf install ffmpeg
+
+ffmpeg -hide_banner -encoders | grep libx265
+```
+
+Restart LumaCut after installing; the server probes codecs at startup. Ubuntu's FFmpeg normally includes `libx265` already.
+
+### 10-bit and HDR10
+
+- **10-bit** is available for H.265 and AV1; H.264 stays 8-bit.
+- **HDR10** is available for MP4 + 10-bit + H.265/AV1.
+- LumaCut color-manages the SDR canvas to **PQ / BT.2020** at a 100-nit reference. It tags HDR10 correctly, but it **does not recover HDR highlights from an SDR timeline**; native HDR source grading is future work.
+- Hardware 10-bit uses `p010` VAAPI upload. Software 10-bit uses `yuv420p10le`.
 
 **Fedora install:**
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./LumaCut-1.2.0-x86_64.rpm
+sudo dnf install ./LumaCut-1.3.0-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
@@ -406,7 +434,7 @@ npm run dev          # media server + Vite
 npm run build        # typecheck + production bundle
 npm run start        # production server
 npm run desktop      # native desktop shell
-npm run dist:linux   # AppImage + .deb
+npm run dist:linux   # AppImage + .deb + .rpm
 npm run test:e2e     # Playwright smoke tests
 ```
 
@@ -416,11 +444,19 @@ For the tests, install the Playwright browser once:
 npx playwright install chromium
 ```
 
-The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration and the AMD capability endpoint.
+The test suite covers the demo boot, canvas painting, split/undo, dynamic title tracks, the media API, settings and scaling, timeline keyframes, auto-key, EQ controls, track management, project migration, AMD capabilities and the codec/HDR picker.
 
 ---
 
 ## Roadmap
+
+**1.3 “Codecs & 10-bit” is shipped.**
+
+- [x] Explicit Auto / H.264 / H.265 / AV1 codec picker
+- [x] 8-bit and 10-bit output, including 10-bit AV1 hardware encoding
+- [x] HDR10 PQ / BT.2020 output for MP4 H.265 and AV1
+- [x] Live codec availability and H.265/libx265 installation guidance
+- [x] Codec and HDR metadata surfaced in the export result
 
 **1.2 “AMD & Fedora” is shipped.**
 
@@ -449,7 +485,7 @@ Next up:
 - “Move clips to a new track” when deleting a populated track
 - Lane visibility filters and per-channel collapse
 - Automatic speech-to-text captions
-- Encoder/codec picker for explicit H.264 vs AV1, plus HDR/10-bit support
+- Native HDR source handling and a WebGL/float rendering pipeline
 - Intel and NVIDIA acceleration paths
 
 See **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWORK_PLAN.md](docs/REWORK_PLAN.md)** for the 1.1 scope and **[CHANGELOG.md](CHANGELOG.md)** for release notes.
@@ -463,8 +499,10 @@ See **[docs/HARDWARE.md](docs/HARDWARE.md)** for AMD/Fedora setup, **[docs/REWOR
 - **Captions are manual or SRT-driven.** Speech-to-text is intentionally not faked.
 - Uploads are capped at 2 GB per file and 30 files per import.
 - H.264 export uses whichever encoder FFmpeg exposes: `libx264`, `libopenh264`, `h264_vaapi`, or an `mpeg4` fallback.
-- The audio visualizer is **monitor-only** in 1.2. It is intentionally not baked into the exported video.
-- Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`.
+- The audio visualizer is **monitor-only** in 1.3. It is intentionally not baked into the exported video.
+- **HDR10 is converted from the SDR canvas.** It sets PQ/BT.2020 and 10-bit output but cannot restore highlights that were never in the SDR timeline.
+- **H.265 software encoding needs libx265.** Fedora's stock `ffmpeg-free` may not include it; install RPM Fusion FFmpeg or use AV1 hardware encoding.
+- Packaged builds expect **FFmpeg / ffprobe** on `PATH`; the `.deb` declares `ffmpeg` and the RPM requires `/usr/bin/ffmpeg`, satisfied by Fedora's `ffmpeg-free` or RPM Fusion `ffmpeg`. H.265 requires `libx265` in that FFmpeg build.
 - LumaCut targets a wide desktop window (1180 px minimum).
 - The app is built for local desktop use; there is no cloud sync or collaboration layer.
 

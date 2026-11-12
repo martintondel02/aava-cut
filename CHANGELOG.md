@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.1 — 2026-11-12
+
+### Fixed
+
+- **Preview sizing after layout changes** — the program monitor now observes the actual stage size, retries when a panel reports zero dimensions, and redraws after the canvas backing store or shell size changes.
+- **Preview canvas redraw on decoded video frames** while playing, improving smoothness on browsers that only repaint on `seeked`/`canplay` events.
+- Canvas now uses `object-fit: contain` and cannot exceed the preview stage.
+- Canvas backing-store resize now schedules a draw immediately instead of waiting for the next media event.
+
+### Diagnostics
+
+- Reproduced and verified preview sizing in Chromium and Firefox at 1600 × 1000, 1280 × 800 and 900 × 700, with DPR 1–2.
+- Requested browser/console details from the reporter if the issue persists on Fedora 44.
+
+### Verification
+
+- 37/37 Playwright tests pass
+- Typecheck and production build pass
+- AppImage, DEB and RPM build
+
 ## 2.1.0 — 2026-11-09
 
 ### Polish

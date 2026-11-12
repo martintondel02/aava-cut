@@ -58,8 +58,9 @@ export function PreviewPanel() {
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width;
       canvas.height = height;
+      requestAnimationFrame(draw);
     }
-  }, [project?.width, project?.height, previewQuality]);
+  }, [project?.width, project?.height, previewQuality, draw]);
 
   useEffect(() => {
     draw();
@@ -89,20 +90,47 @@ export function PreviewPanel() {
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage || !project) return;
+    let frameRequest = 0;
     const compute = () => {
+      const stageWidth = stage.clientWidth;
+      const stageHeight = stage.clientHeight;
+      // A hidden or freshly mounted panel can report zero before layout settles.
+      if (stageWidth < 2 || stageHeight < 2) {
+        cancelAnimationFrame(frameRequest);
+        frameRequest = requestAnimationFrame(compute);
+        return;
+      }
       const paddingX = window.innerWidth < 1280 ? 34 : 52;
       const paddingY = 36;
-      const availableWidth = Math.max(180, stage.clientWidth - paddingX * 2);
-      const availableHeight = Math.max(120, stage.clientHeight - paddingY * 2);
+      const availableWidth = Math.max(120, stageWidth - paddingX * 2);
+      const availableHeight = Math.max(80, stageHeight - paddingY * 2);
       const scale = Math.min(availableWidth / project.width, availableHeight / project.height);
-      setFrame({ width: Math.max(120, project.width * scale), height: Math.max(80, project.height * scale) });
+      setFrame((previous) => {
+        const next = {
+          width: Math.max(80, Math.round(project.width * scale)),
+          height: Math.max(45, Math.round(project.height * scale))
+        };
+        return previous.width === next.width && previous.height === next.height ? previous : next;
+      });
     };
     compute();
     const observer = new ResizeObserver(compute);
     observer.observe(stage);
     window.addEventListener('resize', compute);
-    return () => { observer.disconnect(); window.removeEventListener('resize', compute); };
+    window.visualViewport?.addEventListener('resize', compute);
+    return () => {
+      cancelAnimationFrame(frameRequest);
+      observer.disconnect();
+      window.removeEventListener('resize', compute);
+      window.visualViewport?.removeEventListener('resize', compute);
+    };
   }, [project?.width, project?.height]);
+
+  useEffect(() => {
+    // The canvas shell can settle after the initial project draw.
+    const raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, [frame.width, frame.height, draw]);
 
   const toggle = () => {
     if (!project) return;

@@ -85,6 +85,7 @@ export class MediaPool {
   private trackChains = new Map<string, TrackChain>();
   private currentTracks = new Map<string, Track>();
   private entries = new Map<string, Entry>();
+  private videoFrameLoops = new WeakSet<HTMLVideoElement>();
   private images = new Map<string, ImageEntry>();
   private sources = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
   private host: HTMLDivElement | null = null;
@@ -276,7 +277,29 @@ export class MediaPool {
     element.addEventListener('seeked', notify);
     element.addEventListener('canplay', notify);
     element.addEventListener('error', notify);
+    if (element instanceof HTMLVideoElement) this.watchVideoFrames(element);
     return element;
+  }
+
+  private watchVideoFrames(element: HTMLVideoElement) {
+    const video = element as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: (now: number, metadata: unknown) => void) => number;
+    };
+    if (typeof video.requestVideoFrameCallback !== 'function' || this.videoFrameLoops.has(video)) return;
+    this.videoFrameLoops.add(video);
+    const tick = () => {
+      if (!video.isConnected) return;
+      this.onMediaUpdate?.();
+      if (!video.paused) video.requestVideoFrameCallback?.(tick);
+      else this.videoFrameLoops.delete(video);
+    };
+    video.addEventListener('playing', () => {
+      if (!this.videoFrameLoops.has(video)) {
+        this.videoFrameLoops.add(video);
+        video.requestVideoFrameCallback?.(tick);
+      }
+    });
+    video.requestVideoFrameCallback(tick);
   }
 
   getImage(asset: MediaAsset): HTMLImageElement | null {

@@ -340,7 +340,7 @@ test('reports AMD hardware capabilities without breaking CPU fallback', async ({
   const response = await request.get('/api/capabilities');
   expect(response.ok()).toBe(true);
   const capabilities = await response.json();
-  expect(capabilities.version).toBe('2.1.0');
+  expect(capabilities.version).toBe('2.1.1');
   expect(capabilities.hardware).toBeTruthy();
   expect(capabilities.hardware.preferredFor).toHaveProperty('mp4');
   expect(capabilities.hardware.preferredFor).toHaveProperty('webm');
@@ -645,7 +645,7 @@ test('MCP stdio bridge exposes project and command tools', async ({ request }) =
     args: [path.join(process.cwd(), 'server/mcp.mjs')],
     env
   });
-  const client = new Client({ name: 'aava-test', version: '2.1.0' });
+  const client = new Client({ name: 'aava-test', version: '2.1.1' });
   try {
     await client.connect(transport);
     const tools = await client.listTools();
@@ -907,4 +907,26 @@ test('asks before replacing a non-empty timeline with a new project', async ({ p
   });
   await page.keyboard.press('Control+n');
   await expect(page.locator('.timeline-clip')).toHaveCount(1);
+});
+test('preview stays scaled inside the stage after a viewport resize', async ({ page }) => {
+  await page.goto('/');
+  await addFixtureClip(page);
+  await page.waitForTimeout(700);
+  const canvas = page.locator('.preview-canvas');
+  await expect(canvas).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(700);
+  const result = await page.evaluate(() => {
+    const canvas = document.querySelector('.preview-canvas') as HTMLCanvasElement;
+    const stage = document.querySelector('.preview-stage') as HTMLElement;
+    const c = canvas.getBoundingClientRect();
+    const s = stage.getBoundingClientRect();
+    return { width: c.width, height: c.height, stageWidth: s.width, stageHeight: s.height, attrWidth: canvas.width, attrHeight: canvas.height };
+  });
+  expect(result.width).toBeGreaterThan(160);
+  expect(result.height).toBeGreaterThan(90);
+  expect(result.width).toBeLessThanOrEqual(result.stageWidth + 1);
+  expect(result.height).toBeLessThanOrEqual(result.stageHeight + 1);
+  expect(result.attrWidth).toBe(1280);
+  expect(result.attrHeight).toBe(720);
 });

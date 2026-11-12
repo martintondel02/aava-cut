@@ -54,9 +54,9 @@
 
 | Package | Best for |
 | --- | --- |
-| **`Aava-Cut-2.1.0-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
-| **`Aava-Cut-2.1.0-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
-| **`Aava-Cut-2.1.0-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
+| **`Aava-Cut-2.1.1-x86_64.rpm`** | Fedora 40+ x86_64 (tested on Fedora 45) |
+| **`Aava-Cut-2.1.1-amd64.deb`** | Debian, Ubuntu, Linux Mint and derivatives |
+| **`Aava-Cut-2.1.1-x86_64.AppImage`** | Arch, other Linux distributions, or a no-install test |
 
 All packages include the editor, its local media server and the **whisper.cpp auto-caption runtime**. **Node.js is not required** for packaged builds. You do need **FFmpeg / ffprobe** on `PATH`; auto captions also need the system **Vulkan loader**. The RPM and DEB declare these dependencies, so installing through `dnf` / `apt` pulls them automatically.
 
@@ -68,7 +68,7 @@ Tested on Fedora 45. Download the RPM, then install it with `dnf` so dependencie
 
 ```bash
 cd ~/Downloads
-sudo dnf install ./Aava-Cut-2.1.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.1.1-x86_64.rpm
 ```
 
 If you do not already have FFmpeg and the Vulkan loader:
@@ -89,7 +89,7 @@ If `dnf` rejects the unsigned local package, verify the checksum first and then 
 
 ```bash
 sha256sum -c SHA256SUMS
-sudo dnf install --nogpgcheck ./Aava-Cut-2.1.0-x86_64.rpm
+sudo dnf install --nogpgcheck ./Aava-Cut-2.1.1-x86_64.rpm
 ```
 
 For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 installation](docs/HARDWARE.md#h265--hevc-installation).
@@ -98,7 +98,7 @@ For H.265 export with `libx265`, install RPM Fusion FFmpeg — see [H.265 instal
 
 ```bash
 cd ~/Downloads
-sudo apt install ./Aava-Cut-2.1.0-amd64.deb
+sudo apt install ./Aava-Cut-2.1.1-amd64.deb
 ```
 
 `apt` pulls `ffmpeg` and `libvulkan1`. Launch from the application menu or:
@@ -116,14 +116,14 @@ Arch does **not** use RPM or DEB packages. Use the **AppImage** or run from sour
 ```bash
 sudo pacman -S --needed fuse2 ffmpeg vulkan-icd-loader vulkan-radeon
 
-chmod +x Aava-Cut-2.1.0-x86_64.AppImage
-./Aava-Cut-2.1.0-x86_64.AppImage
+chmod +x Aava-Cut-2.1.1-x86_64.AppImage
+./Aava-Cut-2.1.1-x86_64.AppImage
 ```
 
 `fuse2` is in Arch's `extra` repository. For Intel GPUs install `vulkan-intel` instead of `vulkan-radeon`. If FUSE is unavailable, run the AppImage in extraction mode:
 
 ```bash
-./Aava-Cut-2.1.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.1.1-x86_64.AppImage --appimage-extract-and-run
 ```
 
 **Build from source:**
@@ -157,14 +157,14 @@ sudo pacman -S fuse2
 Then:
 
 ```bash
-chmod +x Aava-Cut-2.1.0-x86_64.AppImage
-./Aava-Cut-2.1.0-x86_64.AppImage
+chmod +x Aava-Cut-2.1.1-x86_64.AppImage
+./Aava-Cut-2.1.1-x86_64.AppImage
 ```
 
 If the AppImage will not start, use:
 
 ```bash
-./Aava-Cut-2.1.0-x86_64.AppImage --appimage-extract-and-run
+./Aava-Cut-2.1.1-x86_64.AppImage --appimage-extract-and-run
 ```
 
 ### Verify the download
@@ -479,7 +479,7 @@ Restart Aava Cut after installing; the server probes codecs at startup. Ubuntu's
 
 ```bash
 sudo dnf install ffmpeg-free libva-utils
-sudo dnf install ./Aava-Cut-2.1.0-x86_64.rpm
+sudo dnf install ./Aava-Cut-2.1.1-x86_64.rpm
 ```
 
 The RPM requires `/usr/bin/ffmpeg`, which `ffmpeg-free` satisfies.
